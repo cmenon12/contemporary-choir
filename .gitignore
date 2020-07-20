@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Other excluded files
+config.ini
+*.txt
+*.ps1
+*.lnk
