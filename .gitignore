@@ -130,6 +130,7 @@ dmypy.json
 
 # Other excluded files
 config.ini
-*.txt
 *.ps1
 *.lnk
+/.idea
+cURL Requests.txt
