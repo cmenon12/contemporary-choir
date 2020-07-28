@@ -18,10 +18,20 @@ SUB_GROUP_ID = "0"
 
 # Create the GUI
 APP_GUI = gui(showIcon=False)
-APP_GUI.setOnTop(stay=True)
+APP_GUI.setOnTop()
 
 
-def download_pdf(auth: str, dir_name: str):
+def download_pdf(auth: str, dir_name: str) -> str:
+    """Downloads the ledger from expense365.com.
+
+    :param auth: the authentication header with the email and password
+    :type auth: str
+    :param dir_name: the default directory to save the PDF
+    :type dir_name: str
+    :returns: the filepath of the saved PDF
+    :rtype: str
+    """
+
     # Prepare the request
     url = "https://service.expense365.com/ws/rest/eXpense365/RequestDocument"
     headers = {
@@ -45,6 +55,7 @@ def download_pdf(auth: str, dir_name: str):
         response.raise_for_status()
     except requests.exceptions.HTTPError as err:
         raise SystemExit(err)
+    print("The request was successful with no HTTP errors.")
 
     # Parse the date and convert it to the local timezone
     date_string = datetime.strptime(response.headers["Date"],
@@ -62,7 +73,7 @@ def download_pdf(auth: str, dir_name: str):
                                        dirName=dir_name,
                                        fileName=file_name,
                                        fileExt=".pdf",
-                                       fileTypes=[("PDF files", "*.pdf")],
+                                       fileTypes=[("PDF file", "*.pdf")],
                                        asFile=True).name
         with open(pdf_filepath, "wb") as pdf_file:
             pdf_file.write(response.content)
@@ -78,11 +89,9 @@ def download_pdf(auth: str, dir_name: str):
         return pdf_filepath
 
 
-def convert_to_excel(pdf_filepath: str):
-    pass
-
-
 def main():
+    """Runs the program."""
+
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read("config.ini")
@@ -107,12 +116,6 @@ def main():
                             None,
                             webbrowser.BackgroundBrowser(browser_path))
         webbrowser.get(using='my-browser').open(open_path)
-
-    # Ask the user if they want to convert it
-    if APP_GUI.yesNoBox("Convert PDF to XLSX?",
-                        "Do you want to convert the PDF "
-                        "ledger to an Excel spreadsheet?") is True:
-        convert_to_excel(pdf_filepath=pdf_filepath)
 
 
 if __name__ == "__main__":
