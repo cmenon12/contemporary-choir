@@ -135,3 +135,5 @@ config.ini
 /.idea
 cURL Requests.txt
 runit.py
+credentials.json
+token.pickle
