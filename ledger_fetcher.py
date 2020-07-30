@@ -80,12 +80,12 @@ def download_pdf(auth: str, dir_name: str) -> str:
         APP_GUI.removeAllWidgets()
 
     except Exception as err:
-        print("There was an error saving the PDF report.")
+        print("There was an error saving the PDF report!")
         raise SystemExit(err)
 
     # If successful then return the file path
     else:
-        print("PDF report saved successfully.")
+        print("PDF report saved successfully!")
         return pdf_filepath
 
 
@@ -112,10 +112,10 @@ def main():
                         "Do you want to open the ledger?") is True:
         # If so then open it in the prescribed browser
         open_path = "file://///" + pdf_filepath
-        webbrowser.register('my-browser',
+        webbrowser.register("my-browser",
                             None,
                             webbrowser.BackgroundBrowser(browser_path))
-        webbrowser.get(using='my-browser').open(open_path)
+        webbrowser.get(using="my-browser").open(open_path)
 
 
 if __name__ == "__main__":
