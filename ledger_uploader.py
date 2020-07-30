@@ -103,7 +103,7 @@ def main():
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read("config.ini")
-    dir_name = parser.get("expense365", "dir_name")
+    dir_name = parser.get("ledger_uploader", "dir_name")
 
     upload_ledger(dir_name)
 

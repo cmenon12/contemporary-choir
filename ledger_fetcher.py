@@ -95,10 +95,10 @@ def main():
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read("config.ini")
-    email = parser.get("expense365", "email")
-    password = parser.get("expense365", "password")
-    dir_name = parser.get("expense365", "dir_name")
-    browser_path = parser.get("expense365", "browser_path")
+    email = parser.get("ledger_fetcher", "email")
+    password = parser.get("ledger_fetcher", "password")
+    dir_name = parser.get("ledger_fetcher", "dir_name")
+    browser_path = parser.get("ledger_fetcher", "browser_path")
 
     # Prepare the authentication
     data = email + ":" + password
