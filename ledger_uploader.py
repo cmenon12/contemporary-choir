@@ -3,6 +3,7 @@ from __future__ import print_function
 import configparser
 import os.path
 import pickle
+import webbrowser
 
 from appJar import gui
 from google.auth.transport.requests import Request
@@ -26,27 +27,27 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
 # time. This specifies where the file is stored
 TOKEN_PICKLE_FILE = "token.pickle"
 
-# Create the GUI
-APP_GUI = gui(showIcon=False)
-APP_GUI.setOnTop()
 
-
-def upload_ledger(dir_name: str, new_ledger_macro_id: str):
+def upload_ledger(dir_name: str, new_ledger_macro_id: str, app_gui: gui):
     """Uploads the ledger to the Google Sheet with the macro.
 
     :param dir_name: the default directory to open the xlsx file from
     :type dir_name: str
     :param new_ledger_macro_id: the id of the sheet to upload it to
     :type new_ledger_macro_id: str
+    :param app_gui: the appJar GUI to use
+    :type app_gui: appJar.appjar.gui
+    :return: the URL of New Ledger Macro
+    :rtype: str
     """
 
     # Open the spreadsheet
     try:
-        xlsx_filepath = APP_GUI.openBox(title="Open spreadsheet",
+        xlsx_filepath = app_gui.openBox(title="Open spreadsheet",
                                         dirName=dir_name,
                                         fileTypes=[("Office Open XML Workbook", "*.xlsx")],
                                         asFile=True).name
-        APP_GUI.removeAllWidgets()
+        app_gui.removeAllWidgets()
 
     except Exception as err:
         print("There was an error opening the spreadsheet.")
@@ -83,12 +84,16 @@ def upload_ledger(dir_name: str, new_ledger_macro_id: str):
     response = sheets.spreadsheets().sheets().copyTo(spreadsheetId=latest_ledger_id,
                                                      sheetId=sheet_id,
                                                      body=body).execute()
+    new_sheet_id = response["sheetId"]
 
     # Delete the uploaded Google Sheet
     print("Deleting the uploaded ledger...")
-    response = drive.files().delete(fileId=latest_ledger_id).execute()
+    drive.files().delete(fileId=latest_ledger_id).execute()
 
     print("New ledger uploaded to New Macro Ledger successfully!")
+
+    return ("https://docs.google.com/spreadsheets/d/" + new_ledger_macro_id +
+            "/edit#gid=" + str(new_sheet_id))
 
 
 def authorize() -> dict:
@@ -124,17 +129,38 @@ def authorize() -> dict:
     return {"drive": drive_service, "sheets": sheets_service}
 
 
-def main():
-    """Runs the program."""
+def main(app_gui: gui):
+    """Runs the program.
+
+    :param app_gui: the appJar GUI to use
+    :type app_gui: appJar.appjar.gui
+    """
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read("config.ini")
     dir_name = parser.get("ledger_uploader", "dir_name")
     new_ledger_macro_id = parser.get("ledger_uploader", "new_ledger_macro_id")
+    browser_path = parser.get("ledger_fetcher", "browser_path")
 
-    upload_ledger(dir_name, new_ledger_macro_id)
+    new_url = upload_ledger(dir_name=dir_name,
+                            new_ledger_macro_id=new_ledger_macro_id,
+                            app_gui=app_gui)
+
+    # Ask the user if they want to open the new ledger in Google Sheets
+    if app_gui.yesNoBox("Open New Ledger Macro?",
+                        "Do you want to open the uploaded ledger in Google Sheets?") is True:
+        # If so then open it in the prescribed browser
+        open_path = new_url
+        webbrowser.register("my-browser",
+                            None,
+                            webbrowser.BackgroundBrowser(browser_path))
+        webbrowser.get(using="my-browser").open(open_path)
 
 
 if __name__ == "__main__":
-    main()
+    # Create the GUI
+    appjar_gui = gui(showIcon=False)
+    appjar_gui.setOnTop()
+
+    main(appjar_gui)
