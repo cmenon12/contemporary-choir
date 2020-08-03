@@ -1,2 +1,2 @@
 # contemporary-choir
-A place to keep my scripts and programs for Contemporary Choir-related work.
+As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/contemporarychoir/) (a University of Exeter Students' Guild society) I've found myself spending quite a bit of time working with various spreadsheets from various different sources. As a result, I've started writing some scripts to help automate some tasks (e.g. checking the society ledger).
