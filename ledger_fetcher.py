@@ -1,29 +1,55 @@
+from __future__ import print_function
+
 import base64
 import configparser
+import os
+import pickle
+import time
 import webbrowser
 from datetime import datetime
+from json import decoder
 
 import requests
 from appJar import gui
 from dateutil import tz
-
-import ledger_uploader
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 
 # 30 is used for the ledger, 31 for the balance
 REPORT_ID = "30"
 
-# 35778 refers to Contemporary Choir
-GROUP_ID = "35778"
+# This variable specifies the name of a file that contains the
+# OAuth 2.0 information for this application, including its client_id
+# and client_secret.
+CLIENT_SECRETS_FILE = "credentials.json"
 
-# Don't know what this is, likely to be unused
-SUB_GROUP_ID = "0"
+# This OAuth 2.0 access scope allows for full read/write access to the
+# authenticated user's account and requires requests to use an SSL
+# connection.
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
+          "https://www.googleapis.com/auth/drive.file"]
+
+# This file stores the user's access and refresh tokens and is created
+# automatically when the authorization flow completes for the first
+# time. This specifies where the file is stored
+TOKEN_PICKLE_FILE = "token.pickle"
 
 
-def download_pdf(auth: str, dir_name: str, app_gui: gui) -> str:
+def download_pdf(auth: str, group_id: str, subgroup_id: str,
+                 filename_prefix: str, dir_name: str,
+                 app_gui: gui) -> str:
     """Downloads the ledger from expense365.com.
 
     :param auth: the authentication header with the email and password
     :type auth: str
+    :param group_id: the ID of the group to download the ledger
+    :type group_id: str
+    :param subgroup_id: the ID of the subgroup to download the ledger
+    :type subgroup_id: str
+    :param filename_prefix: what to prefix the default filename with
+    :type filename_prefix: str
     :param dir_name: the default directory to save the PDF
     :type dir_name: str
     :param app_gui: the appJar GUI to use
@@ -45,8 +71,8 @@ def download_pdf(auth: str, dir_name: str, app_gui: gui) -> str:
 
     # Prepare the body
     data = ('{"ReportID":' + REPORT_ID +
-            ',"UserGroupID":' + GROUP_ID +
-            ',"SubGroupID":' + SUB_GROUP_ID + '}')
+            ',"UserGroupID":' + group_id +
+            ',"SubGroupID":' + subgroup_id + '}')
 
     # Make the request and check it was successful
     print("Making the HTTP request...")
@@ -65,14 +91,14 @@ def download_pdf(auth: str, dir_name: str, app_gui: gui) -> str:
         .strftime("%d-%m-%Y at %H.%M.%S")
 
     # Prepare to save the file
-    file_name = "C30 Ledger " + date_string
+    filename = filename_prefix + " " + date_string
 
     # Attempt to save the PDF (fails gracefully if the user cancels)
     try:
         print("Saving the PDF...")
         pdf_filepath = app_gui.saveBox("Save ledger",
                                        dirName=dir_name,
-                                       fileName=file_name,
+                                       fileName=filename,
                                        fileExt=".pdf",
                                        fileTypes=[("PDF file", "*.pdf")],
                                        asFile=True).name
@@ -90,6 +116,229 @@ def download_pdf(auth: str, dir_name: str, app_gui: gui) -> str:
         return pdf_filepath
 
 
+def convert_to_xlsx(pdf_filepath: str, dir_name: str,
+                    app_gui: gui, use_same_filepath: bool = True) -> str:
+    """Converts the PDF to an Excel file and saves it.
+
+    :param pdf_filepath: the path to the PDF file to convert
+    :type pdf_filepath: str
+    :param dir_name: the default directory to save the PDF
+    :type dir_name: str
+    :param app_gui: the appJar GUI to use
+    :type app_gui: appJar.appjar.gui
+    :param use_same_filepath: whether to use the same filepath for the XLSX
+    :type use_same_filepath: bool, optional
+    :return: the path to the downloaded XLSX spreadsheet
+    :rtype: str
+    """
+
+    # Prepare for the request
+    url = "https://www.pdftoexcel.com/upload.instant.php"
+    user_agent = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
+                  'AppleWebKit/537.36 (KHTML, like Gecko) ' +
+                  'Chrome/84.0.4147.105 Safari/537.36')
+    headers = {
+        'Connection': 'keep-alive',
+        'Accept': '*/*',
+        'X-Requested-With': 'XMLHttpRequest',
+        'DNT': '1',
+        'User-Agent': user_agent,
+        'Origin': 'https://www.pdftoexcel.com',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Dest': 'empty',
+        'Referer': 'https://www.pdftoexcel.com/',
+        'Accept-Language': 'en-GB,en;q=0.9',
+    }
+    files = {'Filedata': open(pdf_filepath, 'rb')}
+
+    # Create a session that we can add headers to
+    session = requests.Session()
+    session.headers.update(headers)
+
+    # Make the request and check that it was successful
+    print("Sending the PDF for conversion...")
+    response = session.post(url=url, files=files)
+    try:
+        response.raise_for_status()
+        job_id = response.json()["jobId"]
+    except requests.exceptions.HTTPError as err:
+        raise SystemExit(err)
+    except decoder.JSONDecodeError as err:
+        raise SystemExit(err)
+    print("The request was successful with no HTTP errors.")
+    print("The jobId is %s" % job_id)
+
+    # Prepare to keep checking the status of the conversion
+    download_url = ""
+    url = "https://www.pdftoexcel.com/status"
+
+    # Whilst it is still being converted
+    while download_url == "":
+
+        # Prepare and make the request
+        print("Checking if the conversion is complete...")
+        response = session.post(url=url, data={"jobId": job_id, "rand": "0"})
+
+        # Check that the request was successful
+        try:
+            response.raise_for_status()
+            download_url = response.json()["download_url"]
+        except requests.exceptions.HTTPError as err:
+            raise SystemExit(err)
+        except decoder.JSONDecodeError as err:
+            raise SystemExit(err)
+
+        # Wait before checking again
+        if download_url == "":
+            time.sleep(1)
+
+    # Prepare and make the request to download the file
+    url = "https://www.pdftoexcel.com" + download_url
+    print("Downloading the converted file...")
+    response = session.get(url=url, params={'id': job_id})
+
+    # Check that the request was successful
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        raise SystemExit(err)
+
+    # Attempt to save the spreadsheet (fails gracefully if the user cancels)
+    try:
+        print("Saving the spreadsheet...")
+        filename = pdf_filepath.split("\\")[-1]
+        filename = filename.replace(".pdf", ".xlsx")
+        if use_same_filepath is False:
+            xlsx_filepath = app_gui.saveBox("Save spreadsheet",
+                                            dirName=dir_name,
+                                            fileName=filename,
+                                            fileExt=".xlsx",
+                                            fileTypes=[("Office Open XML " +
+                                                        "Workbook", "*.xlsx")],
+                                            asFile=True).name
+        else:
+            xlsx_filepath = pdf_filepath.replace(".pdf", ".xlsx")
+        with open(xlsx_filepath, "wb") as xlsx_file:
+            xlsx_file.write(response.content)
+        app_gui.removeAllWidgets()
+
+    except Exception as err:
+        print("There was an error saving the spreadsheet!")
+        raise SystemExit(err)
+
+    # If successful then return the file path
+    else:
+        print("Spreadsheet ledger saved successfully!")
+        return xlsx_filepath
+
+
+def upload_ledger(dir_name: str, destination_sheet_id: str, app_gui: gui,
+                  xlsx_filepath: str = "") -> str:
+    """Uploads the ledger to the specified Google Sheet.
+
+    :param dir_name: the default directory to open the XLSX file from
+    :type dir_name: str
+    :param destination_sheet_id: the id of the sheet to upload it to
+    :type destination_sheet_id: str
+    :param app_gui: the appJar GUI to use
+    :type app_gui: appJar.appjar.gui
+    :param xlsx_filepath: the filepath of the XLSX spreadsheet
+    :type xlsx_filepath: str, optional
+    :return: the URL of the destination spreadsheet
+    :rtype: str
+    """
+
+    # Open the spreadsheet
+    if xlsx_filepath == "":
+        try:
+            xlsx_filepath = app_gui.openBox(title="Open spreadsheet",
+                                            dirName=dir_name,
+                                            fileTypes=[("Office Open XML " +
+                                                        "Workbook", "*.xlsx")],
+                                            asFile=True).name
+            app_gui.removeAllWidgets()
+
+        except Exception as err:
+            print("There was an error opening the spreadsheet.")
+            raise SystemExit(err)
+
+    # Authenticate and retrieve the required services
+    drive, sheets = authorize()
+
+    # Upload the ledger
+    print("Uploading the ledger...")
+    file_metadata = {"name": "The Latest Ledger",
+                     "mimeType": "application/vnd.google-apps.spreadsheet"}
+    xlsx_mimetype = ("application/vnd.openxmlformats-officedocument" +
+                     ".spreadsheetml.sheet")
+    media = MediaFileUpload(xlsx_filepath,
+                            mimetype=xlsx_mimetype,
+                            resumable=True)
+    file = drive.files().create(body=file_metadata,
+                                media_body=media,
+                                fields="id").execute()
+    latest_ledger_id = file.get("id")
+
+    # Get the ID of the first sheet in the newly-uploaded spreadsheet
+    print("Fetching the sheet ID...")
+    response = sheets.spreadsheets().get(spreadsheetId=latest_ledger_id,
+                                         ranges="A1:D4",
+                                         includeGridData=False).execute()
+    sheet_id = response["sheets"][0]["properties"]["sheetId"]
+
+    # Copy the uploader ledger to the sheet with the macro
+    print("Copying the sheet...")
+    body = {"destinationSpreadsheetId": destination_sheet_id}
+    response = sheets.spreadsheets().sheets() \
+        .copyTo(spreadsheetId=latest_ledger_id,
+                sheetId=sheet_id,
+                body=body).execute()
+    new_sheet_id = response["sheetId"]
+
+    # Delete the uploaded Google Sheet
+    print("Deleting the uploaded ledger...")
+    drive.files().delete(fileId=latest_ledger_id).execute()
+
+    print("New ledger uploaded to the destination sheet successfully!")
+
+    return ("https://docs.google.com/spreadsheets/d/" + destination_sheet_id +
+            "/edit#gid=" + str(new_sheet_id))
+
+
+def authorize() -> tuple:
+    """Authorizes access to the user's Drive and Sheets.
+
+    :return: the authenticated services
+    :rtype: tuple
+    """
+
+    credentials = None
+    if os.path.exists(TOKEN_PICKLE_FILE):
+        with open(TOKEN_PICKLE_FILE, "rb") as token:
+            credentials = pickle.load(token)
+
+    # If there are no (valid) credentials available, let the user log in.
+    if not credentials or not credentials.valid:
+        if credentials and credentials.expired and \
+                credentials.refresh_token:
+            credentials.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CLIENT_SECRETS_FILE, SCOPES)
+            credentials = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open(TOKEN_PICKLE_FILE, "wb") as token:
+            pickle.dump(credentials, token)
+
+    # Build both services and return them in a dict
+    drive_service = build("drive", "v3", credentials=credentials,
+                          cache_discovery=False)
+    sheets_service = build("sheets", "v4", credentials=credentials,
+                           cache_discovery=False)
+    return drive_service, sheets_service
+
+
 def main(app_gui: gui):
     """Runs the program.
 
@@ -102,15 +351,25 @@ def main(app_gui: gui):
     parser.read("config.ini")
     email = parser.get("ledger_fetcher", "email")
     password = parser.get("ledger_fetcher", "password")
+    group_id = parser.get("ledger_fetcher", "group_id")
+    subgroup_id = parser.get("ledger_fetcher", "subgroup_id")
+    filename_prefix = parser.get("ledger_fetcher", "filename_prefix")
     dir_name = parser.get("ledger_fetcher", "dir_name")
     browser_path = parser.get("ledger_fetcher", "browser_path")
+    destination_sheet_id = parser.get("ledger_fetcher", "destination_sheet_id")
+    destination_sheet_name = parser.get("ledger_fetcher",
+                                        "destination_sheet_name")
 
     # Prepare the authentication
     data = email + ":" + password
     auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
 
     # Download the PDF, returning the file path
-    pdf_filepath = download_pdf(auth=auth, dir_name=dir_name, app_gui=app_gui)
+    pdf_filepath = download_pdf(auth=auth, group_id=group_id,
+                                subgroup_id=subgroup_id,
+                                filename_prefix=filename_prefix,
+                                dir_name=dir_name,
+                                app_gui=app_gui)
 
     # Ask the user if they want to open it
     if app_gui.yesNoBox("Open PDF?",
@@ -122,23 +381,30 @@ def main(app_gui: gui):
                             webbrowser.BackgroundBrowser(browser_path))
         webbrowser.get(using="my-browser").open(open_path)
 
-    # Ask the user if they want to open pdftoexcel.com
-    if app_gui.yesNoBox("Open pdftoexcel.com?",
-                        "Do you want to open https://www.pdftoexcel.com/?") is True:
-        # If so then open it in the prescribed browser
-        open_path = "https://www.pdftoexcel.com/"
-        webbrowser.register("my-browser",
-                            None,
-                            webbrowser.BackgroundBrowser(browser_path))
-        webbrowser.get(using="my-browser").open(open_path)
+    # Ask the user if they want to convert it to an XLSX spreadsheet
+    if app_gui.yesNoBox("Convert to XLSX?",
+                        ("Do you want to convert the PDF ledger to an XLSX " +
+                         "spreadsheet using pdftoexcel.com, and then upload " +
+                         "it to %s?" % destination_sheet_name)) is True:
 
-        # If they have converted the spreadsheet then
-        # Ask the user if they want to upload it to New Ledger Macro
-        if app_gui.yesNoBox("Upload the spreadsheet?",
-                            "Do you want to upload the spreadsheet to New Ledger Macro?\n"
-                            "Click YES when you've downloaded it.") is True:
-            # If so then run the ledger_uploader
-            ledger_uploader.main(app_gui)
+        # If so then convert it and upload it
+        xlsx_filepath = convert_to_xlsx(pdf_filepath=pdf_filepath,
+                                        app_gui=app_gui,
+                                        dir_name=dir_name)
+        new_url = upload_ledger(dir_name=dir_name,
+                                destination_sheet_id=destination_sheet_id,
+                                app_gui=app_gui, xlsx_filepath=xlsx_filepath)
+
+        # Ask the user if they want to open the new ledger in Google Sheets
+        if app_gui.yesNoBox("Open %s?" % destination_sheet_name,
+                            ("Do you want to open the uploaded ledger in " +
+                             "Google Sheets?")) is True:
+            # If so then open it in the prescribed browser
+            open_path = new_url
+            webbrowser.register("my-browser",
+                                None,
+                                webbrowser.BackgroundBrowser(browser_path))
+            webbrowser.get(using="my-browser").open(open_path)
 
 
 if __name__ == "__main__":
