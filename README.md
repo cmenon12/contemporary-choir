@@ -1,9 +1,9 @@
-# contemporary-choir
-As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/contemporarychoir/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks (e.g. checking & storing the society ledger).
+# Contemporary Choir
+As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/contemporarychoir/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier.
 
 ## Python Scripts
 **[`ledger_fetcher.py`](ledger_fetcher.py)** 
-allows you to download the society ledger from eXpense365 to your computer (instead of having to use the app). It can also then convert it from a PDF to an XLSX spreadsheet (using [pdftoexcel.com](https://www.pdftoexcel.com/)) and then upload the newly-converted spreadsheet to a pre-existing Google Sheet (as a new sheet within a spreadsheet). *Please note that I'm not affiliated with pdftoexcel.com and that use of their service is bound by their terms & privacy policy - it's just a handy service that I've found can convert the ledger accurately.*
+can be used  to download the society ledger from eXpense365 to your computer (instead of having to use the app). It can also then convert it from a PDF to an XLSX spreadsheet (using [pdftoexcel.com](https://www.pdftoexcel.com/)) and then upload the newly-converted spreadsheet to a pre-existing Google Sheet (as a new sheet within a spreadsheet). *Please note that I'm not affiliated with pdftoexcel.com and that use of their service is bound by their terms & privacy policy - it's just a handy service that I've found can convert the ledger accurately.*
 
 ## Google Apps Scripts (for Google Sheets)
 **[`apps-script/ledger-comparison.gs`](apps-scripts/ledger-comparison.gs)** can be used to process the ledger that has been uploaded by `ledger_fetcher.py`. 
@@ -14,4 +14,8 @@ allows you to download the society ledger from eXpense365 to your computer (inst
 
 
 **[`apps-script/fundraising.gs`](apps-scripts/fundraising.gs)** updates how much has been fundraised from a GoFundMe page. It fetches the page, extracts the total fundraised and the total number of donors, applies a reduction due to payment processor fees & postage, and then updates a pre-defined named range in the sheet with the total.
+
+## License
+[GNU GPLv3](https://choosealicense.com/licenses/gpl-3.0/)
+
 
