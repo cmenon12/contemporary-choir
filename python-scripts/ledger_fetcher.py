@@ -17,6 +17,10 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
+__author__ = "Christopher Menon"
+__credits__ = "Christopher Menon"
+__license__ = "gpl-3.0"
+
 # 30 is used for the ledger, 31 for the balance
 REPORT_ID = "30"
 
@@ -349,26 +353,18 @@ def main(app_gui: gui):
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read("config.ini")
-    email = parser.get("ledger_fetcher", "email")
-    password = parser.get("ledger_fetcher", "password")
-    group_id = parser.get("ledger_fetcher", "group_id")
-    subgroup_id = parser.get("ledger_fetcher", "subgroup_id")
-    filename_prefix = parser.get("ledger_fetcher", "filename_prefix")
-    dir_name = parser.get("ledger_fetcher", "dir_name")
-    browser_path = parser.get("ledger_fetcher", "browser_path")
-    destination_sheet_id = parser.get("ledger_fetcher", "destination_sheet_id")
-    destination_sheet_name = parser.get("ledger_fetcher",
-                                        "destination_sheet_name")
+    config = parser["ledger_fetcher"]
 
     # Prepare the authentication
-    data = email + ":" + password
+    data = config["email"] + ":" + config["password"]
     auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
 
     # Download the PDF, returning the file path
-    pdf_filepath = download_pdf(auth=auth, group_id=group_id,
-                                subgroup_id=subgroup_id,
-                                filename_prefix=filename_prefix,
-                                dir_name=dir_name,
+    pdf_filepath = download_pdf(auth=auth,
+                                group_id=config["group_id"],
+                                subgroup_id=config["subgroup_id"],
+                                filename_prefix=config["filename_prefix"],
+                                dir_name=config["dir_name"],
                                 app_gui=app_gui)
 
     # Ask the user if they want to open it
@@ -378,32 +374,32 @@ def main(app_gui: gui):
         open_path = "file://///" + pdf_filepath
         webbrowser.register("my-browser",
                             None,
-                            webbrowser.BackgroundBrowser(browser_path))
+                            webbrowser.BackgroundBrowser(config["browser_path"]))
         webbrowser.get(using="my-browser").open(open_path)
 
     # Ask the user if they want to convert it to an XLSX spreadsheet
     if app_gui.yesNoBox("Convert to XLSX?",
                         ("Do you want to convert the PDF ledger to an XLSX " +
                          "spreadsheet using pdftoexcel.com, and then upload " +
-                         "it to %s?" % destination_sheet_name)) is True:
+                         "it to %s?" % config["destination_sheet_name"])) is True:
 
         # If so then convert it and upload it
         xlsx_filepath = convert_to_xlsx(pdf_filepath=pdf_filepath,
                                         app_gui=app_gui,
-                                        dir_name=dir_name)
-        new_url = upload_ledger(dir_name=dir_name,
-                                destination_sheet_id=destination_sheet_id,
+                                        dir_name=config["dir_name"])
+        new_url = upload_ledger(dir_name=config["dir_name"],
+                                destination_sheet_id=config["destination_sheet_id"],
                                 app_gui=app_gui, xlsx_filepath=xlsx_filepath)
 
         # Ask the user if they want to open the new ledger in Google Sheets
-        if app_gui.yesNoBox("Open %s?" % destination_sheet_name,
+        if app_gui.yesNoBox("Open %s?" % config["destination_sheet_name"],
                             ("Do you want to open the uploaded ledger in " +
                              "Google Sheets?")) is True:
             # If so then open it in the prescribed browser
             open_path = new_url
             webbrowser.register("my-browser",
                                 None,
-                                webbrowser.BackgroundBrowser(browser_path))
+                                webbrowser.BackgroundBrowser(config["browser_path"]))
             webbrowser.get(using="my-browser").open(open_path)
 
 
