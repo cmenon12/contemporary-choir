@@ -3,21 +3,30 @@ var sheet = spreadsheet.getActiveSheet();
 
 /**
  * Does everything at once: the formatting and the comparison.
- * This uses the default URL
+ * This uses the default URL at the named range DefaultUrl
  * The user is alerted when it is completed (so that
  * they know it hasn't stalled).
  */
 function processWithDefaultUrl() {
   formatNeatly();
-  var url = spreadsheet.getNamedRanges()[0].getRange().getValue(); // There's only one named range.
+
+  // Locate the named range
+  var namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
+  var url;
+  for (var i = 0; i < namedRanges.length; i++) {
+    if (namedRanges[i].getName() == "DefaultUrl") {
+      url = namedRanges[i].getRange().getValue();
+    }
+  }
+
   compareLedgers(url);
   copyToLedger(url);
   var ui = SpreadsheetApp.getUi();
   ui.alert("Complete!",
-           "The process completed successfully. " +
-           "You can view the logs here: " +
-           "https://script.google.com/home/projects/1ycYC3ziL1kmxVl-RlqJhO-4UXZXjHw0Nljnal1IIfkWNDG-MPooyufqr/executions",
-           ui.ButtonSet.OK);
+      "The process completed successfully. " +
+      "You can view the logs here: " +
+      "https://script.google.com/home/projects/1ycYC3ziL1kmxVl-RlqJhO-4UXZXjHw0Nljnal1IIfkWNDG-MPooyufqr/executions",
+      ui.ButtonSet.OK);
 }
 
 /**
