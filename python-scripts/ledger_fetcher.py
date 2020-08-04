@@ -238,7 +238,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
 
 def upload_ledger(dir_name: str, destination_sheet_id: str, app_gui: gui,
-                  xlsx_filepath: str = "") -> str:
+                  xlsx_filepath: str = "") -> tuple:
     """Uploads the ledger to the specified Google Sheet.
 
     :param dir_name: the default directory to open the XLSX file from
@@ -249,8 +249,8 @@ def upload_ledger(dir_name: str, destination_sheet_id: str, app_gui: gui,
     :type app_gui: appJar.appjar.gui
     :param xlsx_filepath: the filepath of the XLSX spreadsheet
     :type xlsx_filepath: str, optional
-    :return: the URL of the destination spreadsheet
-    :rtype: str
+    :return: the URL of the destination spreadsheet and the sheet name
+    :rtype: tuple
     """
 
     # Open the spreadsheet
@@ -299,6 +299,7 @@ def upload_ledger(dir_name: str, destination_sheet_id: str, app_gui: gui,
                 sheetId=sheet_id,
                 body=body).execute()
     new_sheet_id = response["sheetId"]
+    new_sheet_title = response["title"]
 
     # Delete the uploaded Google Sheet
     print("Deleting the uploaded ledger...")
@@ -307,7 +308,7 @@ def upload_ledger(dir_name: str, destination_sheet_id: str, app_gui: gui,
     print("New ledger uploaded to the destination sheet successfully!")
 
     return ("https://docs.google.com/spreadsheets/d/" + destination_sheet_id +
-            "/edit#gid=" + str(new_sheet_id))
+            "/edit#gid=" + str(new_sheet_id)), new_sheet_title
 
 
 def authorize() -> tuple:
@@ -387,9 +388,9 @@ def main(app_gui: gui):
         xlsx_filepath = convert_to_xlsx(pdf_filepath=pdf_filepath,
                                         app_gui=app_gui,
                                         dir_name=config["dir_name"])
-        new_url = upload_ledger(dir_name=config["dir_name"],
-                                destination_sheet_id=config["destination_sheet_id"],
-                                app_gui=app_gui, xlsx_filepath=xlsx_filepath)
+        new_url, sheet_name = upload_ledger(dir_name=config["dir_name"],
+                                            destination_sheet_id=config["destination_sheet_id"],
+                                            app_gui=app_gui, xlsx_filepath=xlsx_filepath)
 
         # Ask the user if they want to open the new ledger in Google Sheets
         if app_gui.yesNoBox("Open %s?" % config["destination_sheet_name"],
