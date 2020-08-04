@@ -1,5 +1,5 @@
 # Contemporary Choir
-As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/contemporarychoir/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier.
+As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/contemporarychoir/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. *Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
 ## Python Scripts
 **[`ledger_fetcher.py`](ledger_fetcher.py)** 
