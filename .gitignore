@@ -137,3 +137,5 @@ cURL Requests.txt
 runit.py
 credentials.json
 token.pickle
+python-scripts/credentials.json
+python-scripts/token.pickle
