@@ -3,30 +3,30 @@ var sheet = spreadsheet.getActiveSheet();
 
 /**
  * Does everything at once: the formatting and the comparison.
- * This uses the default URL at the named range DefaultUrl
+ * This uses the URL at the named range called DefaultUrl
  * The user is alerted when it is completed (so that
  * they know it hasn't stalled).
  */
 function processWithDefaultUrl() {
   formatNeatly();
-
+  
   // Locate the named range
   var namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
   var url;
-  for (var i = 0; i < namedRanges.length; i++) {
+  for (var i=0; i<namedRanges.length; i++) {
     if (namedRanges[i].getName() == "DefaultUrl") {
       url = namedRanges[i].getRange().getValue();
     }
   }
-
+  
   compareLedgers(url);
   copyToLedger(url);
   var ui = SpreadsheetApp.getUi();
   ui.alert("Complete!",
-      "The process completed successfully. " +
-      "You can view the logs here: " +
-      "https://script.google.com/home/projects/1ycYC3ziL1kmxVl-RlqJhO-4UXZXjHw0Nljnal1IIfkWNDG-MPooyufqr/executions",
-      ui.ButtonSet.OK);
+           "The process completed successfully. " +
+           "You can view the logs here: " +
+           "https://script.google.com/home/projects/1ycYC3ziL1kmxVl-RlqJhO-4UXZXjHw0Nljnal1IIfkWNDG-MPooyufqr/executions",
+           ui.ButtonSet.OK);
 }
 
 /**
@@ -42,8 +42,15 @@ function isADate(value) {
  * appears in the oldSheet.
  * Returns true if it's new, or false if it's old.
   */
-function compareWithOld(row, oldSheetValues) {
-  var rowValues = sheet.getSheetValues(row, 1, 1, 4)[0];
+function compareWithOld(row, oldSheetValues, newSheet) {
+  
+  // If newSheet has been supplied then use it, otherwise use the default
+  var rowValues;
+  if (newSheet == undefined) {
+    rowValues = sheet.getSheetValues(row, 1, 1, 4)[0];
+  } else {
+    rowValues = newSheet.getSheetValues(row, 1, 1, 4)[0];
+  }
   var newRow = true;
   for (i=0; i<oldSheetValues.length; i+=1) {
     if (rowValues.toString() == oldSheetValues[i].toString()) {
@@ -73,11 +80,11 @@ function showPrompt() {
   // Process the user's response
   var button = result.getSelectedButton();
   var url = result.getResponseText();
-
+  
   // If the user wants to use a different URL
   if (button == ui.Button.NO) {
     return url;
-
+    
   // If the user wants to use the default URL
   } else if (button == ui.Button.YES) {
     url = spreadsheet.getNamedRanges()[0].getRange().getValue();  // There's only one named range.
@@ -119,7 +126,7 @@ function compareLedgers(url) {
         passedHeader = true;
         sheet.getRange(row+1, 1, sheet.getLastRow()-row-1).setBackground("green");
       }
-
+      continue;
 
     // Compare it with the original/old sheet
     // Comparing all rows allows us to identify changes in the totals too
@@ -142,7 +149,7 @@ function compareLedgers(url) {
 
 
 /**
- * Copies the sheet to another spreadsheet file.
+ * Copies the sheet to another spreadsheet file. 
  * This is normally the one with the ledger in it.
  * The script then deletes the old Original,
  * and renames the new Original and sets protections on it.
@@ -152,22 +159,22 @@ function copyToLedger(url) {
   // Gets the ledger spreadsheet
   var ledgerSpreadsheet = SpreadsheetApp.openByUrl(url);
   Logger.log("Script has opened spreadsheet " + url);
-
+  
   // Copies to the ledger spreadsheet
   var newSheet = sheet.copyTo(ledgerSpreadsheet);
-
+  
   // Remove protections from the old Original sheet and delete it
   var oldOriginalSheet = ledgerSpreadsheet.getSheetByName("Original")
   oldOriginalSheet.protect().remove();
   ledgerSpreadsheet.deleteSheet(oldOriginalSheet);
-
-  // Rename the new Original sheet and protect it
+  
+  // Rename the new Original sheet and protect it 
   newSheet.setName("Original");
   newSheet.protect().setWarningOnly(true);
-
+  
   Logger.log("Finished copying the sheet to the ledger spreadsheet.")
-
-
+  
+  
 }
 
 /**
@@ -177,7 +184,7 @@ function compareLedgersGetUrl() {
   var url = showPrompt()
   if (url == false) {
     return;
-  }
+  } 
   compareLedgers(url)
 }
 
@@ -188,7 +195,7 @@ function copyToLedgerGetUrl() {
   var url = showPrompt()
   if (url == false) {
     return;
-  }
+  } 
   copyToLedger(url)
 }
 
@@ -202,54 +209,69 @@ function onOpen() {
       .addItem("Copy to the ledger", "copyToLedgerGetUrl")
       .addItem("Process entirely with the default URL", "processWithDefaultUrl")
       .addToUi();
+};
+
+
+/**
+ * Runs formatNeatlyWithSheet() with the active sheet.
+ */
+function formatNeatly() {
+  formatNeatlyWithSheet(sheet)
 }
 
 
 /**
  * Formats the ledger neatly.
- * This function renames the sheet, resizes the columns,
+ * This can be used with any sheet (not necessarily the active one)
+ * This function renames the sheet, resizes the columns, 
  * removes unnecesary headers, and removes excess columns & rows.
  */
-function formatNeatly() {
+function formatNeatlyWithSheet(thisSheet) {
 
   // Convert the first column to text
-  sheet.getRange(1, 1, sheet.getLastRow()).setNumberFormat("@")
-
+  thisSheet.getRange(1, 1, thisSheet.getLastRow()).setNumberFormat("@")
+  
   // Change the tab colour to be white
-  sheet.setTabColor("white")
+  thisSheet.setTabColor("white")
 
   // Rename the sheet
   var dateString = "\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d \\d\\d:\\d\\d:\\d\\d"
-  var finder = sheet.createTextFinder(dateString).matchEntireCell(true).useRegularExpression(true)
+  var finder = thisSheet.createTextFinder(dateString).matchEntireCell(true).useRegularExpression(true)
   var foundRange = finder.findNext()
   foundRange.setNumberFormat("@")
   var datetime = foundRange.getValue()
-  sheet.setName(datetime)
-
+  thisSheet.setName(datetime)
+  
   // Resize the columns
-  finder = sheet.createTextFinder("Please note recent transactions may not be included.")
+  finder = thisSheet.createTextFinder("Please note recent transactions may not be included.")
   foundRange = finder.findNext()
   foundRange.setValue("")
-  sheet.autoResizeColumns(1, 4)
+  thisSheet.autoResizeColumns(1, 4)
 
   // Get all occurrences of UNIV01 (except for the first one)
-  finder = sheet.createTextFinder("UNIV01")
+  finder = thisSheet.createTextFinder("UNIV01")
   var matches = finder.findAll()
   matches.shift()
   matches.reverse() // start at the bottom to avoid changing future ranges
 
   // Remove each of these headers
-  for (i = 0; i < matches.length; i += 1) {
-    row = matches[i].getRow() - 2
-    sheet.deleteRows(row, 6)
-    Logger.log("Deleted six rows starting at row " + row)
+  // If the totals are on a new page with no entries, then we should delete one less row
+  for (i = 0; i<matches.length; i+=1) {
+    row = matches[i].getRow()-2
+    if (matches[i].offset(3,0).getValue() != "") {
+      thisSheet.deleteRows(row,5)
+      Logger.log("Deleted five rows starting at row " + row)
+    } else {
+      thisSheet.deleteRows(row, 6)
+      Logger.log("Deleted six rows starting at row " + row)
+    }
   }
 
   // Remove all the excess rows & columns.
   try {
-    sheet.deleteRows(sheet.getLastRow() + 5, sheet.getMaxRows() - sheet.getLastRow() - 5)
-    sheet.deleteColumns(sheet.getLastColumn() + 1, sheet.getMaxColumns() - sheet.getLastColumn() - 1)
-  } catch (error) {
+    thisSheet.deleteRows(thisSheet.getLastRow()+5, thisSheet.getMaxRows()-thisSheet.getLastRow()-5)
+    thisSheet.deleteColumns(thisSheet.getLastColumn()+1, thisSheet.getMaxColumns()-thisSheet.getLastColumn()-1)
+  } catch (error){
     Logger.log(error.message)
   }
 
