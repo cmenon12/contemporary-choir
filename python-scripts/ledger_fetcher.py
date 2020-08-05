@@ -100,15 +100,18 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     # Attempt to save the PDF (fails gracefully if the user cancels)
     try:
         print("Saving the PDF...")
-        pdf_filepath = app_gui.saveBox("Save ledger",
-                                       dirName=dir_name,
-                                       fileName=filename,
-                                       fileExt=".pdf",
-                                       fileTypes=[("PDF file", "*.pdf")],
-                                       asFile=True).name
+        if app_gui is not None:
+            pdf_filepath = app_gui.saveBox("Save ledger",
+                                           dirName=dir_name,
+                                           fileName=filename,
+                                           fileExt=".pdf",
+                                           fileTypes=[("PDF file", "*.pdf")],
+                                           asFile=True).name
+            app_gui.removeAllWidgets()
+        else:
+            pdf_filepath = dir_name + filename + ".pdf"
         with open(pdf_filepath, "wb") as pdf_file:
             pdf_file.write(response.content)
-        app_gui.removeAllWidgets()
 
     except Exception as err:
         print("There was an error saving the PDF ledger!")
@@ -116,12 +119,12 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
 
     # If successful then return the file path
     else:
-        print("PDF ledger saved successfully!")
+        print("PDF ledger saved successfully at " + pdf_filepath)
         return pdf_filepath
 
 
 def convert_to_xlsx(pdf_filepath: str, dir_name: str,
-                    app_gui: gui, use_same_filepath: bool = True) -> str:
+                    app_gui: gui) -> str:
     """Converts the PDF to an Excel file and saves it.
 
     :param pdf_filepath: the path to the PDF file to convert
@@ -130,8 +133,6 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     :type dir_name: str
     :param app_gui: the appJar GUI to use
     :type app_gui: appJar.appjar.gui
-    :param use_same_filepath: whether to use the same filepath for the XLSX
-    :type use_same_filepath: bool, optional
     :return: the path to the downloaded XLSX spreadsheet
     :rtype: str
     """
@@ -213,7 +214,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
         print("Saving the spreadsheet...")
         filename = pdf_filepath.split("\\")[-1]
         filename = filename.replace(".pdf", ".xlsx")
-        if use_same_filepath is False:
+        if app_gui is not None:
             xlsx_filepath = app_gui.saveBox("Save spreadsheet",
                                             dirName=dir_name,
                                             fileName=filename,
@@ -221,11 +222,11 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
                                             fileTypes=[("Office Open XML " +
                                                         "Workbook", "*.xlsx")],
                                             asFile=True).name
+            app_gui.removeAllWidgets()
         else:
             xlsx_filepath = pdf_filepath.replace(".pdf", ".xlsx")
         with open(xlsx_filepath, "wb") as xlsx_file:
             xlsx_file.write(response.content)
-        app_gui.removeAllWidgets()
 
     except Exception as err:
         print("There was an error saving the spreadsheet!")
@@ -233,12 +234,12 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
     # If successful then return the file path
     else:
-        print("Spreadsheet ledger saved successfully!")
+        print("Spreadsheet ledger saved successfully at " + xlsx_filepath)
         return xlsx_filepath
 
 
-def upload_ledger(dir_name: str, destination_sheet_id: str, app_gui: gui,
-                  xlsx_filepath: str = "") -> tuple:
+def upload_ledger(dir_name: str, destination_sheet_id: str,
+                  app_gui: gui = None, xlsx_filepath: str = "") -> tuple:
     """Uploads the ledger to the specified Google Sheet.
 
     :param dir_name: the default directory to open the XLSX file from
@@ -336,7 +337,7 @@ def authorize() -> tuple:
         with open(TOKEN_PICKLE_FILE, "wb") as token:
             pickle.dump(credentials, token)
 
-    # Build both services and return them in a dict
+    # Build both services and return them as a tuple
     drive_service = build("drive", "v3", credentials=credentials,
                           cache_discovery=False)
     sheets_service = build("sheets", "v4", credentials=credentials,
@@ -355,15 +356,16 @@ def main(app_gui: gui):
     parser = configparser.ConfigParser()
     parser.read("config.ini")
     config = parser["ledger_fetcher"]
+    expense365 = parser["eXpense365"]
 
     # Prepare the authentication
-    data = config["email"] + ":" + config["password"]
+    data = expense365["email"] + ":" + expense365["password"]
     auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
 
     # Download the PDF, returning the file path
     pdf_filepath = download_pdf(auth=auth,
-                                group_id=config["group_id"],
-                                subgroup_id=config["subgroup_id"],
+                                group_id=expense365["group_id"],
+                                subgroup_id=expense365["subgroup_id"],
                                 filename_prefix=config["filename_prefix"],
                                 dir_name=config["dir_name"],
                                 app_gui=app_gui)
