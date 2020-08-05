@@ -38,7 +38,7 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
 # This file stores the user's access and refresh tokens and is created
 # automatically when the authorization flow completes for the first
 # time. This specifies where the file is stored
-TOKEN_PICKLE_FILE = "token.pickle"
+TOKEN_PICKLE_FILE = "ledger_fetcher_token.pickle"
 
 
 def download_pdf(auth: str, group_id: str, subgroup_id: str,
@@ -79,7 +79,7 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
             ',"SubGroupID":' + subgroup_id + '}')
 
     # Make the request and check it was successful
-    print("Making the HTTP request...")
+    print("Making the HTTP request to service.expense365.com...")
     response = requests.post(url=url, headers=headers, data=data)
     try:
         response.raise_for_status()
@@ -162,7 +162,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     session.headers.update(headers)
 
     # Make the request and check that it was successful
-    print("Sending the PDF for conversion...")
+    print("Sending the PDF for conversion to pdftoexcel.com...")
     response = session.post(url=url, files=files)
     try:
         response.raise_for_status()
