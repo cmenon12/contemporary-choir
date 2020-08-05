@@ -220,10 +220,12 @@ def run_task():
     # Catch an error making the request to the API
     except errors.HttpError as err:
         raise SystemExit(err)
-
     print("The Apps Script function executed successfully!")
 
-    send_email(config=parser["email"], changes=changes, pdf_filepath=pdf_filepath, url=new_url)
+    if changes != "False":
+        send_email(config=parser["email"], changes=changes, pdf_filepath=pdf_filepath, url=new_url)
+    else:
+        print("No changes were found.")
 
     return changes
 
