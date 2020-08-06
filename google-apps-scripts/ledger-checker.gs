@@ -42,6 +42,7 @@ function checkForNewTotals(sheetName) {
   // If there is a difference then make comparisons and return the changes
   Logger.log("There is a difference in the total income and/or expenditure!")
   var changes = compareLedgersWithCostCodes(newSheet, oldSheet, newCostCodeTotals)
+  changes.unshift(newSheet.getSheetId())
   Logger.log(changes)
   return changes;
 }
