@@ -213,7 +213,7 @@ def send_email(config: configparser.SectionProxy, changes: list,
             part.set_payload(attachment.read())
         encoders.encode_base64(part)
         # Add header as key/value pair to attachment part
-        filename = pdf_filepath.split("\\")[-1]
+        head, filename = os.path.split(pdf_filepath)
         part.add_header(
             "Content-Disposition",
             f"attachment; filename= {filename}",

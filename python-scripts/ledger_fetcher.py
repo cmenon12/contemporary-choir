@@ -212,7 +212,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     # Attempt to save the spreadsheet (fails gracefully if the user cancels)
     try:
         print("Saving the spreadsheet...")
-        filename = pdf_filepath.split("\\")[-1]
+        head, filename = os.path.split(pdf_filepath)
         filename = filename.replace(".pdf", ".xlsx")
         if app_gui is not None:
             xlsx_filepath = app_gui.saveBox("Save spreadsheet",
