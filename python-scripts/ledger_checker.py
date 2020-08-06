@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 
 import googleapiclient
 import html2text
+import schedule
 from babel.numbers import format_currency
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -227,7 +228,8 @@ def send_email(config: configparser.SectionProxy, changes: list,
     print("Email sent successfully!")
 
 
-def run_task():
+def check_ledger():
+    print("\nDoing a check...")
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
@@ -284,13 +286,86 @@ def run_task():
         raise SystemExit(err)
     print("The Apps Script function executed successfully!")
 
-    if changes != "False":
-        send_email(config=parser["email"], changes=changes, pdf_filepath=pdf_filepath, url=new_url)
-    else:
-        print("No changes were found.")
+    # Get the old values of changes
+    with open(config["save_data_filepath"], "rb") as save_file:
+        old_changes, old_sheet_name = pickle.load(save_file)
 
-    return sheet_name, changes
+    # If there were no changes then do nothing
+    # The sheet will have been deleted by the Apps Script
+    if changes == "False":
+        print("Changes is False, so we'll do nothing.\n")
+        os.remove(pdf_filepath)
+        os.remove(xlsx_filepath)
+
+    # If the returned changes aren't actually new to us then
+    # just delete the new sheet we just made
+    elif changes == old_changes:
+        print("The new changes is the same as the old.")
+        print("Deleting the new sheet (that's the same as the old one)...")
+        delete_sheet(sheets_service=sheets_service,
+                     spreadsheet_id=config["destination_sheet_id"],
+                     sheet_name=sheet_name)
+        os.remove(pdf_filepath)
+        os.remove(xlsx_filepath)
+        print("The local PDF, XLSX, and the new sheet have been deleted successfully!\n")
+
+    # Otherwise these changes are new
+    # Notify the user (via email) and delete the old sheet
+    # Save the new data to the save file
+    else:
+        print("We have some new changes!")
+        send_email(config=parser["email"], changes=changes, pdf_filepath=pdf_filepath, url=new_url)
+        print("Deleting the old sheet...")
+        delete_sheet(sheets_service=sheets_service,
+                     spreadsheet_id=config["destination_sheet_id"],
+                     sheet_name=old_sheet_name)
+        print("Saving the new changes and sheet_name...")
+        with open(config["save_data_filepath"], "wb") as save_file:
+            pickle.dump([changes, sheet_name], save_file)
+        print("Sheet deleted and save data updated successfully!\n")
+
+
+def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
+                 spreadsheet_id: str, sheet_name: str):
+    """Deletes the named Google Sheet in the specified spreadsheet.
+
+    :param sheets_service: the authenticated service for Google Sheets
+    :type sheets_service: googleapiclient.discovery.Resource
+    :param spreadsheet_id: the ID of the spreadsheet to use
+    :type spreadsheet_id: str
+    :param sheet_name: the name of the sheet to delete
+    :type sheet_name: str
+    """
+
+    # Get the ID of the sheet to delete
+    response = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    sheet_id = None
+    for sheet in response["sheets"]:
+        if sheet["properties"]["title"] == sheet_name:
+            sheet_id = sheet["properties"]["sheetId"]
+            break
+
+    # If the ID has been found then delete the sheet
+    if sheet_id is not None:
+        body = {"requests": {"deleteSheet": {"sheetId": sheet_id}}}
+        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id,
+                                                  body=body).execute()
+        print("Sheet " + sheet_name + " has been deleted successfully!")
+    else:
+        print("The sheet " + sheet_name + " wasn't found.")
 
 
 if __name__ == "__main__":
-    run_task()
+
+    # Fetch info from the config
+    config_parser = configparser.ConfigParser()
+    config_parser.read("config.ini")
+    save_data_filepath = config_parser["ledger_checker"]["save_data_filepath"]
+
+    # If the save file doesn't exist then create it
+    if not os.path.exists(save_data_filepath):
+        with open(save_data_filepath, "wb") as save_file:
+            pickle.dump([[], ""], save_file)
+
+    # Run the checker
+    schedule.every(5).minutes.do(check_ledger())
