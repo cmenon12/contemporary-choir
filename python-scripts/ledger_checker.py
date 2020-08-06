@@ -40,11 +40,11 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 TOKEN_PICKLE_FILE = "ledger_checker_token.pickle"
 
 
-def authorize() -> googleapiclient.discovery.Resource:
-    """Authorizes access to the user's scripts.
+def authorize() -> tuple:
+    """Authorizes access to the user's scripts and Google Sheets.
 
-    :return: the authenticated service
-    :rtype: googleapiclient.discovery.Resource
+    :return: the authenticated services
+    :rtype: tuple
     """
 
     credentials = None
@@ -65,10 +65,107 @@ def authorize() -> googleapiclient.discovery.Resource:
         with open(TOKEN_PICKLE_FILE, "wb") as token:
             pickle.dump(credentials, token)
 
-    # Build and return the service
+    # Build both services and return them as a tuple
     apps_script_service = build("script", "v1", credentials=credentials,
                                 cache_discovery=False)
-    return apps_script_service
+    sheets_service = build("sheets", "v4", credentials=credentials,
+                           cache_discovery=False)
+    return apps_script_service, sheets_service
+
+
+def prepare_email_body(config: configparser.SectionProxy,
+                       changes: list, url: str):
+    """Prepares an email detailing the changes to the ledger.
+
+        :param config: the configuration for the email
+        :type config: configparser.SectionProxy
+        :param changes: the changes made to the ledger
+        :type changes: list
+        :param url: the URL to link to
+        :type url: str
+        :return: the plain-text and html
+        :rtype: tuple
+        """
+
+    # Calculate the total change for each cost code
+    print("Creating the email...")
+    cost_code_totals = {}
+    for item in changes:
+        # If the item is the totals for each cost code then skip it
+        if isinstance(item[0], list):
+            continue
+        # Add new cost code (key)
+        if item[0] not in cost_code_totals.keys():
+            cost_code_totals[item[0]] = 0
+        # Save the income and +ve and expenditure as -ve
+        if item[3] != "":
+            cost_code_totals[item[0]] += item[3]
+        else:
+            cost_code_totals[item[0]] -= item[4]
+
+    # Calculate a grand total change
+    grand_total = 0
+    for key, value in cost_code_totals.items():
+        grand_total += value
+        value = format_currency(int(value), 'GBP', locale='en_GB')
+        cost_code_totals[key] = value
+    print(format_currency(int(grand_total), 'GBP', locale='en_GB'))
+
+    # Process each entry for each cost code
+    cost_codes = {}
+    for item in changes:
+        # If the item is the totals for each cost code then skip it
+        if isinstance(item[0], list):
+            continue
+        # Save the income and +ve and expenditure as -ve
+        if item[3] == "":
+            item[3] = -int(item[4])
+        item[3] = format_currency(int(item[3]), 'GBP', locale='en_GB')
+        # Add new cost code (key)
+        if item[0] not in cost_codes.keys():
+            cost_codes[item[0]] = []
+        # Add the formatted entry to its cost code
+        cost_codes[item[0]].append(item[1:4])
+
+    # cost_codes is structured as
+    # {"cost code name": [["date", "description", "£amount"],
+    #                     ["date", "description", "£amount"],
+    #                     ["date", "description", "£amount"]]}
+
+    # Add the current balance for each cost code to cost_code_totals
+    for key, value in cost_code_totals.items():
+        total = [value]
+        for item in changes[-1]:
+            if item[0] == key:
+                total.append(format_currency(int(item[3]),
+                                             'GBP', locale='en_GB'))
+        cost_code_totals[key] = total
+    # Add the total changes and total balance
+    cost_code_totals["grand_total"] = [format_currency(int(grand_total),
+                                                       'GBP', locale='en_GB'),
+                                       format_currency(int(changes[-1][-1][3]),
+                                                       'GBP', locale='en_GB')]
+
+    # cost_code_totals is structured as
+    # {"cost code name": ["£change", "£balance"],
+    #  "grand_total": ["£total change", "£total balance"]}
+
+    # Render the template
+    root = os.path.dirname(os.path.abspath(__file__))
+    env = Environment(loader=FileSystemLoader(root))
+    template = env.get_template('email-template.html')
+    html = template.render(society_name=config["society_name"],
+                           cost_codes=cost_codes,
+                           cost_code_totals=cost_code_totals,
+                           url=url)
+
+    # Create the plain-text version of the message
+    text_maker = html2text.HTML2Text()
+    text_maker.ignore_links = True
+    text_maker.bypass_tables = False
+    text = text_maker.handle(html)
+
+    return text, html
 
 
 def send_email(config: configparser.SectionProxy, changes: list,
@@ -95,83 +192,10 @@ def send_email(config: configparser.SectionProxy, changes: list,
         message["To"] = config["to"]
         message["From"] = config["from"]
 
-        # Calculate the total change for each cost code
-        print("Creating the email...")
-        cost_code_totals = {}
-        for item in changes:
-            # If the item is the totals for each cost code then skip it
-            if isinstance(item[0], list):
-                continue
-            # Add new cost code (key)
-            if item[0] not in cost_code_totals.keys():
-                cost_code_totals[item[0]] = 0
-            # Save the income and +ve and expenditure as -ve
-            if item[3] != "":
-                cost_code_totals[item[0]] += item[3]
-            else:
-                cost_code_totals[item[0]] -= item[4]
-
-        # Calculate a grand total change
-        grand_total = 0
-        for key, value in cost_code_totals.items():
-            grand_total += value
-            value = format_currency(int(value), 'GBP', locale='en_GB')
-            cost_code_totals[key] = value
-        print(format_currency(int(grand_total), 'GBP', locale='en_GB'))
-
-        # Process each entry for each cost code
-        cost_codes = {}
-        for item in changes:
-            # If the item is the totals for each cost code then skip it
-            if isinstance(item[0], list):
-                continue
-            # Save the income and +ve and expenditure as -ve
-            if item[3] == "":
-                item[3] = -int(item[4])
-            item[3] = format_currency(int(item[3]), 'GBP', locale='en_GB')
-            # Add new cost code (key)
-            if item[0] not in cost_codes.keys():
-                cost_codes[item[0]] = []
-            # Add the formatted entry to its cost code
-            cost_codes[item[0]].append(item[1:4])
-
-        # cost_codes is structured as
-        # {"cost code name": [["date", "description", "£amount"],
-        #                     ["date", "description", "£amount"],
-        #                     ["date", "description", "£amount"]]}
-
-        # Add the current balance for each cost code to cost_code_totals
-        for key, value in cost_code_totals.items():
-            total = [value]
-            for item in changes[-1]:
-                if item[0] == key:
-                    total.append(format_currency(int(item[3]),
-                                                 'GBP', locale='en_GB'))
-            cost_code_totals[key] = total
-        # Add the total changes and total balance
-        cost_code_totals["grand_total"] = [format_currency(int(grand_total),
-                                                           'GBP', locale='en_GB'),
-                                           format_currency(int(changes[-1][-1][3]),
-                                                           'GBP', locale='en_GB')]
-
-        # cost_code_totals is structured as
-        # {"cost code name": ["£change", "£balance"],
-        #  "grand_total": ["£total change", "£total balance"]}
-
-        # Render the template
-        root = os.path.dirname(os.path.abspath(__file__))
-        env = Environment(loader=FileSystemLoader(root))
-        template = env.get_template('email-template.html')
-        html = template.render(society_name=config["society_name"],
-                               cost_codes=cost_codes,
-                               cost_code_totals=cost_code_totals,
-                               url=url)
-
-        # Create the plain-text version of the message
-        text_maker = html2text.HTML2Text()
-        text_maker.ignore_links = True
-        text_maker.bypass_tables = False
-        text = text_maker.handle(html)
+        # Prepare the email
+        text, html = prepare_email_body(config=config,
+                                        changes=changes,
+                                        url=url)
 
         # Turn these into plain/html MIMEText objects
         # Add HTML/plain-text parts to MIMEMultipart message
@@ -204,6 +228,7 @@ def send_email(config: configparser.SectionProxy, changes: list,
 
 
 def run_task():
+
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read("config.ini")
@@ -230,7 +255,7 @@ def run_task():
 
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
-    apps_script_service = authorize()
+    apps_script_service, sheets_service = authorize()
     print("Connected to the Apps Script service.")
     try:
         print("Executing the Apps Script function (this may take some time)...")
@@ -241,7 +266,7 @@ def run_task():
         # Catch and print an error during execution
         if 'error' in response:
             error = response['error']['details'][0]
-            print("Script error message: {0}".format(error['errorMessage']))
+            print("Script error message: " + error['errorMessage'])
             if 'scriptStackTraceElements' in error:
                 # There may not be a stacktrace if the script didn't start
                 # executing.
