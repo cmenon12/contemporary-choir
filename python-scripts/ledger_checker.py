@@ -5,6 +5,7 @@ import pickle
 import re
 import smtplib
 import socket
+import time
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -360,7 +361,11 @@ if __name__ == "__main__":
     # If the save file doesn't exist then create it
     if not os.path.exists(save_data_filepath):
         with open(save_data_filepath, "wb") as save_file:
-            pickle.dump([[], None], save_file)
+            pickle.dump([[[[0, 0, 0]]], None], save_file)
 
     # Run the checker
-    schedule.every(5).minutes.do(check_ledger())
+    check_ledger()
+    schedule.every(1).hours.do(check_ledger)
+    while True:
+        schedule.run_pending()
+        time.sleep(5)
