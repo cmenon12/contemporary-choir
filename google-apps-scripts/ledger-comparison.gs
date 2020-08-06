@@ -9,7 +9,7 @@ var sheet = spreadsheet.getActiveSheet();
  */
 function processWithDefaultUrl() {
   formatNeatly();
-  
+
   // Locate the named range
   var namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
   var url;
@@ -18,7 +18,7 @@ function processWithDefaultUrl() {
       url = namedRanges[i].getRange().getValue();
     }
   }
-  
+
   compareLedgers(url);
   copyToLedger(url);
   var ui = SpreadsheetApp.getUi();
@@ -43,7 +43,7 @@ function isADate(value) {
  * Returns true if it's new, or false if it's old.
   */
 function compareWithOld(row, oldSheetValues, newSheet) {
-  
+
   // If newSheet has been supplied then use it, otherwise use the default
   var rowValues;
   if (newSheet == undefined) {
@@ -80,11 +80,11 @@ function showPrompt() {
   // Process the user's response
   var button = result.getSelectedButton();
   var url = result.getResponseText();
-  
+
   // If the user wants to use a different URL
   if (button == ui.Button.NO) {
     return url;
-    
+
   // If the user wants to use the default URL
   } else if (button == ui.Button.YES) {
     url = spreadsheet.getNamedRanges()[0].getRange().getValue();  // There's only one named range.
@@ -126,7 +126,7 @@ function compareLedgers(url) {
         passedHeader = true;
         sheet.getRange(row+1, 1, sheet.getLastRow()-row-1).setBackground("green");
       }
-      continue;
+
 
     // Compare it with the original/old sheet
     // Comparing all rows allows us to identify changes in the totals too
@@ -149,7 +149,7 @@ function compareLedgers(url) {
 
 
 /**
- * Copies the sheet to another spreadsheet file. 
+ * Copies the sheet to another spreadsheet file.
  * This is normally the one with the ledger in it.
  * The script then deletes the old Original,
  * and renames the new Original and sets protections on it.
@@ -159,22 +159,22 @@ function copyToLedger(url) {
   // Gets the ledger spreadsheet
   var ledgerSpreadsheet = SpreadsheetApp.openByUrl(url);
   Logger.log("Script has opened spreadsheet " + url);
-  
+
   // Copies to the ledger spreadsheet
   var newSheet = sheet.copyTo(ledgerSpreadsheet);
-  
+
   // Remove protections from the old Original sheet and delete it
   var oldOriginalSheet = ledgerSpreadsheet.getSheetByName("Original")
   oldOriginalSheet.protect().remove();
   ledgerSpreadsheet.deleteSheet(oldOriginalSheet);
-  
-  // Rename the new Original sheet and protect it 
+
+  // Rename the new Original sheet and protect it
   newSheet.setName("Original");
   newSheet.protect().setWarningOnly(true);
-  
+
   Logger.log("Finished copying the sheet to the ledger spreadsheet.")
-  
-  
+
+
 }
 
 /**
@@ -184,7 +184,7 @@ function compareLedgersGetUrl() {
   var url = showPrompt()
   if (url == false) {
     return;
-  } 
+  }
   compareLedgers(url)
 }
 
@@ -195,7 +195,7 @@ function copyToLedgerGetUrl() {
   var url = showPrompt()
   if (url == false) {
     return;
-  } 
+  }
   copyToLedger(url)
 }
 
@@ -209,7 +209,7 @@ function onOpen() {
       .addItem("Copy to the ledger", "copyToLedgerGetUrl")
       .addItem("Process entirely with the default URL", "processWithDefaultUrl")
       .addToUi();
-};
+}
 
 
 /**
@@ -223,14 +223,14 @@ function formatNeatly() {
 /**
  * Formats the ledger neatly.
  * This can be used with any sheet (not necessarily the active one)
- * This function renames the sheet, resizes the columns, 
+ * This function renames the sheet, resizes the columns,
  * removes unnecesary headers, and removes excess columns & rows.
  */
 function formatNeatlyWithSheet(thisSheet) {
 
   // Convert the first column to text
   thisSheet.getRange(1, 1, thisSheet.getLastRow()).setNumberFormat("@")
-  
+
   // Change the tab colour to be white
   thisSheet.setTabColor("white")
 
@@ -241,7 +241,7 @@ function formatNeatlyWithSheet(thisSheet) {
   foundRange.setNumberFormat("@")
   var datetime = foundRange.getValue()
   thisSheet.setName(datetime)
-  
+
   // Resize the columns
   finder = thisSheet.createTextFinder("Please note recent transactions may not be included.")
   foundRange = finder.findNext()
