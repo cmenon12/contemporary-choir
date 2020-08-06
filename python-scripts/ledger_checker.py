@@ -110,7 +110,6 @@ def prepare_email_body(config: configparser.SectionProxy,
         grand_total += value
         value = format_currency(int(value), 'GBP', locale='en_GB')
         cost_code_totals[key] = value
-    print(format_currency(int(grand_total), 'GBP', locale='en_GB'))
 
     # Process each entry for each cost code
     cost_codes = {}
@@ -286,28 +285,33 @@ def check_ledger():
         raise SystemExit(err)
     print("The Apps Script function executed successfully!")
 
+    sheet_id = changes.pop(0)
+
     # Get the old values of changes
     with open(config["save_data_filepath"], "rb") as save_file:
-        old_changes, old_sheet_name = pickle.load(save_file)
+        old_changes, old_sheet_id = pickle.load(save_file)
 
     # If there were no changes then do nothing
     # The sheet will have been deleted by the Apps Script
     if changes == "False":
-        print("Changes is False, so we'll do nothing.\n")
+        print("Changes is False, so we'll do nothing.")
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
+        print("The local PDF and XLSX have been deleted successfully.\n")
 
     # If the returned changes aren't actually new to us then
     # just delete the new sheet we just made
-    elif changes == old_changes:
+    # This compares the total income & expenditure
+    elif changes[-1][-1][1] == old_changes[-1][-1][1] and \
+            changes[-1][-1][2] == old_changes[-1][-1][2]:
         print("The new changes is the same as the old.")
         print("Deleting the new sheet (that's the same as the old one)...")
         delete_sheet(sheets_service=sheets_service,
                      spreadsheet_id=config["destination_sheet_id"],
-                     sheet_name=sheet_name)
+                     sheet_id=sheet_id)
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
-        print("The local PDF, XLSX, and the new sheet have been deleted successfully!\n")
+        print("The local PDF and XLSX have been deleted successfully!\n")
 
     # Otherwise these changes are new
     # Notify the user (via email) and delete the old sheet
@@ -318,41 +322,32 @@ def check_ledger():
         print("Deleting the old sheet...")
         delete_sheet(sheets_service=sheets_service,
                      spreadsheet_id=config["destination_sheet_id"],
-                     sheet_name=old_sheet_name)
-        print("Saving the new changes and sheet_name...")
+                     sheet_id=old_sheet_id)
+        print("Saving the new changes and sheet_id...")
         with open(config["save_data_filepath"], "wb") as save_file:
-            pickle.dump([changes, sheet_name], save_file)
-        print("Sheet deleted and save data updated successfully!\n")
+            pickle.dump([changes, sheet_id], save_file)
+        print("Save data updated successfully!\n")
 
 
 def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
-                 spreadsheet_id: str, sheet_name: str):
+                 spreadsheet_id: str, sheet_id: id):
     """Deletes the named Google Sheet in the specified spreadsheet.
 
     :param sheets_service: the authenticated service for Google Sheets
     :type sheets_service: googleapiclient.discovery.Resource
     :param spreadsheet_id: the ID of the spreadsheet to use
     :type spreadsheet_id: str
-    :param sheet_name: the name of the sheet to delete
-    :type sheet_name: str
+    :param sheet_id: the id of the sheet to delete
+    :type sheet_id: int
     """
 
-    # Get the ID of the sheet to delete
-    response = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-    sheet_id = None
-    for sheet in response["sheets"]:
-        if sheet["properties"]["title"] == sheet_name:
-            sheet_id = sheet["properties"]["sheetId"]
-            break
-
-    # If the ID has been found then delete the sheet
     if sheet_id is not None:
         body = {"requests": {"deleteSheet": {"sheetId": sheet_id}}}
         sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id,
                                                   body=body).execute()
-        print("Sheet " + sheet_name + " has been deleted successfully!")
+        print("Sheet " + str(sheet_id) + " has been deleted successfully!")
     else:
-        print("The sheet " + sheet_name + " wasn't found.")
+        print("sheet_id was None, so there was nothing to delete.")
 
 
 if __name__ == "__main__":
@@ -365,7 +360,7 @@ if __name__ == "__main__":
     # If the save file doesn't exist then create it
     if not os.path.exists(save_data_filepath):
         with open(save_data_filepath, "wb") as save_file:
-            pickle.dump([[], ""], save_file)
+            pickle.dump([[], None], save_file)
 
     # Run the checker
     schedule.every(5).minutes.do(check_ledger())
