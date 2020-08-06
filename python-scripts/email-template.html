@@ -146,16 +146,12 @@
       border-left: none;
     }
 
-    table.blueTable tfoot {
+    .tfoot {
       font-size: 14px;
       font-weight: bold;
       color: #353744;
-      background: #8DC8DD;
+      background: #8DC8DD !important;
       border-top: 2px solid #444444;
-    }
-
-    table.blueTable tfoot td {
-      font-size: 14px;
     }
   </style>
 </head>
@@ -173,7 +169,7 @@
         <!-- START CENTERED WHITE CONTAINER -->
         <!-- This has the little tagline of text that the email viewer might show -->
         <span class="preheader"
-              style="color: transparent; display: none; height: 0; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all; visibility: hidden; width: 0;">{{ society_name }}'s balance has changed by {{ cost_code_totals["grand_total"] }}.</span>
+              style="color: transparent; display: none; height: 0; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all; visibility: hidden; width: 0;">{{ society_name }}'s balance has changed by {{ cost_code_totals["grand_total"][0] }}.</span>
         <table class="main"
                style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; background: #ffffff; border-radius: 3px;">
 
@@ -212,26 +208,41 @@
                       </tr>
                       {% endfor %}
                       </tbody>
-                      <tfoot>
-                      <tr>
+                      <tr class="tfoot">
                         <td colspan="2" style="text-align: left">Total change for {{ cost_code }}</td>
-                        {% if "-" in cost_code_totals[cost_code] %}
-                        <td style="color: darkred">{{cost_code_totals[cost_code]}}</td>
+                        {% if "-" in cost_code_totals[cost_code][0] %}
+                        <td style="color: darkred">{{cost_code_totals[cost_code][0]}}</td>
                         {% else %}
-                        <td>{{cost_code_totals[cost_code]}}</td>
+                        <td>{{cost_code_totals[cost_code][0]}}</td>
                         {% endif %}
                       </tr>
-                      </tfoot>
+                      <tr class="tfoot" style="border-top: none">
+                        <td colspan="2" style="text-align: left; font-size: 15px">Total balance for {{ cost_code }}</td>
+                        {% if "-" in cost_code_totals[cost_code][1] %}
+                        <td style="color: darkred; font-size: 15px">{{cost_code_totals[cost_code][1]}}</td>
+                        {% else %}
+                        <td style="font-size: 15px">{{cost_code_totals[cost_code][1]}}</td>
+                        {% endif %}
+                      </tr>
                     </table>
                     <br>
                     {% endfor %}
-                    {% if "-" in cost_code_totals["grand_total"] %}
+                    {% if "-" in cost_code_totals["grand_total"][0] %}
                     <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      The sum of the above changes in the ledger is <b style="color: darkred">{{cost_code_totals["grand_total"]}}</b>
+                      The sum of the above changes in the ledger is <b style="color: darkred">{{cost_code_totals["grand_total"][0]}}</b>.
                     </p>
                     {% else %}
                     <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      The sum of the above changes in the ledger is <b>{{cost_code_totals["grand_total"]}}</b></p>
+                      The sum of the above changes in the ledger is <b>{{cost_code_totals["grand_total"][0]}}</b>.</p>
+                    {% endif %}
+                    {% if "-" in cost_code_totals["grand_total"][1] %}
+                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                      <b style="color: darkred"> The total balance for {{ society_name }} is
+                        {{cost_code_totals["grand_total"][1]}}!</b>.
+                    </p>
+                    {% else %}
+                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                      The total balance for {{ society_name }} is <b>{{cost_code_totals["grand_total"][1]}}</b>.</p>
                     {% endif %}
                     <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
                       Please see the attached ledger for further details, or click the button below to open the uploaded
@@ -247,9 +258,9 @@
                                  style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: auto;">
                             <tbody>
                             <tr>
-                              <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; background-color: #3498db; border-radius: 5px; text-align: center;">
+                              <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; background-color: #1B73CA; border-radius: 5px; text-align: center;">
                                 <a href="{{ url }}" target="_blank"
-                                   style="display: inline-block; color: #ffffff; background-color: #1B73CA; border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: bold; margin: 0; padding: 12px 25px; text-transform: capitalize; border-color: #1B73CA;">Open
+                                   style="display: inline-block; color: #ffffff; background-color: #1B73CA; border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: bold; margin: 0; padding: 12px 25px; text-transform: capitalize; border-color: #1B73CA">Open
                                   the ledger</a></td>
                             </tr>
                             </tbody>

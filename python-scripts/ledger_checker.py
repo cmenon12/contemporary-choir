@@ -2,6 +2,7 @@ import base64
 import configparser
 import os
 import pickle
+import re
 import smtplib
 import socket
 from email import encoders
@@ -90,38 +91,72 @@ def send_email(config: configparser.SectionProxy, changes: list,
         server.starttls()
         server.login(config["username"], config["password"])
         message = MIMEMultipart("alternative")
-        message["Subject"] = config["subject"]
+        message["Subject"] = config["society_name"] + " Ledger Update"
         message["To"] = config["to"]
         message["From"] = config["from"]
 
-        # Calculate the total for each cost code
+        # Calculate the total change for each cost code
         print("Creating the email...")
         cost_code_totals = {}
         for item in changes:
+            # If the item is the totals for each cost code then skip it
+            if isinstance(item[0], list):
+                continue
+            # Add new cost code (key)
             if item[0] not in cost_code_totals.keys():
                 cost_code_totals[item[0]] = 0
+            # Save the income and +ve and expenditure as -ve
             if item[3] != "":
                 cost_code_totals[item[0]] += item[3]
             else:
                 cost_code_totals[item[0]] -= item[4]
 
-        # Calculate a grand total
+        # Calculate a grand total change
         grand_total = 0
         for key, value in cost_code_totals.items():
             grand_total += value
             value = format_currency(int(value), 'GBP', locale='en_GB')
             cost_code_totals[key] = value
-        cost_code_totals["grand_total"] = format_currency(int(grand_total), 'GBP', locale='en_GB')
+        print(format_currency(int(grand_total), 'GBP', locale='en_GB'))
 
         # Process each entry for each cost code
         cost_codes = {}
         for item in changes:
+            # If the item is the totals for each cost code then skip it
+            if isinstance(item[0], list):
+                continue
+            # Save the income and +ve and expenditure as -ve
             if item[3] == "":
                 item[3] = -int(item[4])
             item[3] = format_currency(int(item[3]), 'GBP', locale='en_GB')
+            # Add new cost code (key)
             if item[0] not in cost_codes.keys():
                 cost_codes[item[0]] = []
+            # Add the formatted entry to its cost code
             cost_codes[item[0]].append(item[1:4])
+
+        # cost_codes is structured as
+        # {"cost code name": [["date", "description", "£amount"],
+        #                     ["date", "description", "£amount"],
+        #                     ["date", "description", "£amount"]]}
+
+        # Add the current balance for each cost code to cost_code_totals
+        for key, value in cost_code_totals.items():
+            total = [value]
+            for item in changes[-1]:
+                if item[0] == key:
+                    total.append(format_currency(int(item[3]),
+                                                 'GBP', locale='en_GB'))
+            cost_code_totals[key] = total
+        # Add the total changes and total balance
+        cost_code_totals["grand_total"] = [format_currency(int(grand_total),
+                                                           'GBP', locale='en_GB'),
+                                           format_currency(int(changes[-1][-1][3]),
+                                                           'GBP', locale='en_GB')]
+
+        # cost_code_totals is structured as
+        # {"cost code name": ["£change", "£balance"],
+        #  "grand_total": ["£total change", "£total balance"]}
 
         # Render the template
         root = os.path.dirname(os.path.abspath(__file__))
@@ -162,7 +197,9 @@ def send_email(config: configparser.SectionProxy, changes: list,
         # Add the attachment to message and send the message
         message.attach(part)
         print("Sending the email...")
-        server.sendmail(config["from"], config["to"], message.as_string())
+        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
+                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
+                        message.as_string())
     print("Email sent successfully!")
 
 
@@ -227,7 +264,7 @@ def run_task():
     else:
         print("No changes were found.")
 
-    return changes
+    return sheet_name, changes
 
 
 if __name__ == "__main__":
