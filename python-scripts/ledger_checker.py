@@ -286,8 +286,6 @@ def check_ledger():
         raise SystemExit(err)
     print("The Apps Script function executed successfully!")
 
-    sheet_id = changes.pop(0)
-
     # Get the old values of changes
     with open(config["save_data_filepath"], "rb") as save_file:
         old_changes, old_sheet_id = pickle.load(save_file)
@@ -307,6 +305,7 @@ def check_ledger():
             changes[-1][-1][2] == old_changes[-1][-1][2]:
         print("The new changes is the same as the old.")
         print("Deleting the new sheet (that's the same as the old one)...")
+        sheet_id = changes.pop(0)
         delete_sheet(sheets_service=sheets_service,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=sheet_id)
@@ -319,6 +318,7 @@ def check_ledger():
     # Save the new data to the save file
     else:
         print("We have some new changes!")
+        sheet_id = changes.pop(0)
         send_email(config=parser["email"], changes=changes, pdf_filepath=pdf_filepath, url=new_url)
         print("Deleting the old sheet...")
         delete_sheet(sheets_service=sheets_service,
@@ -365,7 +365,7 @@ if __name__ == "__main__":
 
     # Run the checker
     check_ledger()
-    schedule.every(1).hours.do(check_ledger)
+    schedule.every(20).minutes.do(check_ledger)
     while True:
         schedule.run_pending()
         time.sleep(5)
