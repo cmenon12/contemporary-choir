@@ -38,7 +38,7 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
 # This file stores the user's access and refresh tokens and is created
 # automatically when the authorization flow completes for the first
 # time. This specifies where the file is stored
-TOKEN_PICKLE_FILE = "ledger_fetcher_token.pickle"
+TOKEN_PICKLE_FILE = "token.pickle"
 
 
 def download_pdf(auth: str, group_id: str, subgroup_id: str,
@@ -269,7 +269,7 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
             raise SystemExit(err)
 
     # Authenticate and retrieve the required services
-    drive, sheets = authorize()
+    drive, sheets, apps_script = authorize()
 
     # Upload the ledger
     print("Uploading the ledger...")
@@ -313,7 +313,7 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
 
 
 def authorize() -> tuple:
-    """Authorizes access to the user's Drive and Sheets.
+    """Authorizes access to the user's Drive, Sheets, and Apps Script.
 
     :return: the authenticated services
     :rtype: tuple
@@ -337,12 +337,14 @@ def authorize() -> tuple:
         with open(TOKEN_PICKLE_FILE, "wb") as token:
             pickle.dump(credentials, token)
 
-    # Build both services and return them as a tuple
+    # Build the services and return them as a tuple
     drive_service = build("drive", "v3", credentials=credentials,
                           cache_discovery=False)
     sheets_service = build("sheets", "v4", credentials=credentials,
                            cache_discovery=False)
-    return drive_service, sheets_service
+    apps_script_service = build("script", "v1", credentials=credentials,
+                                cache_discovery=False)
+    return drive_service, sheets_service, apps_script_service
 
 
 def main(app_gui: gui):

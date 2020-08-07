@@ -15,64 +15,14 @@ import googleapiclient
 import html2text
 import schedule
 from babel.numbers import format_currency
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient import errors
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
-from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger
+from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, authorize
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
-
-# This variable specifies the name of a file that contains the
-# OAuth 2.0 information for this application, including its client_id
-# and client_secret.
-CLIENT_SECRETS_FILE = "credentials.json"
-
-# This OAuth 2.0 access scope allows for full read/write access to the
-# authenticated user's account and requires requests to use an SSL
-# connection.
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-
-# This file stores the user's access and refresh tokens and is created
-# automatically when the authorization flow completes for the first
-# time. This specifies where the file is stored
-TOKEN_PICKLE_FILE = "ledger_checker_token.pickle"
-
-
-def authorize() -> tuple:
-    """Authorizes access to the user's scripts and Google Sheets.
-
-    :return: the authenticated services
-    :rtype: tuple
-    """
-
-    credentials = None
-    if os.path.exists(TOKEN_PICKLE_FILE):
-        with open(TOKEN_PICKLE_FILE, "rb") as token:
-            credentials = pickle.load(token)
-
-    # If there are no (valid) credentials available, let the user log in.
-    if not credentials or not credentials.valid:
-        if credentials and credentials.expired and \
-                credentials.refresh_token:
-            credentials.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CLIENT_SECRETS_FILE, SCOPES)
-            credentials = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(TOKEN_PICKLE_FILE, "wb") as token:
-            pickle.dump(credentials, token)
-
-    # Build both services and return them as a tuple
-    apps_script_service = build("script", "v1", credentials=credentials,
-                                cache_discovery=False)
-    sheets_service = build("sheets", "v4", credentials=credentials,
-                           cache_discovery=False)
-    return apps_script_service, sheets_service
 
 
 def prepare_email_body(config: configparser.SectionProxy,
@@ -229,6 +179,9 @@ def send_email(config: configparser.SectionProxy, changes: list,
 
 
 def check_ledger():
+    """Runs a check of the ledger.
+    """
+
     print("\nDoing a check...")
 
     # Fetch info from the config
@@ -257,13 +210,13 @@ def check_ledger():
 
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
-    apps_script_service, sheets_service = authorize()
+    drive, sheets, apps_script = authorize()
     print("Connected to the Apps Script service.")
     try:
         print("Executing the Apps Script function (this may take some time)...")
         body = {"function": config["function"], "parameters": sheet_name}
-        response = apps_script_service.scripts().run(body=body,
-                                                     scriptId=config["script_id"]).execute()
+        response = apps_script.scripts().run(body=body,
+                                             scriptId=config["script_id"]).execute()
 
         # Catch and print an error during execution
         if 'error' in response:
@@ -306,7 +259,7 @@ def check_ledger():
         print("The new changes is the same as the old.")
         print("Deleting the new sheet (that's the same as the old one)...")
         sheet_id = changes.pop(0)
-        delete_sheet(sheets_service=sheets_service,
+        delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=sheet_id)
         os.remove(pdf_filepath)
@@ -321,7 +274,7 @@ def check_ledger():
         sheet_id = changes.pop(0)
         send_email(config=parser["email"], changes=changes, pdf_filepath=pdf_filepath, url=new_url)
         print("Deleting the old sheet...")
-        delete_sheet(sheets_service=sheets_service,
+        delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=old_sheet_id)
         print("Saving the new changes and sheet_id...")
@@ -365,7 +318,7 @@ if __name__ == "__main__":
 
     # Run the checker
     check_ledger()
-    schedule.every(20).minutes.do(check_ledger)
+    schedule.every(30).minutes.do(check_ledger)
     while True:
         schedule.run_pending()
         time.sleep(5)
