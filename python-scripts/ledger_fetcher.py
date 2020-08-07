@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import base64
 import configparser
+import logging
 import os
 import pickle
 import time
@@ -79,13 +80,14 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
             ',"SubGroupID":' + subgroup_id + '}')
 
     # Make the request and check it was successful
-    print("Making the HTTP request to service.expense365.com...")
+    LOGGER.info("Making the HTTP request to service.expense365.com...")
     response = requests.post(url=url, headers=headers, data=data)
     try:
         response.raise_for_status()
     except requests.exceptions.HTTPError as err:
+        LOGGER.exception("There was an error requesting the ledger!")
         raise SystemExit(err)
-    print("The request was successful with no HTTP errors.")
+    LOGGER.info("The request was successful with no HTTP errors.")
 
     # Parse the date and convert it to the local timezone
     date_string = datetime.strptime(response.headers["Date"],
@@ -99,7 +101,7 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
 
     # Attempt to save the PDF (fails gracefully if the user cancels)
     try:
-        print("Saving the PDF...")
+        LOGGER.info("Saving the PDF...")
         if app_gui is not None:
             pdf_filepath = app_gui.saveBox("Save ledger",
                                            dirName=dir_name,
@@ -113,13 +115,17 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
         with open(pdf_filepath, "wb") as pdf_file:
             pdf_file.write(response.content)
 
+    except AttributeError as err:
+        LOGGER.warning("There was an AttributeError, "
+                       "so the user probably chose not to save it.")
+        raise SystemExit("User chose not to save the ledger.")
     except Exception as err:
-        print("There was an error saving the PDF ledger!")
+        LOGGER.exception("There was a different error saving the PDF ledger!")
         raise SystemExit(err)
 
     # If successful then return the file path
     else:
-        print("PDF ledger saved successfully at " + pdf_filepath)
+        LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
         return pdf_filepath
 
 
@@ -162,17 +168,19 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     session.headers.update(headers)
 
     # Make the request and check that it was successful
-    print("Sending the PDF for conversion to pdftoexcel.com...")
+    LOGGER.info("Sending the PDF for conversion to pdftoexcel.com...")
     response = session.post(url=url, files=files)
     try:
         response.raise_for_status()
         job_id = response.json()["jobId"]
     except requests.exceptions.HTTPError as err:
+        LOGGER.exception("Sending the PDF for conversion failed!")
         raise SystemExit(err)
     except decoder.JSONDecodeError as err:
+        LOGGER.exception("We couldn't decode the response from pdftoexcel.com!")
         raise SystemExit(err)
-    print("The request was successful with no HTTP errors.")
-    print("The jobId is %s" % job_id)
+    LOGGER.info("The request was successful with no HTTP errors.")
+    LOGGER.info("The jobId is %s.", job_id)
 
     # Prepare to keep checking the status of the conversion
     download_url = ""
@@ -182,7 +190,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     while download_url == "":
 
         # Prepare and make the request
-        print("Checking if the conversion is complete...")
+        LOGGER.info("Checking if the conversion is complete...")
         response = session.post(url=url, data={"jobId": job_id, "rand": "0"})
 
         # Check that the request was successful
@@ -190,8 +198,10 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
             response.raise_for_status()
             download_url = response.json()["download_url"]
         except requests.exceptions.HTTPError as err:
+            LOGGER.exception("Checking the status of the conversion failed!")
             raise SystemExit(err)
         except decoder.JSONDecodeError as err:
+            LOGGER.exception("We couldn't decode the response from pdftoexcel.com!")
             raise SystemExit(err)
 
         # Wait before checking again
@@ -200,18 +210,19 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
     # Prepare and make the request to download the file
     url = "https://www.pdftoexcel.com" + download_url
-    print("Downloading the converted file...")
+    LOGGER.info("Downloading the converted file...")
     response = session.get(url=url, params={'id': job_id})
 
     # Check that the request was successful
     try:
         response.raise_for_status()
     except requests.exceptions.HTTPError as err:
+        LOGGER.exception("Downloading the converted file failed!")
         raise SystemExit(err)
 
     # Attempt to save the spreadsheet (fails gracefully if the user cancels)
     try:
-        print("Saving the spreadsheet...")
+        LOGGER.info("Saving the spreadsheet...")
         head, filename = os.path.split(pdf_filepath)
         filename = filename.replace(".pdf", ".xlsx")
         if app_gui is not None:
@@ -228,13 +239,18 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
         with open(xlsx_filepath, "wb") as xlsx_file:
             xlsx_file.write(response.content)
 
+    except AttributeError as err:
+        LOGGER.warning("There was an AttributeError, "
+                       "so the user probably chose not to save it.")
+        raise SystemExit("User chose not to save the spreadsheet.")
     except Exception as err:
-        print("There was an error saving the spreadsheet!")
+        LOGGER.exception("There was a different error saving the XLSX ledger!")
         raise SystemExit(err)
 
     # If successful then return the file path
     else:
-        print("Spreadsheet ledger saved successfully at " + xlsx_filepath)
+        LOGGER.info("Spreadsheet ledger saved successfully at %s.",
+                    xlsx_filepath)
         return xlsx_filepath
 
 
@@ -265,14 +281,15 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
             app_gui.removeAllWidgets()
 
         except Exception as err:
-            print("There was an error opening the spreadsheet.")
+            LOGGER.exception("There was an error opening the spreadsheet.")
             raise SystemExit(err)
+    LOGGER.info("Spreadsheet at %s has been opened.", xlsx_filepath)
 
     # Authenticate and retrieve the required services
     drive, sheets, apps_script = authorize()
 
     # Upload the ledger
-    print("Uploading the ledger...")
+    LOGGER.info("Uploading the ledger to Google Sheets")
     file_metadata = {"name": "The Latest Ledger",
                      "mimeType": "application/vnd.google-apps.spreadsheet"}
     xlsx_mimetype = ("application/vnd.openxmlformats-officedocument" +
@@ -284,16 +301,20 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
                                 media_body=media,
                                 fields="id").execute()
     latest_ledger_id = file.get("id")
+    LOGGER.info("Ledger uploaded to Google Sheets with file ID %s.",
+                latest_ledger_id)
 
     # Get the ID of the first sheet in the newly-uploaded spreadsheet
-    print("Fetching the sheet ID...")
+    LOGGER.info("Fetching the sheet ID...")
     response = sheets.spreadsheets().get(spreadsheetId=latest_ledger_id,
                                          ranges="A1:D4",
                                          includeGridData=False).execute()
     sheet_id = response["sheets"][0]["properties"]["sheetId"]
+    LOGGER.info("The ledger is in the sheet with ID %s.", sheet_id)
 
     # Copy the uploader ledger to the sheet with the macro
-    print("Copying the sheet...")
+    LOGGER.info("Copying the sheet to the spreadsheet with ID %s...",
+                destination_sheet_id)
     body = {"destinationSpreadsheetId": destination_sheet_id}
     response = sheets.spreadsheets().sheets() \
         .copyTo(spreadsheetId=latest_ledger_id,
@@ -301,12 +322,13 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
                 body=body).execute()
     new_sheet_id = response["sheetId"]
     new_sheet_title = response["title"]
+    LOGGER.info("Sheet copied successfully. Sheet has ID %s and title %s.",
+                new_sheet_id, new_sheet_title)
 
     # Delete the uploaded Google Sheet
-    print("Deleting the uploaded ledger...")
+    LOGGER.info("Deleting the uploaded ledger...")
     drive.files().delete(fileId=latest_ledger_id).execute()
-
-    print("New ledger uploaded to the destination sheet successfully!")
+    LOGGER.info("Original uploaded ledger deleted successfully.")
 
     return ("https://docs.google.com/spreadsheets/d/" + destination_sheet_id +
             "/edit#gid=" + str(new_sheet_id)), new_sheet_title
@@ -319,6 +341,7 @@ def authorize() -> tuple:
     :rtype: tuple
     """
 
+    LOGGER.info("Authenticating the user to access Google APIs...")
     credentials = None
     if os.path.exists(TOKEN_PICKLE_FILE):
         with open(TOKEN_PICKLE_FILE, "rb") as token:
@@ -326,6 +349,7 @@ def authorize() -> tuple:
 
     # If there are no (valid) credentials available, let the user log in.
     if not credentials or not credentials.valid:
+        LOGGER.info("There are no credentials or they are invalid.")
         if credentials and credentials.expired and \
                 credentials.refresh_token:
             credentials.refresh(Request())
@@ -336,6 +360,7 @@ def authorize() -> tuple:
         # Save the credentials for the next run
         with open(TOKEN_PICKLE_FILE, "wb") as token:
             pickle.dump(credentials, token)
+        LOGGER.info("Credentials saved to %s successfully.", TOKEN_PICKLE_FILE)
 
     # Build the services and return them as a tuple
     drive_service = build("drive", "v3", credentials=credentials,
@@ -344,6 +369,7 @@ def authorize() -> tuple:
                            cache_discovery=False)
     apps_script_service = build("script", "v1", credentials=credentials,
                                 cache_discovery=False)
+    LOGGER.info("Services built successfully.")
     return drive_service, sheets_service, apps_script_service
 
 
@@ -365,17 +391,20 @@ def main(app_gui: gui):
     auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
 
     # Download the PDF, returning the file path
+    print("Downloading the PDF...")
     pdf_filepath = download_pdf(auth=auth,
                                 group_id=expense365["group_id"],
                                 subgroup_id=expense365["subgroup_id"],
                                 filename_prefix=config["filename_prefix"],
                                 dir_name=config["dir_name"],
                                 app_gui=app_gui)
+    print("PDF ledger saved successfully at %s." % pdf_filepath)
 
     # Ask the user if they want to open it
     if app_gui.yesNoBox("Open PDF?",
                         "Do you want to open the ledger?") is True:
         # If so then open it in the prescribed browser
+        LOGGER.info("User chose to open the PDF in the browser.")
         open_path = "file://///" + pdf_filepath
         webbrowser.register("my-browser",
                             None,
@@ -386,21 +415,29 @@ def main(app_gui: gui):
     if app_gui.yesNoBox("Convert to XLSX?",
                         ("Do you want to convert the PDF ledger to an XLSX " +
                          "spreadsheet using pdftoexcel.com, and then upload " +
-                         "it to %s?" % config["destination_sheet_name"])) is True:
+                         "it to %s?" %
+                         config["destination_sheet_name"])) is True:
 
         # If so then convert it and upload it
+        LOGGER.info("User chose to convert and upload the ledger.")
+        print("Converting the ledger...")
         xlsx_filepath = convert_to_xlsx(pdf_filepath=pdf_filepath,
                                         app_gui=app_gui,
                                         dir_name=config["dir_name"])
+        print("XLSX ledger saved successfully at %s." % xlsx_filepath)
+        print("Uploading the ledger to Google Sheets...")
         new_url, sheet_name = upload_ledger(dir_name=config["dir_name"],
                                             destination_sheet_id=config["destination_sheet_id"],
                                             app_gui=app_gui, xlsx_filepath=xlsx_filepath)
+        print("Ledger uploaded to Google Sheets successfully. "
+              "Find it in the sheet named %s." % sheet_name)
 
         # Ask the user if they want to open the new ledger in Google Sheets
         if app_gui.yesNoBox("Open %s?" % config["destination_sheet_name"],
                             ("Do you want to open the uploaded ledger in " +
                              "Google Sheets?")) is True:
             # If so then open it in the prescribed browser
+            LOGGER.info("User chose to open the uploaded ledger in Sheets.")
             open_path = new_url
             webbrowser.register("my-browser",
                                 None,
@@ -409,8 +446,19 @@ def main(app_gui: gui):
 
 
 if __name__ == "__main__":
+
+    # Prepare the log
+    logging.basicConfig(filename="ledger_fetcher.log",
+                        filemode="a",
+                        format="%(asctime)s | %(levelname)s : %(message)s",
+                        level=logging.DEBUG)
+    LOGGER = logging.getLogger(__name__)
+
     # Create the GUI
     appjar_gui = gui(showIcon=False)
     appjar_gui.setOnTop()
 
     main(appjar_gui)
+
+else:
+    LOGGER = logging.getLogger(__name__)

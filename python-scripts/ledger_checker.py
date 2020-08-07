@@ -1,5 +1,6 @@
 import base64
 import configparser
+import logging
 import os
 import pickle
 import re
@@ -40,7 +41,7 @@ def prepare_email_body(config: configparser.SectionProxy,
         """
 
     # Calculate the total change for each cost code
-    print("Creating the email...")
+    LOGGER.info("Creating the email...")
     cost_code_totals = {}
     for item in changes:
         # If the item is the totals for each cost code then skip it
@@ -115,6 +116,7 @@ def prepare_email_body(config: configparser.SectionProxy,
     text_maker.ignore_links = True
     text_maker.bypass_tables = False
     text = text_maker.handle(html)
+    LOGGER.info("Email HTML and plain-text created successfully.")
 
     return text, html
 
@@ -134,7 +136,7 @@ def send_email(config: configparser.SectionProxy, changes: list,
     """
 
     # Create the SMTP connection
-    print("Connecting to the email server...")
+    LOGGER.info("Connecting to the email server...")
     with smtplib.SMTP(config["host"], int(config["port"])) as server:
         server.starttls()
         server.login(config["username"], config["password"])
@@ -155,7 +157,7 @@ def send_email(config: configparser.SectionProxy, changes: list,
         message.attach(MIMEText(html, "html"))
 
         # Attach the ledger
-        print("Attaching the ledger...")
+        LOGGER.info("Attaching the PDF ledger...")
         with open(pdf_filepath, "rb") as attachment:
             # Add file as application/octet-stream
             # Email client can usually download this automatically as attachment
@@ -171,18 +173,21 @@ def send_email(config: configparser.SectionProxy, changes: list,
 
         # Add the attachment to message and send the message
         message.attach(part)
-        print("Sending the email...")
+        LOGGER.info("Sending the email...")
         server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
                         re.findall("(?<=<)\\S+(?=>)", config["to"]),
                         message.as_string())
-    print("Email sent successfully!")
+    LOGGER.info("Email sent successfully!")
 
 
 def check_ledger():
     """Runs a check of the ledger.
     """
 
-    print("\nDoing a check...")
+    # Make a note of the start time
+    print("\nIt's %s and we're doing a check." %
+          time.strftime("%d %b %Y at %H:%M:%S"))
+    LOGGER.info("\n")
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
@@ -195,31 +200,37 @@ def check_ledger():
     auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
 
     # Download the ledger, convert it, and upload it to Google Sheets
+    print("Downloading the PDF...")
     pdf_filepath = download_pdf(auth=auth,
                                 group_id=expense365["group_id"],
                                 subgroup_id=expense365["subgroup_id"],
                                 filename_prefix=config["filename_prefix"],
                                 dir_name=config["dir_name"],
                                 app_gui=None)
+    print("Converting the ledger...")
     xlsx_filepath = convert_to_xlsx(pdf_filepath=pdf_filepath,
                                     app_gui=None,
                                     dir_name=config["dir_name"])
+    print("Uploading the ledger to Google Sheets...")
     new_url, sheet_name = upload_ledger(dir_name=config["dir_name"],
                                         destination_sheet_id=config["destination_sheet_id"],
                                         xlsx_filepath=xlsx_filepath)
+    print("Ledger downloaded, converted, and uploaded successfully.")
 
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
     drive, sheets, apps_script = authorize()
-    print("Connected to the Apps Script service.")
     try:
         print("Executing the Apps Script function (this may take some time)...")
+        LOGGER.info("Starting the Apps Script function...")
         body = {"function": config["function"], "parameters": sheet_name}
         response = apps_script.scripts().run(body=body,
                                              scriptId=config["script_id"]).execute()
 
         # Catch and print an error during execution
         if 'error' in response:
+            LOGGER.error("There was an error with the Apps Script function!")
+            LOGGER.error(response["error"])
             error = response['error']['details'][0]
             print("Script error message: " + error['errorMessage'])
             if 'scriptStackTraceElements' in error:
@@ -238,6 +249,7 @@ def check_ledger():
     except errors.HttpError as err:
         raise SystemExit(err)
     print("The Apps Script function executed successfully!")
+    LOGGER.info("The Apps Script function executed successfully.")
 
     # Get the old values of changes
     with open(config["save_data_filepath"], "rb") as save_file:
@@ -247,9 +259,10 @@ def check_ledger():
     # The sheet will have been deleted by the Apps Script
     if changes == "False":
         print("Changes is False, so we'll do nothing.")
+        LOGGER.info("Changes is False, so we'll do nothing.")
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
-        print("The local PDF and XLSX have been deleted successfully.\n")
+        LOGGER.info("The local PDF and XLSX have been deleted successfully.")
 
     # If the returned changes aren't actually new to us then
     # just delete the new sheet we just made
@@ -257,30 +270,36 @@ def check_ledger():
     elif changes[-1][-1][1] == old_changes[-1][-1][1] and \
             changes[-1][-1][2] == old_changes[-1][-1][2]:
         print("The new changes is the same as the old.")
-        print("Deleting the new sheet (that's the same as the old one)...")
+        LOGGER.info("The new changes is the same as the old.")
+        LOGGER.info("Deleting the new sheet (that's the same as the old one)...")
         sheet_id = changes.pop(0)
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=sheet_id)
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
-        print("The local PDF and XLSX have been deleted successfully!\n")
+        LOGGER.info("The local PDF and XLSX have been deleted successfully!")
 
     # Otherwise these changes are new
     # Notify the user (via email) and delete the old sheet
     # Save the new data to the save file
     else:
         print("We have some new changes!")
+        LOGGER.info("We have some new changes.")
         sheet_id = changes.pop(0)
         send_email(config=parser["email"], changes=changes, pdf_filepath=pdf_filepath, url=new_url)
-        print("Deleting the old sheet...")
+        LOGGER.info("Deleting the old sheet...")
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=old_sheet_id)
-        print("Saving the new changes and sheet_id...")
+        LOGGER.info("Saving the new changes and sheet_id...")
         with open(config["save_data_filepath"], "wb") as save_file:
             pickle.dump([changes, sheet_id], save_file)
-        print("Save data updated successfully!\n")
+        LOGGER.info("Save data updated successfully!\n")
+
+    # Note the end time and that we're now finished
+    print("It's %s and the check is complete.\n" %
+          time.strftime("%d %b %Y at %H:%M:%S"))
 
 
 def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
@@ -296,15 +315,23 @@ def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
     """
 
     if sheet_id is not None:
+        LOGGER.info("Deleting the sheet with ID %d", sheet_id)
         body = {"requests": {"deleteSheet": {"sheetId": sheet_id}}}
         sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id,
                                                   body=body).execute()
-        print("Sheet " + str(sheet_id) + " has been deleted successfully!")
+        LOGGER.info("Sheet %d has been deleted successfully.", sheet_id)
     else:
-        print("sheet_id was None, so there was nothing to delete.")
+        LOGGER.info("sheet_id was None, so there was nothing to delete.")
 
 
 if __name__ == "__main__":
+
+    # Prepare the log
+    logging.basicConfig(filename="ledger_checker.log",
+                        filemode="a",
+                        format="%(asctime)s | %(levelname)s : %(message)s",
+                        level=logging.DEBUG)
+    LOGGER = logging.getLogger(__name__)
 
     # Fetch info from the config
     config_parser = configparser.ConfigParser()
@@ -313,12 +340,23 @@ if __name__ == "__main__":
 
     # If the save file doesn't exist then create it
     if not os.path.exists(save_data_filepath):
-        with open(save_data_filepath, "wb") as save_file:
-            pickle.dump([[[[0, 0, 0]]], None], save_file)
+        LOGGER.warning("The save file doesn't exist, creating a blank one...")
+        with open(save_data_filepath, "wb") as file:
+            pickle.dump([[[[0, 0, 0]]], None], file)
 
     # Run the checker
-    check_ledger()
-    schedule.every(30).minutes.do(check_ledger)
-    while True:
-        schedule.run_pending()
-        time.sleep(5)
+    try:
+        check_ledger()
+        schedule.every(30).minutes.do(check_ledger)
+        while True:
+            schedule.run_pending()
+            time.sleep(5)
+    except Exception as err:
+        LOGGER.exception("We had a problem and had to stop the checks!")
+        print("It's %s and we've hit a fatal error! "
+              "Go check the log to find out more." %
+              time.strftime("%d %b %Y at %H:%M:%S"))
+
+
+else:
+    LOGGER = logging.getLogger(__name__)
