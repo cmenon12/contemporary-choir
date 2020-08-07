@@ -1,17 +1,30 @@
 # Contemporary Choir
 As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/contemporarychoir/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. *Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
+[![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
+[![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
+
 ## Python Scripts
-**[`ledger_fetcher.py`](ledger_fetcher.py)** 
+For these programs [`python-scripts/config-template.ini`](python-scripts/config-template.ini) should be renamed to `python-scripts/config.ini` and the values within it updated with your own data. I've tried to design this so that it could be used by any society just by altering this config file. You'll also need to install the required packages using `pip install -r requirements.txt`.
+
+**[`python-scripts/ledger_fetcher.py`](python-scripts/ledger_fetcher.py)** 
 can be used  to download the society ledger from eXpense365 to your computer (instead of having to use the app). It can also then convert it from a PDF to an XLSX spreadsheet (using [pdftoexcel.com](https://www.pdftoexcel.com/)) and then upload the newly-converted spreadsheet to a pre-existing Google Sheet (as a new sheet within a spreadsheet). *Please note that I'm not affiliated with pdftoexcel.com and that use of their service is bound by their terms & privacy policy - it's just a handy service that I've found can convert the ledger accurately.*
 
+
+**[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger on a regular basis and notify the user via email of any changes. It relies on [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) to download the ledger, convert it, and upload it to Google Sheets. It will then run an Apps Script (namely `checkForNewTotals(sheetName)` in [`ledger_checker.gs`](apps-script/ledger_checker.gs)) to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself (using a nicely formatted HTML template). The user is only ever notified of each change once by saving them in a `pickle`.
+
 ## Google Apps Scripts (for Google Sheets)
-**[`apps-script/ledger-comparison.gs`](google-apps-scripts/ledger-comparison.gs)** can be used to process the ledger that has been uploaded by `ledger_fetcher.py`. 
-* `formatNeatly()` will format the ledger neatly by renaming the sheet, resizing the columns, removing unnecesary headers, and removing excess columns & rows.
+**[`apps-script/ledger-comparison.gs`](google-apps-scripts/ledger-comparison.gs)** can be used to process the ledger that has been uploaded by [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py). 
+* `formatNeatlyWithSheet(sheet)` will format the ledger neatly by renaming the sheet, resizing the columns, removing unnecessary headers, and removing excess columns & rows.
+  * `formatNeatly()` is the same as this, except it will use the active sheet in the active spreadsheet.
 * `compareLedgersGetUrl()` and `compareLedgers(url)` will compare the ledger with that in the Google Sheet at a given URL. The sheet at the URL must be an older version named `Original`. Any new or differing entries in the newer version will be highlighted in red. 
 * `copyToLedgerGetUrl()` and `copyToLedger(url)` will copy the ledger to the Google Sheet at the given URL. The function will replace the sheet called `Original` at this URL.
 * `processWithDefaultUrl()` will do all of the above at once using the URL in the named range named `DefaultUrl`.
 
+**[`apps-script/ledger-checker.gs`](google-apps-scripts/ledger-checker.gs)** is used by [`ledger_checker.py`](python-scripts/ledger_checker.py) to identify any changes in the uploaded ledger. It's designed to be executed by the API and is therefore not reliant on determining the active sheet.
+* `checkForNewTotals(sheetName)` will check the named sheet in the linked spreadsheet for any new changes compared with the Google Sheet at the default URL called `Original`. If any are found then it will return them along with the current total for each cost code, otherwise it will return `"False"`.
+* `compareLedgersWithCostCodes(newSheet, oldSheet, costCodes)` will search for changes in the `newSheet` compared with the `oldSheet` (not vice-versa). It will categorise them by cost code and return them.
+* `getCostCodeTotals(sheet)` will retrieve the total income, expenditure, and balance for each cost code, as well as the grand total for the entire ledger.
 
 **[`apps-script/fundraising.gs`](google-apps-scripts/fundraising.gs)** updates how much has been fundraised from a GoFundMe page. It fetches the page, extracts the total fundraised and the total number of donors, applies a reduction due to payment processor fees & postage, and then updates a pre-defined named range in the sheet with the total.
 
