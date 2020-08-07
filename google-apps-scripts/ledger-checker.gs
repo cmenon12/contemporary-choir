@@ -43,11 +43,17 @@ function checkForNewTotals(sheetName) {
   Logger.log("There is a difference in the total income and/or expenditure!")
   var changes = compareLedgersWithCostCodes(newSheet, oldSheet, newCostCodeTotals)
   changes.unshift(newSheet.getSheetId())
+  changes.push(newCostCodeTotals)
   Logger.log(changes)
   return changes;
 }
 
 
+/**
+ * This function is used to search for changes in the newSheet compared
+ * with the oldSheet (not vice-versa). It will categorise them by cost
+ * code and return them.
+ */
 function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
 
   // Fetch the old sheet and it's values
@@ -94,7 +100,6 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
     }
   }
   Logger.log("Finished comparing sheets!")
-  changes.push(costCodes)
   return changes;
 }
 
@@ -106,10 +111,16 @@ function getCostCodeTotals(sheet) {
 
   var costCodeTotals = [];
   var costCode;
+
+  // Search for the total for each cost code (and the grand total)
   var finder = sheet.createTextFinder("Totals for ").matchEntireCell(false)
   var foundRanges = finder.findAll()
   for (var i=0; i< foundRanges.length; i++) {
+
+    // Get the name of the cost code
     costCode = String(foundRanges[i].getValue()).replace("Totals for ", "")
+
+    // Append the name, total income, total expenditure, balance, and row number
     costCodeTotals.push([costCode, foundRanges[i].offset(0, 1).getValue(),
       foundRanges[i].offset(0, 2).getValue(),
       foundRanges[i].offset(1, 2).getValue(),
