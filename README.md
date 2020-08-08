@@ -1,20 +1,29 @@
 # Contemporary Choir
+
 As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/contemporarychoir/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. *Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
 [![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
 [![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
 
+
+## Getting Started
+
+* Rename [`python-scripts/config-template.ini`](python-scripts/config-template.ini) to `python-scripts/config.ini` and update the values within it with your own data.
+* Install the required packages using `pip install -r requirements.txt`.
+* Create your own Google Cloud Platform Project, enable the Apps Script, Drive, and Sheets APIs, and create & download some OAuth 2.0 Client ID credentials as `credentials.json`. 
+  * You mustn't share `credentials.json` or the generated tokens with anyone.
+  * Use of these APIs is (at the time of writing) free.
+* Add the Apps Scripts to an Apps Script project created within Google Sheets.
+  * Follow steps 1 to 3 of [these instructions](https://developers.google.com/apps-script/api/how-tos/execute#general_procedure) to allow the functions to be executed by the API. This is only necessary to run `ledger_checker.py`.
+
+
 ## Python Scripts
-For these programs [`python-scripts/config-template.ini`](python-scripts/config-template.ini) should be renamed to `python-scripts/config.ini` and the values within it updated with your own data. I've tried to design this so that it could be used by any society just by altering this config file. You'll also need to install the required packages using `pip install -r requirements.txt`.
 
 **[`python-scripts/ledger_fetcher.py`](python-scripts/ledger_fetcher.py)** 
 can be used  to download the society ledger from eXpense365 to your computer (instead of having to use the app). It can also then convert it from a PDF to an XLSX spreadsheet (using [pdftoexcel.com](https://www.pdftoexcel.com/)) and then upload the newly-converted spreadsheet to a Google Sheet (as a new sheet within a pre-existing spreadsheet). *Please note that I'm not affiliated with pdftoexcel.com and that use of their service is bound by their terms & privacy policy - it's just a handy service that I've found can convert the ledger accurately.*
 
 
-**[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger on a regular basis and notify the user via email of any changes. It relies on [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) to download the ledger, convert it, and upload it to Google Sheets. It will then run an Apps Script function (namely `checkForNewTotals(sheetName)` in [`ledger_checker.gs`](apps-script/ledger_checker.gs)) to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself (see below). The user is only ever notified of each change once by serialising them to a file that maintains persistence across program runs.
-
-### Example notification email
-<img src="https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/Example%20email%20from%20ledger_checker.py.jpg" style="max-width: 700px;">
+**[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger on a regular basis and notify the user via email of any changes. It relies on [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) to download the ledger, convert it, and upload it to Google Sheets. It will then run an Apps Script function (namely `checkForNewTotals(sheetName)` in [`ledger_checker.gs`](apps-script/ledger_checker.gs)) to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself (check [here](https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/Example%20email%20from%20ledger_checker.py.jpg) for an example). The user is only ever notified of each change once by serialising them to a file that maintains persistence.
 
 ## Google Apps Scripts (for Google Sheets)
 **[`apps-script/ledger-comparison.gs`](google-apps-scripts/ledger-comparison.gs)** can be used to process the ledger that has been uploaded by [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py). 
