@@ -1,3 +1,15 @@
+"""Facilitates fetching and processing the ledger from eXpense365.
+
+This module is designed to download a society ledger from eXpense365
+instead of having to use their app. You can then also convert it to an
+XLSX spreadsheet and upload that to Google Sheets.
+
+When main() is run then the ledger is downloaded, and the user is
+asked if they want to open it and/or upload it to Google Sheets. This
+is done using dialog boxes so the user doesn't need to interact with it
+at the command line.
+"""
+
 from __future__ import print_function
 
 import base64

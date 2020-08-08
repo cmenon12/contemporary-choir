@@ -1,3 +1,19 @@
+"""Regularly checks the ledger for any changes, and notifies the user.
+
+This module is primarily designed to check the ledger on a regular basis
+for any new changes, and notify the user by email of any changes found.
+
+This module specifically contains functions to execute an Apps Script
+function, process the output from that function, and create and send an
+email to notify the user of any changes.
+
+This module relies on ledger_fetcher.py. It also relies on two Apps
+Scripts, ledger-comparison.gs and ledger-checker.gs, to neatly format
+and compare the ledger to an older version. These should be created in
+an Apps Script project linked to the Google Sheet that the ledger is
+uploaded to.
+"""
+
 import base64
 import configparser
 import logging
