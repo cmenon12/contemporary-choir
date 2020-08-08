@@ -184,9 +184,15 @@ def check_ledger():
     """Runs a check of the ledger.
     """
 
-    # Make a note of the start time
-    print("\nIt's %s and we're doing a check." %
-          time.strftime("%d %b %Y at %H:%M:%S"))
+    # Only run between 07:00 and 23:00
+    if 7 <= time.localtime().tm_hour < 23:
+        # Make a note of the start time
+        print("\nIt's %s and we're doing a check." %
+              time.strftime("%d %b %Y at %H:%M:%S"))
+    else:
+        print("\nIt's %s so we're not doing a check." %
+              time.strftime("%d %b %Y at %H:%M:%S"))
+        return
     LOGGER.info("\n")
 
     # Fetch info from the config
