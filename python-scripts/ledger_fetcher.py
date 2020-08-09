@@ -20,7 +20,6 @@ import pickle
 import time
 import webbrowser
 from datetime import datetime
-from json import decoder
 
 import requests
 from appJar import gui
@@ -73,6 +72,7 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     :type app_gui: appJar.appjar.gui
     :returns: the filepath of the saved PDF
     :rtype: str
+    :raises HTTPError: if an unsuccessful HTTP status code is returned
     """
 
     # Prepare the request
@@ -94,11 +94,7 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     # Make the request and check it was successful
     LOGGER.info("Making the HTTP request to service.expense365.com...")
     response = requests.post(url=url, headers=headers, data=data)
-    try:
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        LOGGER.exception("There was an error requesting the ledger!")
-        raise SystemExit(err)
+    response.raise_for_status()
     LOGGER.info("The request was successful with no HTTP errors.")
 
     # Parse the date and convert it to the local timezone
@@ -131,9 +127,6 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
         LOGGER.warning("There was an AttributeError, "
                        "so the user probably chose not to save it.")
         raise SystemExit("User chose not to save the ledger.")
-    except Exception as err:
-        LOGGER.exception("There was a different error saving the PDF ledger!")
-        raise SystemExit(err)
 
     # If successful then return the file path
     else:
@@ -153,6 +146,8 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     :type app_gui: appJar.appjar.gui
     :return: the path to the downloaded XLSX spreadsheet
     :rtype: str
+    :raises HTTPError: if an unsuccessful HTTP status code is returned
+    :raises JSONDecodeError: if we can't decode the response
     """
 
     # Prepare for the request
@@ -182,15 +177,8 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     # Make the request and check that it was successful
     LOGGER.info("Sending the PDF for conversion to pdftoexcel.com...")
     response = session.post(url=url, files=files)
-    try:
-        response.raise_for_status()
-        job_id = response.json()["jobId"]
-    except requests.exceptions.HTTPError as err:
-        LOGGER.exception("Sending the PDF for conversion failed!")
-        raise SystemExit(err)
-    except decoder.JSONDecodeError as err:
-        LOGGER.exception("We couldn't decode the response from pdftoexcel.com!")
-        raise SystemExit(err)
+    response.raise_for_status()
+    job_id = response.json()["jobId"]
     LOGGER.info("The request was successful with no HTTP errors.")
     LOGGER.info("The jobId is %s.", job_id)
 
@@ -206,15 +194,8 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
         response = session.post(url=url, data={"jobId": job_id, "rand": "0"})
 
         # Check that the request was successful
-        try:
-            response.raise_for_status()
-            download_url = response.json()["download_url"]
-        except requests.exceptions.HTTPError as err:
-            LOGGER.exception("Checking the status of the conversion failed!")
-            raise SystemExit(err)
-        except decoder.JSONDecodeError as err:
-            LOGGER.exception("We couldn't decode the response from pdftoexcel.com!")
-            raise SystemExit(err)
+        response.raise_for_status()
+        download_url = response.json()["download_url"]
 
         # Wait before checking again
         if download_url == "":
@@ -226,11 +207,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     response = session.get(url=url, params={'id': job_id})
 
     # Check that the request was successful
-    try:
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        LOGGER.exception("Downloading the converted file failed!")
-        raise SystemExit(err)
+    response.raise_for_status()
 
     # Attempt to save the spreadsheet (fails gracefully if the user cancels)
     try:
@@ -255,9 +232,6 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
         LOGGER.warning("There was an AttributeError, "
                        "so the user probably chose not to save it.")
         raise SystemExit("User chose not to save the spreadsheet.")
-    except Exception as err:
-        LOGGER.exception("There was a different error saving the XLSX ledger!")
-        raise SystemExit(err)
 
     # If successful then return the file path
     else:

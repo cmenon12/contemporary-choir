@@ -242,34 +242,29 @@ def check_ledger():
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
     drive, sheets, apps_script = authorize()
-    try:
-        print("Executing the Apps Script function (this may take some time)...")
-        LOGGER.info("Starting the Apps Script function...")
-        body = {"function": config["function"], "parameters": sheet_name}
-        response = apps_script.scripts().run(body=body,
-                                             scriptId=config["script_id"]).execute()
+    print("Executing the Apps Script function (this may take some time)...")
+    LOGGER.info("Starting the Apps Script function...")
+    body = {"function": config["function"], "parameters": sheet_name}
+    response = apps_script.scripts().run(body=body,
+                                         scriptId=config["script_id"]).execute()
 
-        # Catch and print an error during execution
-        if 'error' in response:
-            LOGGER.error("There was an error with the Apps Script function!")
-            LOGGER.error(response["error"])
-            error = response['error']['details'][0]
-            print("Script error message: " + error['errorMessage'])
-            if 'scriptStackTraceElements' in error:
-                # There may not be a stacktrace if the script didn't start
-                # executing.
-                print("Script error stacktrace:")
-                for trace in error['scriptStackTraceElements']:
-                    print("\t{0}: {1}".format(trace['function'],
-                                              trace['lineNumber']))
-            raise SystemExit()
+    # Catch and then raise an error during execution
+    if 'error' in response:
+        LOGGER.error("There was an error with the Apps Script function!")
+        LOGGER.error(response["error"])
+        error = response['error']['details'][0]
+        print("Script error message: " + error['errorMessage'])
+        if 'scriptStackTraceElements' in error:
+            # There may not be a stacktrace if the script didn't start
+            # executing.
+            print("Script error stacktrace:")
+            for trace in error['scriptStackTraceElements']:
+                print("\t{0}: {1}".format(trace['function'],
+                                          trace['lineNumber']))
+        raise Exception(response["error"])
 
-        # Otherwise save the data that the Apps Script returns
-        changes = response["response"].get("result")
-
-    # Catch an error making the request to the API
-    except errors.HttpError as err:
-        raise SystemExit(err)
+    # Otherwise save the data that the Apps Script returns
+    changes = response["response"].get("result")
     print("The Apps Script function executed successfully!")
     LOGGER.info("The Apps Script function executed successfully.")
 
@@ -367,11 +362,12 @@ def send_error_email(config: configparser.SectionProxy, stack_trace: str):
         message["X-Priority"] = "1"
 
         # Prepare the email
-        text = ("There was a fatal error with ledger_checker.py,  so no further checks will be made. "
+        text = ("There was a fatal error with ledger_checker.py, "
+                "so no further checks will be made. "
                 "Please see the stack trace below and check the logs.\n\n %s "
-                "\n\n\n———\nThis email was sent automatically by a computer program. "
-                "If you want to leave some feedback then please reply directly to it."
-                % stack_trace)
+                "\n\n\n———\nThis email was sent automatically by a "
+                "computer program. If you want to leave some feedback "
+                "then please reply directly to it." % stack_trace)
         message.attach(MIMEText(text, "plain"))
 
         # Send the email
