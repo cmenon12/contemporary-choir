@@ -107,31 +107,28 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     # Prepare to save the file
     filename = filename_prefix + " " + date_string
 
-    # Attempt to save the PDF (fails gracefully if the user cancels)
-    try:
-        LOGGER.info("Saving the PDF...")
-        if app_gui is not None:
-            pdf_filepath = app_gui.saveBox("Save ledger",
-                                           dirName=dir_name,
-                                           fileName=filename,
-                                           fileExt=".pdf",
-                                           fileTypes=[("PDF file", "*.pdf")],
-                                           asFile=True).name
-            app_gui.removeAllWidgets()
-        else:
-            pdf_filepath = dir_name + filename + ".pdf"
-        with open(pdf_filepath, "wb") as pdf_file:
-            pdf_file.write(response.content)
-
-    except AttributeError as err:
-        LOGGER.warning("There was an AttributeError, "
-                       "so the user probably chose not to save it.")
-        raise SystemExit("User chose not to save the ledger.")
+    # Get a filename and save the PDF
+    LOGGER.info("Saving the PDF...")
+    if app_gui is not None:
+        pdf_file_box = app_gui.saveBox("Save ledger",
+                                       dirName=dir_name,
+                                       fileName=filename,
+                                       fileExt=".pdf",
+                                       fileTypes=[("PDF file", "*.pdf")],
+                                       asFile=True)
+        if pdf_file_box is None:
+            LOGGER.warning("The user cancelled saving the PDF.")
+            raise SystemExit("User cancelled saving the PDF.")
+        pdf_filepath = pdf_file_box.name
+        app_gui.removeAllWidgets()
+    else:
+        pdf_filepath = dir_name + filename + ".pdf"
+    with open(pdf_filepath, "wb") as pdf_file:
+        pdf_file.write(response.content)
 
     # If successful then return the file path
-    else:
-        LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
-        return pdf_filepath
+    LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
+    return pdf_filepath
 
 
 def convert_to_xlsx(pdf_filepath: str, dir_name: str,
@@ -209,35 +206,31 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     # Check that the request was successful
     response.raise_for_status()
 
-    # Attempt to save the spreadsheet (fails gracefully if the user cancels)
-    try:
-        LOGGER.info("Saving the spreadsheet...")
-        head, filename = os.path.split(pdf_filepath)
-        filename = filename.replace(".pdf", ".xlsx")
-        if app_gui is not None:
-            xlsx_filepath = app_gui.saveBox("Save spreadsheet",
-                                            dirName=dir_name,
-                                            fileName=filename,
-                                            fileExt=".xlsx",
-                                            fileTypes=[("Office Open XML " +
-                                                        "Workbook", "*.xlsx")],
-                                            asFile=True).name
-            app_gui.removeAllWidgets()
-        else:
-            xlsx_filepath = pdf_filepath.replace(".pdf", ".xlsx")
-        with open(xlsx_filepath, "wb") as xlsx_file:
-            xlsx_file.write(response.content)
-
-    except AttributeError as err:
-        LOGGER.warning("There was an AttributeError, "
-                       "so the user probably chose not to save it.")
-        raise SystemExit("User chose not to save the spreadsheet.")
+    # Get a filename and save the XLSX
+    LOGGER.info("Saving the spreadsheet...")
+    head, filename = os.path.split(pdf_filepath)
+    filename = filename.replace(".pdf", ".xlsx")
+    if app_gui is not None:
+        xlsx_file_box = app_gui.saveBox("Save spreadsheet",
+                                        dirName=dir_name,
+                                        fileName=filename,
+                                        fileExt=".xlsx",
+                                        fileTypes=[("Office Open XML " +
+                                                    "Workbook", "*.xlsx")],
+                                        asFile=True)
+        if xlsx_file_box is None:
+            LOGGER.warning("The user cancelled saving the XLSX.")
+            raise SystemExit("User cancelled saving the XLSX.")
+        xlsx_filepath = xlsx_file_box.name
+        app_gui.removeAllWidgets()
+    else:
+        xlsx_filepath = pdf_filepath.replace(".pdf", ".xlsx")
+    with open(xlsx_filepath, "wb") as xlsx_file:
+        xlsx_file.write(response.content)
 
     # If successful then return the file path
-    else:
-        LOGGER.info("Spreadsheet ledger saved successfully at %s.",
-                    xlsx_filepath)
-        return xlsx_filepath
+    LOGGER.info("Spreadsheet ledger saved successfully at %s.", xlsx_filepath)
+    return xlsx_filepath
 
 
 def upload_ledger(dir_name: str, destination_sheet_id: str,
@@ -258,17 +251,16 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
 
     # Open the spreadsheet
     if xlsx_filepath == "":
-        try:
-            xlsx_filepath = app_gui.openBox(title="Open spreadsheet",
-                                            dirName=dir_name,
-                                            fileTypes=[("Office Open XML " +
-                                                        "Workbook", "*.xlsx")],
-                                            asFile=True).name
-            app_gui.removeAllWidgets()
-
-        except Exception as err:
-            LOGGER.exception("There was an error opening the spreadsheet.")
-            raise SystemExit(err)
+        xlsx_file_box = app_gui.openBox(title="Open spreadsheet",
+                                        dirName=dir_name,
+                                        fileTypes=[("Office Open XML " +
+                                                    "Workbook", "*.xlsx")],
+                                        asFile=True)
+        if xlsx_file_box is None:
+            LOGGER.warning("The user cancelled opening the XLSX.")
+            raise SystemExit("User cancelled opening the XLSX.")
+        xlsx_filepath = xlsx_file_box.name
+        app_gui.removeAllWidgets()
     LOGGER.info("Spreadsheet at %s has been opened.", xlsx_filepath)
 
     # Authenticate and retrieve the required services
