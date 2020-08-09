@@ -23,6 +23,7 @@ import re
 import smtplib
 import socket
 import time
+import traceback
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -32,7 +33,6 @@ import googleapiclient
 import html2text
 import schedule
 from babel.numbers import format_currency
-from googleapiclient import errors
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
 from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, authorize
@@ -346,6 +346,42 @@ def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
         LOGGER.info("sheet_id was None, so there was nothing to delete.")
 
 
+def send_error_email(config: configparser.SectionProxy, stack_trace: str):
+    """Used to email the user about a fatal exception.
+
+    :param config: the configuration for the email
+    :type config: configparser.SectionProxy
+    :param stack_trace: the stack trace of the exception
+    :type stack_trace: str
+    """
+
+    # Connect to the server
+    LOGGER.info("Connecting to the email server...")
+    with smtplib.SMTP(config["host"], int(config["port"])) as server:
+        server.starttls()
+        server.login(config["username"], config["password"])
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "ERROR with ledger_checker.py!"
+        message["To"] = config["to"]
+        message["From"] = config["from"]
+        message["X-Priority"] = "1"
+
+        # Prepare the email
+        text = ("There was a fatal error with ledger_checker.py,  so no further checks will be made. "
+                "Please see the stack trace below and check the logs.\n\n %s "
+                "\n\n\n———\nThis email was sent automatically by a computer program. "
+                "If you want to leave some feedback then please reply directly to it."
+                % stack_trace)
+        message.attach(MIMEText(text, "plain"))
+
+        # Send the email
+        LOGGER.info("Sending the exception email...")
+        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
+                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
+                        message.as_string())
+    LOGGER.info("The email about the exception was sent successfully!")
+
+
 if __name__ == "__main__":
 
     # Prepare the log
@@ -373,12 +409,26 @@ if __name__ == "__main__":
         while True:
             schedule.run_pending()
             time.sleep(5)
+
+    # Catch any exception that occurs
     except Exception as err:
+        error_stack = traceback.format_exc()
         LOGGER.exception("We had a problem and had to stop the checks!")
         print("It's %s and we've hit a fatal error! "
               "Go check the log to find out more." %
               time.strftime("%d %b %Y at %H:%M:%S"))
+        print(traceback.format_exc())
 
+        # Attempt to email the user about the exception
+        try:
+            email_config = config_parser["email"]
+            print("Sending an email about the exception...")
+            send_error_email(config_parser["email"], error_stack)
+            print("Email sent successfully!")
+        except Exception as err:
+            print("The email was not sent successfully!")
+            print(traceback.format_exc())
+            LOGGER.exception("We couldn't send the email about the exception!")
 
 else:
     LOGGER = logging.getLogger(__name__)
