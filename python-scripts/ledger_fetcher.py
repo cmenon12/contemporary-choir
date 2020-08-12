@@ -33,9 +33,6 @@ __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
-# 30 is used for the ledger, 31 for the balance
-REPORT_ID = "30"
-
 # This variable specifies the name of a file that contains the
 # OAuth 2.0 information for this application, including its client_id
 # and client_secret.
@@ -55,7 +52,7 @@ TOKEN_PICKLE_FILE = "token.pickle"
 
 def download_pdf(auth: str, group_id: str, subgroup_id: str,
                  filename_prefix: str, dir_name: str,
-                 app_gui: gui) -> str:
+                 app_gui: gui, report_id: str = "30") -> str:
     """Downloads the ledger from expense365.com.
 
     :param auth: the authentication header with the email and password
@@ -70,6 +67,8 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     :type dir_name: str
     :param app_gui: the appJar GUI to use
     :type app_gui: appJar.appjar.gui
+    :param report_id: the ID of the report to fetch, 30 for ledger
+    :type report_id: str, optional
     :returns: the filepath of the saved PDF
     :rtype: str
     :raises HTTPError: if an unsuccessful HTTP status code is returned
@@ -87,7 +86,7 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     }
 
     # Prepare the body
-    data = ('{"ReportID":' + REPORT_ID +
+    data = ('{"ReportID":' + report_id +
             ',"UserGroupID":' + group_id +
             ',"SubGroupID":' + subgroup_id + '}')
 
