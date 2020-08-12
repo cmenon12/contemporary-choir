@@ -349,16 +349,16 @@ def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
         LOGGER.info("sheet_id was None, so there was nothing to delete.")
 
 
-def send_error_email(config: configparser.SectionProxy, stack_trace: str,
-                     error_count: str):
+def send_error_email(config: configparser.SectionProxy, error_stack: str,
+                     fails_text: str):
     """Used to email the user about a fatal exception.
 
     :param config: the configuration for the email
     :type config: configparser.SectionProxy
-    :param stack_trace: the stack trace of the exception
-    :type stack_trace: str
-    :param error_count: info about the no. of failed attempts
-    :type error_count: str
+    :param error_stack: the stack trace of the exception
+    :type error_stack: str
+    :param fails_text: info about the no. of failed attempts
+    :type fails_text: str
     """
 
     # Connect to the server
@@ -378,8 +378,8 @@ def send_error_email(config: configparser.SectionProxy, stack_trace: str,
                 "Please see the stack trace below and check the logs.\n\n %s "
                 "\n\n\n———\nThis email was sent automatically by a "
                 "computer program. If you want to leave some feedback "
-                "then please reply directly to it." % (error_count,
-                                                       stack_trace))
+                "then please reply directly to it." % (fails_text,
+                                                       error_stack))
         message.attach(MIMEText(text, "plain"))
 
         # Send the email
@@ -390,25 +390,23 @@ def send_error_email(config: configparser.SectionProxy, stack_trace: str,
     LOGGER.info("The email about the exception was sent successfully!")
 
 
-if __name__ == "__main__":
+def main():
+    """Manages the checks.
 
-    # Prepare the log
-    logging.basicConfig(filename="ledger_checker.log",
-                        filemode="a",
-                        format="%(asctime)s | %(levelname)s : %(message)s",
-                        level=logging.DEBUG)
-    LOGGER = logging.getLogger(__name__)
+    This function runs the checks of the ledger regularly and gracefully
+    handles any errors that occur.
+    """
 
     # Fetch info from the config
-    config_parser = configparser.ConfigParser()
-    config_parser.read("config.ini")
-    save_data_filepath = config_parser["ledger_checker"]["save_data_filepath"]
+    parser = configparser.ConfigParser()
+    parser.read("config.ini")
+    save_data_filepath = parser["ledger_checker"]["save_data_filepath"]
 
     # If the save file doesn't exist then create it
     if not os.path.exists(save_data_filepath):
         LOGGER.warning("The save file doesn't exist, creating a blank one...")
-        with open(save_data_filepath, "wb") as file:
-            pickle.dump([[[[0, 0, 0]]], None], file)
+        with open(save_data_filepath, "wb") as save_file:
+            pickle.dump([[[[0, 0, 0]]], None], save_file)
 
     # Run the checker
     # fails counts the number of consecutive failed attempts
@@ -421,11 +419,11 @@ if __name__ == "__main__":
             fails = 0
 
         # Catch any exception that occurs
-        except Exception as err:
+        except Exception:
             fails += 1
             error_stack = traceback.format_exc()
             LOGGER.exception("We had a problem and had to stop the checks!")
-            LOGGER.error("This is error no. %d." % fails)
+            LOGGER.error("This is error no. %d.", fails)
             print("It's %s and we've hit a fatal error! "
                   "Go check the log to find out more." %
                   time.strftime("%d %b %Y at %H:%M:%S"))
@@ -442,12 +440,12 @@ if __name__ == "__main__":
 
             # Attempt to email the user about the exception
             try:
-                email_config = config_parser["email"]
                 print("Sending an email about the exception...")
-                send_error_email(config_parser["email"], error_stack,
-                                 fails_text)
+                send_error_email(config=parser["email"],
+                                 error_stack=error_stack,
+                                 fails_text=fails_text)
                 print("Email sent successfully!\n")
-            except Exception as err:
+            except Exception:
                 print("The email was not sent successfully!")
                 print(traceback.format_exc())
                 LOGGER.exception("We couldn't send the email about the exception!")
@@ -455,6 +453,18 @@ if __name__ == "__main__":
         # Always wait before the next one
         finally:
             time.sleep(INTERVAL)
+
+
+if __name__ == "__main__":
+
+    # Prepare the log
+    logging.basicConfig(filename="ledger_checker.log",
+                        filemode="a",
+                        format="%(asctime)s | %(levelname)s : %(message)s",
+                        level=logging.DEBUG)
+    LOGGER = logging.getLogger(__name__)
+
+    main()
 
 else:
     LOGGER = logging.getLogger(__name__)
