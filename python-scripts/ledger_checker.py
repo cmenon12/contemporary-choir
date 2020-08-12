@@ -373,8 +373,7 @@ def send_error_email(config: configparser.SectionProxy, error_stack: str,
         message["X-Priority"] = "1"
 
         # Prepare the email
-        text = ("There was a fatal error with ledger_checker.py, "
-                "so no further checks will be made. %s"
+        text = ("There was a fatal error with ledger_checker.py! %s"
                 "Please see the stack trace below and check the logs.\n\n %s "
                 "\n\n\n———\nThis email was sent automatically by a "
                 "computer program. If you want to leave some feedback "
