@@ -296,21 +296,23 @@ class Password_Protected {
 	public function maybe_process_login() {
 
 		if ( $this->is_active() && isset( $_REQUEST['password_protected_pwd'] ) ) {
-			$password_protected_pwd = $_REQUEST['password_protected_pwd'];
-			$pwd = get_option( 'password_protected_password' );
+            $password_protected_pwd = $_REQUEST['password_protected_pwd'];
+            $pwd = get_option('password_protected_password');
 
-			// If correct password...
-			if ( ( hash_equals( $pwd, $this->encrypt_password( $password_protected_pwd ) ) && $pwd != '' ) || apply_filters( 'password_protected_process_login', false, $password_protected_pwd ) ) {
+            // If correct password and CAPTCHA
+            if (((hash_equals($pwd, $this->encrypt_password($password_protected_pwd)) &&
+                        $pwd != '') ||
+                    apply_filters('password_protected_process_login', false, $password_protected_pwd)) && anr_verify_captcha()) {
 
-				$remember = isset( $_REQUEST['password_protected_rememberme'] ) ? boolval( $_REQUEST['password_protected_rememberme'] ) : false;
+                $remember = isset($_REQUEST['password_protected_rememberme']) ? boolval($_REQUEST['password_protected_rememberme']) : false;
 
-				if ( ! $this->allow_remember_me() ) {
-					$remember = false;
-				}
+                if (!$this->allow_remember_me()) {
+                    $remember = false;
+                }
 
-				$this->set_auth_cookie( $remember );
-				$redirect_to = isset( $_REQUEST['redirect_to'] ) ? $_REQUEST['redirect_to'] : '';
-				$redirect_to = apply_filters( 'password_protected_login_redirect', $redirect_to );
+                $this->set_auth_cookie($remember);
+                $redirect_to = isset($_REQUEST['redirect_to']) ? $_REQUEST['redirect_to'] : '';
+                $redirect_to = apply_filters('password_protected_login_redirect', $redirect_to);
 
 				if ( ! empty( $redirect_to ) ) {
 					$this->safe_redirect( $redirect_to );
@@ -319,11 +321,21 @@ class Password_Protected {
 
 			} else {
 
-				// ... otherwise incorrect password
-				$this->clear_auth_cookie();
-				$this->errors->add( 'incorrect_password', __( 'Incorrect Password', 'password-protected' ) );
+                // Invalid CAPTCHA
+                if (!anr_verify_captcha()) {
 
-			}
+                    $this->clear_auth_cookie();
+                    $this->errors->add('failed_captcha', __('Complete the CAPTCHA!', 'password-protected'));
+
+                    // ... otherwise incorrect password
+                } else {
+
+                    $this->clear_auth_cookie();
+                    $this->errors->add('incorrect_password', __('Incorrect Password!', 'password-protected'));
+
+                }
+
+            }
 
 		}
 

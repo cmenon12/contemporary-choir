@@ -17,14 +17,52 @@ if ( ! function_exists( 'wp_shake_js' ) ) {
 			return;
 		}
 		?>
-		<script>
-		addLoadEvent = function(func){if(typeof jQuery!="undefined")jQuery(document).ready(func);else if(typeof wpOnload!='function'){wpOnload=func;}else{var oldonload=wpOnload;wpOnload=function(){oldonload();func();}}};
-		function s(id,pos){g(id).left=pos+'px';}
-		function g(id){return document.getElementById(id).style;}
-		function shake(id,a,d){c=a.shift();s(id,c);if(a.length>0){setTimeout(function(){shake(id,a,d);},d);}else{try{g(id).position='static';wp_attempt_focus();}catch(e){}}}
-		addLoadEvent(function(){ var p=new Array(15,30,15,0,-15,-30,-15,0);p=p.concat(p.concat(p));var i=document.forms[0].id;g(i).position='relative';shake(i,p,20);});
-		</script>
-		<?php
+        <script>
+            addLoadEvent = function (func) {
+                if (typeof jQuery != "undefined") jQuery(document).ready(func); else if (typeof wpOnload != 'function') {
+                    wpOnload = func;
+                } else {
+                    var oldonload = wpOnload;
+                    wpOnload = function () {
+                        oldonload();
+                        func();
+                    }
+                }
+            };
+
+            function s(id, pos) {
+                g(id).left = pos + 'px';
+            }
+
+            function g(id) {
+                return document.getElementById(id).style;
+            }
+
+            function shake(id, a, d) {
+                c = a.shift();
+                s(id, c);
+                if (a.length > 0) {
+                    setTimeout(function () {
+                        shake(id, a, d);
+                    }, d);
+                } else {
+                    try {
+                        g(id).position = 'static';
+                        wp_attempt_focus();
+                    } catch (e) {
+                    }
+                }
+            }
+
+            addLoadEvent(function () {
+                var p = [15, 30, 15, 0, -15, -30, -15, 0];
+                p = p.concat(p.concat(p));
+                var i = document.forms[0].id;
+                g(i).position = 'relative';
+                shake(i, p, 20);
+            });
+        </script>
+        <?php
 	}
 }
 
@@ -101,8 +139,8 @@ if ( $is_iphone ) {
 	<?php
 }
 
-do_action( 'login_enqueue_scripts' );
-do_action( 'password_protected_login_head' );
+do_action('login_enqueue_scripts');
+do_action('password_protected_login_head');
 
 ?>
 
@@ -110,26 +148,44 @@ do_action( 'password_protected_login_head' );
 <body class="login login-password-protected login-action-password-protected-login wp-core-ui">
 
 <div id="login">
-	<h1><a href="<?php echo esc_url( apply_filters( 'password_protected_login_headerurl', home_url( '/' ) ) ); ?>" title="<?php echo esc_attr( apply_filters( 'password_protected_login_headertitle', get_bloginfo( 'name' ) ) ); ?>"><?php bloginfo( 'name' ); ?></a></h1>
+    <h1>
+        <a style="background-image: url(https://exetercontemporarychoir.com/wp-content/uploads/2020/08/Contemporary-Choir-Logo.jpeg)"
+           href="https://exetercontemporarychoir.com"
+           title="<?php echo esc_attr(apply_filters('password_protected_login_headertitle', get_bloginfo('name'))); ?>"><?php bloginfo('name'); ?></a>
+    </h1>
 
-	<?php do_action( 'password_protected_login_messages' ); ?>
-	<?php do_action( 'password_protected_before_login_form' ); ?>
+    <?php do_action('password_protected_login_messages'); ?>
+    <p style="text-align: center"><?php _e("This is site is for members of Contemporary Choir only.") ?><br>
+        <?php _e("You can find the password in our latest weekly email.") ?><br>
+        <?php _e("If you think that you should be able to access this site but can't, please do ") ?><a target="_blank"
+                                                                                                        href="https://exetercontemporarychoir.com/stay-in-touch/"><?php _e("get in touch") ?></a><?php _e(" with us.") ?>
+    </p>
+    <?php do_action('password_protected_before_login_form'); ?>
 
-	<form name="loginform" id="loginform" action="<?php echo esc_url( $Password_Protected->login_url() ); ?>" method="post">
-		<p>
-			<label for="password_protected_pass"><?php echo apply_filters( 'password_protected_login_password_title', __( 'Password', 'password-protected' ) ); ?><br />
-			<input type="password" name="password_protected_pwd" id="password_protected_pass" class="input" value="" size="20" tabindex="20" /></label>
-		</p>
+    <form name="loginform" id="loginform" action="<?php echo esc_url($Password_Protected->login_url()); ?>"
+          method="post">
+        <p>
+            <label for="password_protected_pass"><?php echo apply_filters('password_protected_login_password_title', __('Password', 'password-protected')); ?>
+                <br/>
+                <input type="password" name="password_protected_pwd" id="password_protected_pass" class="input" value=""
+                       size="20" tabindex="20"/></label>
+        </p>
 
-		<?php if ( $Password_Protected->allow_remember_me() ) : ?>
-			<p class="forgetmenot">
-				<label for="password_protected_rememberme"><input name="password_protected_rememberme" type="checkbox" id="password_protected_rememberme" value="1" tabindex="90" /> <?php esc_attr_e( 'Remember Me' ); ?></label>
-			</p>
-		<?php endif; ?>
+        <?php do_action('anr_captcha_form_field') ?><br>
 
-		<p class="submit">
-			<input type="submit" name="wp-submit" id="wp-submit" class="button button-primary button-large" value="<?php esc_attr_e( 'Log In' ); ?>" tabindex="100" />
-			<input type="hidden" name="password_protected_cookie_test" value="1" />
+        <?php if ($Password_Protected->allow_remember_me()) : ?>
+            <p class="forgetmenot">
+                <label for="password_protected_rememberme"><input name="password_protected_rememberme" type="checkbox"
+                                                                  id="password_protected_rememberme" value="1"
+                                                                  tabindex="90"/> <?php esc_attr_e('Remember Me'); ?>
+                </label>
+            </p>
+        <?php endif; ?>
+
+        <p class="submit">
+            <input type="submit" name="wp-submit" id="wp-submit" class="button button-primary button-large"
+                   value="<?php esc_attr_e('Log In'); ?>" tabindex="100"/>
+            <input type="hidden" name="password_protected_cookie_test" value="1"/>
 			<input type="hidden" name="password-protected" value="login" />
 			<input type="hidden" name="redirect_to" value="<?php echo esc_attr( $_REQUEST['redirect_to'] ); ?>" />
 		</p>
