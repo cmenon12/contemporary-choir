@@ -1,5 +1,5 @@
 === Password Protected ===
-Contributors: husobj
+Contributors: husobj, Christopher Menon
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DXRJDNCMK9U3N
 Tags: password, protect, password protect, login
 Requires at least: 4.6
@@ -79,6 +79,10 @@ If you would like to translate this plugin you can easily contribute at the [Tra
 2. Password Protected settings page.
 
 == Changelog ==
+
+= 2.4 =
+- Customised exclusively for Contemporary Choir
+- Added a CAPTCHA using [Advanced noCaptcha](https://en-gb.wordpress.org/plugins/advanced-nocaptcha-recaptcha/)
  
 = 2.3 =
 - Adds `password_protected_cookie_name` filter for the cookie name. Props [Jose Castaneda](https://github.com/jocastaneda).
@@ -219,6 +223,9 @@ If you would like to translate this plugin you can easily contribute at the [Tra
 * First Release. If you spot any bugs or issues please [log them here](https://github.com/benhuson/password-protected/issues).
 
 == Upgrade Notice ==
+
+= 2.4 =
+Customised exclusively for Contemporary Choir and added a CAPTCHA
 
 = 2.3 =
 Fixed an issue with "testcookie" on some hosts. Added `password_protected_cookie_name` and `password_protected_options_page_capability` filters.

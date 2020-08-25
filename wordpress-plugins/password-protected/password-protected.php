@@ -40,18 +40,20 @@ define( 'PASSWORD_PROTECTED_DIR', plugin_dir_path( __FILE__ ) );
 global $Password_Protected;
 $Password_Protected = new Password_Protected();
 
-class Password_Protected {
+class Password_Protected
+{
 
-	var $version = '2.3';
-	var $admin   = null;
-	var $errors  = null;
+    var $version = '2.4';
+    var $admin = null;
+    var $errors = null;
 
-	/**
-	 * Constructor
-	 */
-	public function __construct() {
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
 
-		$this->errors = new WP_Error();
+        $this->errors = new WP_Error();
 
 		register_activation_hook( __FILE__, array( &$this, 'install' ) );
 

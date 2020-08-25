@@ -155,7 +155,7 @@ do_action('password_protected_login_head');
     </h1>
 
     <?php do_action('password_protected_login_messages'); ?>
-    <p style="text-align: center"><?php _e("This is site is for members of Contemporary Choir only.") ?><br>
+    <p style="text-align: center"><?php _e("This is site is only for members of Contemporary Choir.") ?><br>
         <?php _e("You can find the password in our latest weekly email.") ?><br>
         <?php _e("If you think that you should be able to access this site but can't, please do ") ?><a target="_blank"
                                                                                                         href="https://exetercontemporarychoir.com/stay-in-touch/"><?php _e("get in touch") ?></a><?php _e(" with us.") ?>
