@@ -431,7 +431,7 @@ def main():
                              "%d so we won't try to " \
                              "make any further checks. " % fails
             else:
-                fails_text = "This is consecutive failed  attempt no. " \
+                fails_text = "This is consecutive failed attempt no. " \
                              "%d so we will try again " \
                              "in %d seconds. " % (fails, INTERVAL)
             print(fails_text)

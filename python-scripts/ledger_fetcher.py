@@ -33,6 +33,9 @@ __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
+# 30 is used for the ledger, 31 for the balance
+REPORT_ID = "30"
+
 # This variable specifies the name of a file that contains the
 # OAuth 2.0 information for this application, including its client_id
 # and client_secret.
@@ -50,9 +53,74 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
 TOKEN_PICKLE_FILE = "token.pickle"
 
 
+def list_documents(auth: str, app_gui: gui):
+    """Lists the documents available to download.
+
+    :param auth: the authentication header with the email and password
+    :type auth: str
+    :param app_gui: the appJar GUI to use
+    :type app_gui: appJar.appjar.gui
+    """
+
+    # Prepare the request
+    url = "https://service.expense365.com/ws/rest/eXpense365/GetDocumentsList"
+    headers = {
+        "Host": "service.expense365.com:443",
+        "User-Agent": "eXpense365|1.5.2|Google Pixel XL|Android|10|en_GB",
+        "Authorization": auth,
+        "Accept": "application/json",
+        "If-Modified-Since": "Mon, 1 Oct 1990 05:00:00 GMT",
+        "Content-Type": "text/plain;charset=UTF-8",
+    }
+
+    # Make the request and check it was successful
+    LOGGER.info("Making the HTTP request to service.expense365.com...")
+    response = requests.post(url=url, headers=headers)
+    response.raise_for_status()
+    LOGGER.info("The request was successful with no HTTP errors.")
+    documents = response.json()
+
+    # If the response wasn't successful then end here.
+    if documents["ResultCode"] != "Success":
+        message = "There was an error downloading the documents. " \
+                  "Please see the response data below.\n %s" \
+                  % str(response.content)
+        app_gui.popUp(title="Error fetching documents",
+                      message=message,
+                      kind="error")
+        SystemExit(message)
+
+    else:
+
+        global answer
+
+        # Create a title for the GUI
+        app_gui.addLabel("title", "Choose a report to download.", row=0, column=0, colspan=2)
+        app_gui.addHorizontalSeparator(row=1, column=0, colspan=2, colour="black")
+
+        # Add each document to the GUI
+        for doc, i in zip(documents["Recordset"], range(2, len(documents["Recordset"]) + 2)):
+            button_id = "%d,%d,%d" % (doc["UserGroupID"], doc["SubGroupID"], doc["ID"])
+            label_id = "l %s" % button_id
+            label_desc = "%s, %s" % (doc["DocumentParameters"]["GroupName"], doc["GroupName"])
+            app_gui.addLabel(title=label_id, text=label_desc, row=i, column=0)
+            app_gui.addNamedButton(title=button_id, name="Download", func=download_selected_pdf, row=i, column=1)
+
+        LOGGER.info("Creating the GUI...")
+        app_gui.go()
+        # app_gui.removeAllWidgets()
+
+
+def download_selected_pdf(button_id: str):
+    # appjar_gui.removeAllWidgets()
+    global answer
+    answer = button_id
+    print("The button_id is %s" % button_id)
+
+
 def download_pdf(auth: str, group_id: str, subgroup_id: str,
                  filename_prefix: str, dir_name: str,
-                 app_gui: gui, report_id: str = "30") -> str:
+                 app_gui: gui, report_id: str = REPORT_ID) -> str:
     """Downloads the ledger from expense365.com.
 
     :param auth: the authentication header with the email and password
@@ -440,6 +508,7 @@ if __name__ == "__main__":
     # Create the GUI
     appjar_gui = gui(showIcon=False)
     appjar_gui.setOnTop()
+    appjar_gui.setFont(size=12)
 
     main(appjar_gui)
 
