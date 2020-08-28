@@ -183,6 +183,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     url = "https://www.pdftoexcel.com/status"
 
     # Whilst it is still being converted
+    check_count = 0
     while download_url == "":
 
         # Prepare and make the request
@@ -195,7 +196,12 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
         # Wait before checking again
         if download_url == "":
-            time.sleep(1)
+            check_count += 1
+
+            # Stop if we've been waiting for 2 minutes
+            if check_count == 60:
+                raise Exception("Waited too long for file conversion.")
+            time.sleep(2)
 
     # Prepare and make the request to download the file
     url = "https://www.pdftoexcel.com" + download_url
