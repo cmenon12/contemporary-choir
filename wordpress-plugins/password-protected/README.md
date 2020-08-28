@@ -12,7 +12,7 @@ Features include:
 - Option to allow administrators access without entering password.
 - Works with Mark Jaquith's [Login Logo](https://wordpress.org/plugins/login-logo/) plugin.
 - Works with the [Uber Login Logo](https://wordpress.org/plugins/uber-login-logo/) plugin.
-- Works with the [Advanced noCaptcha](https://en-gb.wordpress.org/plugins/advanced-nocaptcha-recaptcha/) plugin.
+- NEW: Works with the [Advanced noCaptcha](https://en-gb.wordpress.org/plugins/advanced-nocaptcha-recaptcha/) plugin.
 
 > Please note, this plugin works by setting a cookie to allow access to the site. If you are using a caching plugin or web hosting such as WP Engine that has in-built caching, you will need to configure the caching service to be disabled if the Password Protected cookie is set.
 
@@ -70,8 +70,8 @@ If you would like to translate this plugin you can easily contribute at the [Tra
 Upgrade Notice
 --------------
 
-### 2.4
-Customised exclusively for Contemporary Choir and added a CAPTCHA
+### *latest*
+Customised exclusively for Contemporary Choir and added a CAPTCHA.
 
 ### 2.3
 Fixed an issue with "testcookie" on some hosts. Added `password_protected_cookie_name` and `password_protected_options_page_capability` filters.

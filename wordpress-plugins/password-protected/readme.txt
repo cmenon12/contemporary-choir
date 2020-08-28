@@ -23,6 +23,7 @@ Features include:
 * Option to allow administrators access without entering password.
 * Works with Mark Jaquith's [Login Logo](https://wordpress.org/plugins/login-logo/) plugin.
 * Works with the [Uber Login Logo](https://wordpress.org/plugins/uber-login-logo/) plugin.
+* NEW: Works with the [Advanced noCaptcha](https://en-gb.wordpress.org/plugins/advanced-nocaptcha-recaptcha/) plugin.
 
 > Please note, this plugin works by setting a cookie to allow access to the site. If you are using a caching plugin or web hosting such as WP Engine that has in-built caching, you will need to configure the caching service to be disabled if the Password Protected cookie is set.
 
@@ -80,10 +81,10 @@ If you would like to translate this plugin you can easily contribute at the [Tra
 
 == Changelog ==
 
-= 2.4 =
+= latest =
 - Customised exclusively for Contemporary Choir
 - Added a CAPTCHA using [Advanced noCaptcha](https://en-gb.wordpress.org/plugins/advanced-nocaptcha-recaptcha/)
- 
+
 = 2.3 =
 - Adds `password_protected_cookie_name` filter for the cookie name. Props [Jose Castaneda](https://github.com/jocastaneda).
 - Let developers override the capability needed to see the options page via a `password_protected_options_page_capability` filter. Props [Nicola Peluchetti](https://github.com/nicoladj77).
@@ -98,7 +99,7 @@ If you would like to translate this plugin you can easily contribute at the [Tra
 - Update Portuguese translation. Props [Jonathan Hult](https://github.com/jhult).
 - Update Russian translation. Props [Alexey Chumakov](https://github.com/achumakov).
 
-= 2.2.4 = 
+= 2.2.4 =
 - Check that `$_SERVER['REMOTE_ADDR']` is set.
 
 = 2.2.3 =
