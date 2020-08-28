@@ -7,7 +7,7 @@ As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/c
 
 
 ## Getting Started
-
+For the Python Scripts and the Google Apps Scripts:
 * Rename [`python-scripts/config-template.ini`](python-scripts/config-template.ini) to `python-scripts/config.ini` and update the values within it with your own data.
 * Install the required packages using `pip install -r requirements.txt`.
 * Create your own Google Cloud Platform Project, enable the Apps Script, Drive, and Sheets APIs, and create & download some OAuth 2.0 Client ID credentials as `credentials.json`. 
@@ -39,6 +39,9 @@ can be used  to download the society ledger from eXpense365 to your computer (in
 * `getCostCodeTotals(sheet)` will retrieve the total income, expenditure, and balance for each cost code, as well as the grand total for the entire ledger.
 
 **[`apps-script/fundraising.gs`](google-apps-scripts/fundraising.gs)** updates how much has been fundraised from a GoFundMe page. It fetches the page, extracts the total fundraised and the total number of donors, applies a reduction due to payment processor fees & postage, and then updates a pre-defined named range in the sheet with the total.
+
+## Wordpress Plugins 
+**[`wordpress-plugins/password-protected/`](wordpress-plugins/password-protected/)** is my own customised version of [Password Protected by Ben Huson](https://wordpress.org/plugins/password-protected/). I have modified it to include a Google CAPTCHA on the password page, which is implemented using the plugin [Advanced noCaptcha & invisible Captcha (v2 & v3) by Shamim Hasan](https://wordpress.org/plugins/advanced-nocaptcha-recaptcha/). It also has a custom logo (instead of the Wordpress one) and some brief text for people arriving at the site.
 
 ## License
 [GNU GPLv3](https://choosealicense.com/licenses/gpl-3.0/)
