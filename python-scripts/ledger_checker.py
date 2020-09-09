@@ -84,7 +84,7 @@ def prepare_email_body(config: configparser.SectionProxy,
     grand_total = 0
     for key, value in cost_code_totals.items():
         grand_total += value
-        value = format_currency(int(value), 'GBP', locale='en_GB')
+        value = format_currency(float(value), 'GBP', locale='en_GB')
         cost_code_totals[key] = value
 
     # Process each entry for each cost code
@@ -95,8 +95,8 @@ def prepare_email_body(config: configparser.SectionProxy,
             continue
         # Save the income and +ve and expenditure as -ve
         if item[3] == "":
-            item[3] = -int(item[4])
-        item[3] = format_currency(int(item[3]), 'GBP', locale='en_GB')
+            item[3] = -float(item[4])
+        item[3] = format_currency(float(item[3]), 'GBP', locale='en_GB')
         # Add new cost code (key)
         if item[0] not in cost_codes.keys():
             cost_codes[item[0]] = []
@@ -113,13 +113,13 @@ def prepare_email_body(config: configparser.SectionProxy,
         total = [value]
         for item in changes[-1]:
             if item[0] == key:
-                total.append(format_currency(int(item[3]),
+                total.append(format_currency(float(item[3]),
                                              'GBP', locale='en_GB'))
         cost_code_totals[key] = total
     # Add the total changes and total balance
-    cost_code_totals["grand_total"] = [format_currency(int(grand_total),
+    cost_code_totals["grand_total"] = [format_currency(float(grand_total),
                                                        'GBP', locale='en_GB'),
-                                       format_currency(int(changes[-1][-1][3]),
+                                       format_currency(float(changes[-1][-1][3]),
                                                        'GBP', locale='en_GB')]
 
     # cost_code_totals is structured as
@@ -273,6 +273,7 @@ def check_ledger():
 
     # Otherwise save the data that the Apps Script returns
     changes = response["response"].get("result")
+    LOGGER.debug(changes)
     print("The Apps Script function executed successfully!")
     LOGGER.info("The Apps Script function executed successfully.")
 
