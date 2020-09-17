@@ -1,6 +1,8 @@
 # Contemporary Choir
 
-As the Treasurer of [Contemporary Choir](https://www.exeterguild.org/societies/contemporarychoir/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. *Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
+As the Treasurer of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. 
+<br><br>In addition, I've also led the team to produce a [brand-new website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. This repo currently has a plugin that I've tweaked myself especially for our website.
+<br><br>*Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
 [![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
 [![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
