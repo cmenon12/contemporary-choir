@@ -350,16 +350,16 @@ def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
         LOGGER.info("sheet_id was None, so there was nothing to delete.")
 
 
-def send_error_email(config: configparser.SectionProxy, error_stack: str,
-                     fails_text: str):
+def send_error_email(config: configparser.SectionProxy, error_stacks: str,
+                     fails: int):
     """Used to email the user about a fatal exception.
 
     :param config: the configuration for the email
     :type config: configparser.SectionProxy
-    :param error_stack: the stack trace of the exception
-    :type error_stack: str
-    :param fails_text: info about the no. of failed attempts
-    :type fails_text: str
+    :param error_stacks: the stack traces of the exceptions
+    :type error_stacks: str
+    :param fails: the number of consecutive exceptions/failures
+    :type fails: int
     """
 
     # Connect to the server
@@ -374,12 +374,12 @@ def send_error_email(config: configparser.SectionProxy, error_stack: str,
         message["X-Priority"] = "1"
 
         # Prepare the email
-        text = ("There was a fatal error with ledger_checker.py! %s"
+        text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
                 "Please see the stack trace below and check the logs.\n\n %s "
-                "\n\n\n———\nThis email was sent automatically by a "
+                "———\nThis email was sent automatically by a "
                 "computer program. If you want to leave some feedback "
-                "then please reply directly to it." % (fails_text,
-                                                       error_stack))
+                "then please reply directly to it." % (fails,
+                                                       error_stacks))
         message.attach(MIMEText(text, "plain"))
 
         # Send the email
@@ -410,7 +410,9 @@ def main():
 
     # Run the checker
     # fails counts the number of consecutive failed attempts
+    # error_stacks contains the stack traces of the failures
     fails = 0
+    error_stacks = ""
     while fails < ATTEMPTS:
         try:
             check_ledger()
@@ -421,34 +423,38 @@ def main():
         # Catch any exception that occurs
         except Exception:
             fails += 1
-            error_stack = traceback.format_exc()
+            error_stacks += traceback.format_exc()
+            error_stacks += "\n\n"
             LOGGER.exception("We had a problem and had to stop the checks!")
             LOGGER.error("This is error no. %d.", fails)
             print("It's %s and we've hit a fatal error! "
                   "Go check the log to find out more." %
                   time.strftime("%d %b %Y at %H:%M:%S"))
+
+            # If this is the last consecutive failure
             if fails == ATTEMPTS:
                 fails_text = "This is consecutive failed attempt no. " \
                              "%d so we won't try to " \
                              "make any further checks. " % fails
+
+                # Attempt to email the user about the exceptions
+                try:
+                    print("Sending an email about the exceptions...")
+                    send_error_email(config=parser["email"],
+                                     error_stacks=error_stacks,
+                                     fails=fails)
+                    print("Email sent successfully!\n")
+                except Exception:
+                    print("The email was not sent successfully!")
+                    print(traceback.format_exc())
+                    LOGGER.exception("We couldn't send the email about the exceptions!")
+
             else:
                 fails_text = "This is consecutive failed attempt no. " \
                              "%d so we will try again " \
                              "in %d seconds. " % (fails, INTERVAL)
             print(fails_text)
             print(traceback.format_exc())
-
-            # Attempt to email the user about the exception
-            try:
-                print("Sending an email about the exception...")
-                send_error_email(config=parser["email"],
-                                 error_stack=error_stack,
-                                 fails_text=fails_text)
-                print("Email sent successfully!\n")
-            except Exception:
-                print("The email was not sent successfully!")
-                print(traceback.format_exc())
-                LOGGER.exception("We couldn't send the email about the exception!")
 
         # Always wait before the next one
         finally:
