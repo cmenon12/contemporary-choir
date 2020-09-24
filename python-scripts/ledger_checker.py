@@ -34,7 +34,8 @@ import html2text
 from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
-from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, authorize
+from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
+    authorize, update_pdf_ledger
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -51,18 +52,20 @@ ATTEMPTS = 3
 
 
 def prepare_email_body(config: configparser.SectionProxy,
-                       changes: list, url: str):
+                       changes: list, sheet_url: str, pdf_url: str):
     """Prepares an email detailing the changes to the ledger.
 
-        :param config: the configuration for the email
-        :type config: configparser.SectionProxy
-        :param changes: the changes made to the ledger
-        :type changes: list
-        :param url: the URL to link to
-        :type url: str
-        :return: the plain-text and html
-        :rtype: tuple
-        """
+    :param config: the configuration for the email
+    :type config: configparser.SectionProxy
+    :param changes: the changes made to the ledger
+    :type changes: list
+    :param sheet_url: the URL of the Google Sheet to link to
+    :type sheet_url: str
+    :param pdf_url: the URL of the PDF to link to
+    :type pdf_url: str
+    :return: the plain-text and html
+    :rtype: tuple
+    """
 
     # Calculate the total change for each cost code
     LOGGER.info("Creating the email...")
@@ -133,7 +136,8 @@ def prepare_email_body(config: configparser.SectionProxy,
     html = template.render(society_name=config["society_name"],
                            cost_codes=cost_codes,
                            cost_code_totals=cost_code_totals,
-                           url=url)
+                           sheet_url=sheet_url,
+                           pdf_url=pdf_url)
 
     # Create the plain-text version of the message
     text_maker = html2text.HTML2Text()
@@ -146,7 +150,7 @@ def prepare_email_body(config: configparser.SectionProxy,
 
 
 def send_email(config: configparser.SectionProxy, changes: list,
-               pdf_filepath: str, url: str):
+               pdf_filepath: str, sheet_url: str, pdf_url: str):
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
@@ -155,8 +159,10 @@ def send_email(config: configparser.SectionProxy, changes: list,
     :type changes: list
     :param pdf_filepath: the path to the PDF to attach
     :type pdf_filepath: str
-    :param url: the URL to link to
-    :type url: str
+    :param sheet_url: the URL of the Google Sheet to link to
+    :type sheet_url: str
+    :param pdf_url: the URL of the PDF to link to
+    :type pdf_url: str
     """
 
     # Create the SMTP connection
@@ -172,7 +178,8 @@ def send_email(config: configparser.SectionProxy, changes: list,
         # Prepare the email
         text, html = prepare_email_body(config=config,
                                         changes=changes,
-                                        url=url)
+                                        sheet_url=sheet_url,
+                                        pdf_url=pdf_url)
 
         # Turn these into plain/html MIMEText objects
         # Add HTML/plain-text parts to MIMEMultipart message
@@ -242,9 +249,9 @@ def check_ledger():
                                     app_gui=None,
                                     dir_name=config["dir_name"])
     print("Uploading the ledger to Google Sheets...")
-    new_url, sheet_name = upload_ledger(dir_name=config["dir_name"],
-                                        destination_sheet_id=config["destination_sheet_id"],
-                                        xlsx_filepath=xlsx_filepath)
+    sheet_url, sheet_name = upload_ledger(dir_name=config["dir_name"],
+                                          destination_sheet_id=config["destination_sheet_id"],
+                                          xlsx_filepath=xlsx_filepath)
     print("Ledger downloaded, converted, and uploaded successfully.")
 
     # Connect to the Apps Script service and attempt to execute it
@@ -307,13 +314,20 @@ def check_ledger():
         LOGGER.info("The local PDF and XLSX have been deleted successfully!")
 
     # Otherwise these changes are new
+    # Update the PDF ledger in the user's Google Drive
     # Notify the user (via email) and delete the old sheet
     # Save the new data to the save file
     else:
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
         sheet_id = changes.pop(0)
-        send_email(config=parser["email"], changes=changes, pdf_filepath=pdf_filepath, url=new_url)
+        pdf_url = update_pdf_ledger(dir_name=config["dir_name"],
+                                    pdf_ledger_id=config["pdf_ledger_id"],
+                                    pdf_ledger_name=config["pdf_ledger_name"],
+                                    pdf_filepath=pdf_filepath)
+        send_email(config=parser["email"], changes=changes,
+                   pdf_filepath=pdf_filepath,
+                   sheet_url=sheet_url, pdf_url=pdf_url)
         LOGGER.info("Deleting the old sheet...")
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],

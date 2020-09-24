@@ -96,10 +96,6 @@
         line-height: inherit;
       }
 
-      .btn-primary table td:hover {
-        background-color: #E62073 !important;
-      }
-
       .btn-primary a:hover {
         background-color: #E62073 !important;
         border-color: #E62073 !important;
@@ -245,8 +241,9 @@
                       The total balance for {{ society_name }} is <b>{{cost_code_totals["grand_total"][1]}}</b>.</p>
                     {% endif %}
                     <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      Please see the attached ledger for further details, or click the button below to open the uploaded
-                      ledger in Google Sheets.</p>
+                      Please see the attached PDF ledger for further details, or click the buttons below to open the
+                      uploaded
+                      ledger in Google Sheets & in Google Drive.</p>
                     <br>
                     <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary"
                            style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; box-sizing: border-box;">
@@ -255,13 +252,17 @@
                         <td align="left"
                             style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; padding-bottom: 15px;">
                           <table border="0" cellpadding="0" cellspacing="0"
-                                 style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: auto;">
-                            <tbody>
+                                 style="border-collapse: separate; width: 100%">
+                            <tbody style="width: 100%">
                             <tr>
-                              <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; background-color: #1B73CA; border-radius: 5px; text-align: center;">
-                                <a href="{{ url }}" target="_blank"
-                                   style="display: inline-block; color: #ffffff; background-color: #1B73CA; border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 14px; font-weight: bold; margin: 0; padding: 12px 25px; border-color: #1B73CA">Open
-                                  the ledger</a></td>
+                              <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; border-radius: 5px; text-align: center; width: 50%">
+                                <a href="{{ sheet_url }}" target="_blank"
+                                   style="width: 85%; display: inline-block; color: #ffffff; background-color: #1B73CA; border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 16px; font-weight: bold; margin: 5px; padding: 12px 15px; border-color: #1B73CA">Open
+                                  the ledger<br>in Google Sheets</a></td>
+                              <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; border-radius: 5px; text-align: center; width: 50%">
+                                <a href="{{ pdf_url }}" target="_blank"
+                                   style="width: 85%; display: inline-block; color: #ffffff; background-color: #1B73CA; border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 16px; font-weight: bold; margin: 5px; padding: 12px 15px; border-color: #1B73CA">Open
+                                  the PDF ledger<br>in Google Drive</a></td>
                             </tr>
                             </tbody>
                           </table>
