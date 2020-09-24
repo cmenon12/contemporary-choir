@@ -45,7 +45,7 @@ CLIENT_SECRETS_FILE = "credentials.json"
 # authenticated user's account and requires requests to use an SSL
 # connection.
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
-          "https://www.googleapis.com/auth/drive.file"]
+          "https://www.googleapis.com/auth/drive"]
 
 # This file stores the user's access and refresh tokens and is created
 # automatically when the authorization flow completes for the first
@@ -239,6 +239,62 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     # If successful then return the file path
     LOGGER.info("Spreadsheet ledger saved successfully at %s.", xlsx_filepath)
     return xlsx_filepath
+
+
+def update_pdf_ledger(dir_name: str, pdf_ledger_id: str, pdf_ledger_name: str,
+                      app_gui: gui = None, pdf_filepath: str = "") -> str:
+    """Updates the PDF with the new version of the ledger.
+
+    :param dir_name: the default directory to open the PDF file from
+    :type dir_name: str
+    :param pdf_ledger_id: the id of the PDF to upload it to
+    :type pdf_ledger_id: str
+    :param pdf_ledger_name: the name of the PDF in Drive
+    :type pdf_ledger_name: str
+    :param app_gui: the appJar GUI to use
+    :type app_gui: appJar.appjar.gui
+    :param pdf_filepath: the filepath of the PDF
+    :type pdf_filepath: str, optional
+    :return: the URL of the destination PDF
+    :rtype: str
+    """
+
+    # Open the spreadsheet
+    if pdf_filepath == "":
+        pdf_file_box = app_gui.openBox(title="Open PDF",
+                                       dirName=dir_name,
+                                       fileTypes=[("Portable Document " +
+                                                   "Format", "*.pdf")],
+                                       asFile=True)
+        if pdf_file_box is None:
+            LOGGER.warning("The user cancelled opening the PDF.")
+            raise SystemExit("User cancelled opening the PDF.")
+        pdf_filepath = pdf_file_box.name
+        app_gui.removeAllWidgets()
+    LOGGER.info("PDF at %s has been opened.", pdf_filepath)
+
+    # Authenticate and retrieve the required services
+    drive, sheets, apps_script = authorize()
+
+    # Update the PDF copy of the ledger with a new version
+    LOGGER.info("Uploading the new PDF ledger to Drive...")
+    head, filename = os.path.split(pdf_filepath)
+    file_metadata = {"name": pdf_ledger_name,
+                     "mimeType": "application/pdf",
+                     "originalFilename": filename}
+    media = MediaFileUpload(pdf_filepath,
+                            mimetype="application/pdf",
+                            resumable=True)
+    file = drive.files().update(body=file_metadata,
+                                media_body=media,
+                                fields="webViewLink",
+                                fileId=pdf_ledger_id,
+                                keepRevisionForever=True).execute()
+    pdf_url = file.get("webViewLink")
+    LOGGER.info("PDF Ledger uploaded to Google Drive at %s.",
+                pdf_url)
+
+    return pdf_url
 
 
 def upload_ledger(dir_name: str, destination_sheet_id: str,
