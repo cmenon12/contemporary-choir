@@ -1,7 +1,7 @@
 # Contemporary Choir
 
 As the Treasurer of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. 
-<br><br>In addition, I've also led the team to produce a [brand-new website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. This repo currently has a plugin that I've tweaked myself especially for our website.
+<br><br>In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. This repo currently has a plugin that I've tweaked myself especially for our website.
 <br><br>*Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
 [![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
@@ -22,10 +22,19 @@ For the Python Scripts and the Google Apps Scripts:
 ## Python Scripts
 
 **[`python-scripts/ledger_fetcher.py`](python-scripts/ledger_fetcher.py)** 
-can be used  to download the society ledger from eXpense365 to your computer (instead of having to use the app). It can also then convert it from a PDF to an XLSX spreadsheet (using [pdftoexcel.com](https://www.pdftoexcel.com/)) and then upload the newly-converted spreadsheet to a Google Sheet (as a new sheet within a pre-existing spreadsheet). *Please note that I'm not affiliated with pdftoexcel.com and that use of their service is bound by their terms & privacy policy - it's just a handy service that I've found can convert the ledger accurately.*
+can be used  to download the society ledger from eXpense365 to your computer (instead of having to use the app). 
+* It can also then convert it from a PDF to an XLSX spreadsheet (using [pdftoexcel.com](https://www.pdftoexcel.com/)) and then upload the newly-converted spreadsheet to a Google Sheet (as a new sheet within a pre-existing spreadsheet). 
+* Finally, it can also upload the PDF ledger to a pre-existing PDF file in Drive by adding it as a new version (and thereby preserving the old versions in the [version history](https://support.google.com/drive/answer/2409045?co=GENIE.Platform%3DDesktop&hl=en#7177508:~:text=Save%20and%20restore%20recent%20versions)). 
+
+*Please note that I'm not affiliated with pdftoexcel.com and that use of their service is bound by their terms & privacy policy - it's just a handy service that I've found can convert the ledger accurately.*
 
 
-**[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger on a regular basis and notify the user via email of any changes. It relies on [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) to download the ledger, convert it, and upload it to Google Sheets. It will then run an Apps Script function (namely `checkForNewTotals(sheetName)` in [`ledger_checker.gs`](apps-script/ledger_checker.gs)) to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself (check [here](https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/Example%20email%20from%20ledger_checker.py.jpg) for an example). The user is only ever notified of each change once by serialising them to a file that maintains persistence.
+**[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger on a regular basis and notify the user via email of any changes. 
+* It relies on [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) to download the ledger, convert it, and upload it to Google Sheets. 
+* It will then run an Apps Script function (namely `checkForNewTotals(sheetName)` in [`ledger_checker.gs`](apps-script/ledger_checker.gs)) to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself (check [here](https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/Example%20email%20from%20ledger_checker.py.jpg) for an example). 
+* The pre-existing PDF ledger in Drive is also updated to this latest version (whilst still preserving the old versions in the [version history](https://support.google.com/drive/answer/2409045?co=GENIE.Platform%3DDesktop&hl=en#7177508:~:text=Save%20and%20restore%20recent%20versions)). 
+* The user is only ever notified of each change once by serialising them to a file that maintains persistence.
+* The user will also be notified via email if the program fails three times consecutively, at which point it stops trying to make any further checks.
 
 ## Google Apps Scripts (for Google Sheets)
 **[`apps-script/ledger-comparison.gs`](google-apps-scripts/ledger-comparison.gs)** can be used to process the ledger that has been uploaded by [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py). 
