@@ -431,8 +431,9 @@ def main():
         try:
             check_ledger()
 
-            # If no exception occurred then reset fails
+            # If no exception occurred then reset fails and error_stacks
             fails = 0
+            error_stacks = ""
 
         # Catch any exception that occurs
         except Exception:
