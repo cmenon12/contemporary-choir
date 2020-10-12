@@ -1,3 +1,12 @@
+/*
+  =============================================================================
+  Project Page: https://github.com/cmenon12/contemporary-choir
+  Copyright:    (c) 2020 by Christopher Menon
+  License:      GNU General Public License, version 3 (GPL-3.0)
+                http://www.opensource.org/licenses/gpl-3.0.html
+  =============================================================================
+ */
+
 var spreadsheet = SpreadsheetApp.getActive();
 var sheet = spreadsheet.getActiveSheet();
 
@@ -65,7 +74,7 @@ function isADate(value) {
  * Determines whether or not the row number in the current sheet
  * appears in the oldSheet.
  * Returns true if it's new, or false if it's old.
-  */
+ */
 function compareWithOld(row, oldSheetValues, newSheet) {
 
   // If newSheet has been supplied then use it, otherwise use the default
@@ -109,7 +118,7 @@ function showPrompt() {
   if (button == ui.Button.NO) {
     return url;
 
-  // If the user wants to use the default URL
+    // If the user wants to use the default URL
   } else if (button == ui.Button.YES) {
     url = spreadsheet.getNamedRanges()[0].getRange().getValue();  // There's only one named range.
     return url
@@ -152,8 +161,8 @@ function compareLedgers(url) {
       }
 
 
-    // Compare it with the original/old sheet
-    // Comparing all rows allows us to identify changes in the totals too
+      // Compare it with the original/old sheet
+      // Comparing all rows allows us to identify changes in the totals too
     } else {
       var isNew = compareWithOld(row, originalSheetValues);
 
@@ -162,7 +171,7 @@ function compareLedgers(url) {
         sheet.getRange(row, 1, 1, 4).setBackground("red");
         Logger.log("Row " + row + " is a new row!");
 
-      // Otherwise just reset it
+        // Otherwise just reset it
       } else {
         sheet.getRange(row, 1).setBackground("white");
       }

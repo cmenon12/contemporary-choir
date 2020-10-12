@@ -1,3 +1,12 @@
+/*
+  =============================================================================
+  Project Page: https://github.com/cmenon12/contemporary-choir
+  Copyright:    (c) 2020 by Christopher Menon
+  License:      GNU General Public License, version 3 (GPL-3.0)
+                http://www.opensource.org/licenses/gpl-3.0.html
+  =============================================================================
+ */
+
 /**
  * This function checks if there are any new entries in the sheet,
  * and if so returns a list of them all, tagged with their cost code.
@@ -76,7 +85,7 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
 
 
       // Compare it with the original/old sheet
-    // Comparing all rows allows us to identify changes in the totals too
+      // Comparing all rows allows us to identify changes in the totals too
     } else {
       var isNew = compareWithOld(row, oldSheetValues, newSheet);
 

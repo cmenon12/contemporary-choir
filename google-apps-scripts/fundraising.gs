@@ -1,4 +1,13 @@
 /*
+  =============================================================================
+  Project Page: https://github.com/cmenon12/contemporary-choir
+  Copyright:    (c) 2020 by Christopher Menon
+  License:      GNU General Public License, version 3 (GPL-3.0)
+                http://www.opensource.org/licenses/gpl-3.0.html
+  =============================================================================
+ */
+
+/**
  * Fetches and parses Maddy's fundraising total,
  * applies fees and postage costs, and updates the
  * named range called MaddyBakes in the sheet.
@@ -30,7 +39,7 @@ function maddyBakes() {
     var donors = Number(match.match(regex)[0]);
     Logger.log(donors);
 
-  // Otherwise log the error and stop
+    // Otherwise log the error and stop
   } else {
     Logger.log(status);
     Logger.log(html);
@@ -60,7 +69,7 @@ function maddyBakes() {
 }
 
 
-/*
+/**
  * Adds the Scripts menu to the menu bar at the top.
  */
 function onOpen(e) {
