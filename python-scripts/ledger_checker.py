@@ -119,15 +119,25 @@ def prepare_email_body(config: configparser.SectionProxy,
                 total.append(format_currency(float(item[3]),
                                              'GBP', locale='en_GB'))
         cost_code_totals[key] = total
+
     # Add the total changes and total balance
     cost_code_totals["grand_total"] = [format_currency(float(grand_total),
                                                        'GBP', locale='en_GB'),
                                        format_currency(float(changes[-1][-1][3]),
                                                        'GBP', locale='en_GB')]
 
+    # Include the balance brought forward if it's not £0.
+    if changes[-1][-1][5] != 0:
+        balance_brought_forward = format_currency(float(changes[-1][-1][5]),
+                                                  'GBP', locale='en_GB')
+        cost_code_totals["grand_total"].append(", including %s that was brought forward." %
+                                               balance_brought_forward)
+    else:
+        cost_code_totals["grand_total"].append(".")
+
     # cost_code_totals is structured as
     # {"cost code name": ["£change", "£balance"],
-    #  "grand_total": ["£total change", "£total balance"]}
+    #  "grand_total": ["£total change", "£total balance", "balance brought forward info"]}
 
     # Render the template
     root = os.path.dirname(os.path.abspath(__file__))

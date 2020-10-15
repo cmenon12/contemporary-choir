@@ -162,134 +162,159 @@
       <div class="content"
            style="box-sizing: border-box; display: block; Margin: 0 auto; max-width: 650px; padding: 10px;">
 
-        <!-- START CENTERED WHITE CONTAINER -->
-        <!-- This has the little tagline of text that the email viewer might show -->
-        <span class="preheader"
-              style="color: transparent; display: none; height: 0; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all; visibility: hidden; width: 0;">{{ society_name }}'s balance has changed by {{ cost_code_totals["grand_total"][0] }}.</span>
-        <table class="main"
-               style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; background: #ffffff; border-radius: 3px;">
+          <!-- START CENTERED WHITE CONTAINER -->
+          <!-- This has the little tagline of text that the email viewer might show -->
+          <span class="preheader"
+                style="color: transparent; display: none; height: 0; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all; visibility: hidden; width: 0;">{{ society_name }}'s balance has changed by {{ cost_code_totals["grand_total"][0] }}.</span>
+          <table class="main"
+                 style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; background: #ffffff; border-radius: 3px;">
 
-          <!-- START MAIN CONTENT AREA -->
-          <tr>
-            <td class="wrapper"
-                style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; box-sizing: border-box; padding: 20px;">
-              <table border="0" cellpadding="0" cellspacing="0"
-                     style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
-                <tr>
-                  <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top;">
-                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      Hello,</p>
-                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      There have been some changes to the ledger for {{ society_name }}. These are listed below.</p>
-                    {% for cost_code in cost_codes.keys() %}
-                    <h3 style="margin-bottom: 5px">{{ cost_code }}</h3>
-                    <table class="blueTable">
-                      <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th style="text-align: left">Description</th>
-                        <th>Amount</th>
-                      </tr>
-                      </thead>
-                      <tbody>
-                      {% for entry in cost_codes[cost_code] %}
-                      <tr>
-                        <td>{{ entry[0] }}</td>
-                        <td style="text-align: left">{{ entry[1] }}</td>
-                        {% if "-" in entry[2] %}
-                        <td style="color: darkred">{{ entry[2] }}</td>
-                        {% else %}
-                        <td>{{ entry[2] }}</td>
-                        {% endif %}
-                      </tr>
-                      {% endfor %}
-                      </tbody>
-                      <tr class="tfoot">
-                        <td colspan="2" style="text-align: left">Total change for {{ cost_code }}</td>
-                        {% if "-" in cost_code_totals[cost_code][0] %}
-                        <td style="color: darkred">{{cost_code_totals[cost_code][0]}}</td>
-                        {% else %}
-                        <td>{{cost_code_totals[cost_code][0]}}</td>
-                        {% endif %}
-                      </tr>
-                      <tr class="tfoot" style="border-top: none">
-                        <td colspan="2" style="text-align: left; font-size: 15px">Total balance for {{ cost_code }}</td>
-                        {% if "-" in cost_code_totals[cost_code][1] %}
-                        <td style="color: darkred; font-size: 15px">{{cost_code_totals[cost_code][1]}}</td>
-                        {% else %}
-                        <td style="font-size: 15px">{{cost_code_totals[cost_code][1]}}</td>
-                        {% endif %}
-                      </tr>
-                    </table>
-                    <br>
-                    {% endfor %}
-                    {% if "-" in cost_code_totals["grand_total"][0] %}
-                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      The sum of the above changes in the ledger is <b style="color: darkred">{{cost_code_totals["grand_total"][0]}}</b>.
-                    </p>
-                    {% else %}
-                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      The sum of the above changes in the ledger is <b>{{cost_code_totals["grand_total"][0]}}</b>.</p>
-                    {% endif %}
-                    {% if "-" in cost_code_totals["grand_total"][1] %}
-                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      <b style="color: darkred"> The total balance for {{ society_name }} is
-                        {{cost_code_totals["grand_total"][1]}}!</b>.
-                    </p>
-                    {% else %}
-                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      The total balance for {{ society_name }} is <b>{{cost_code_totals["grand_total"][1]}}</b>.</p>
-                    {% endif %}
-                    <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                      Please see the attached PDF ledger for further details, or click the buttons below to open the
-                      uploaded
-                      ledger in Google Sheets & in Google Drive.</p>
-                    <br>
-                    <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary"
-                           style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; box-sizing: border-box;">
-                      <tbody>
-                      <tr>
-                        <td align="left"
-                            style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; padding-bottom: 15px;">
-                          <table border="0" cellpadding="0" cellspacing="20px"
-                                 style="border-collapse: separate; width: 100%">
-                            <tbody style="width: 100%">
-                            <tr>
-                              <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; border-radius: 5px; text-align: center; width: 50%">
-                                <a href="{{ sheet_url }}" target="_blank"
-                                   style="width: 85%; display: inline-block; color: #ffffff; background-color: #1B73CA; border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 16px; font-weight: bold; margin: 5px; padding: 12px 15px; border-color: #1B73CA">Open
-                                  the ledger<br>in Google Sheets</a></td>
-                              <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; border-radius: 5px; text-align: center; width: 50%">
+              <!-- START MAIN CONTENT AREA -->
+              <tr>
+                  <td class="wrapper"
+                      style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; box-sizing: border-box; padding: 20px;">
+                      <table border="0" cellpadding="0" cellspacing="0"
+                             style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
+                          <tr>
+                              <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top;">
+                                  <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                                      Hello,</p>
+                                  <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                                      There have been some changes to the ledger for {{ society_name }}. These are
+                                      listed
+                                      below.</p>
+
+                                  {# For each cost code #}
+                                  {# Create the table header #}
+                                  {% for cost_code in cost_codes.keys() %}
+                                      <h3 style="margin-bottom: 5px">{{ cost_code }}</h3>
+                                      <table class="blueTable">
+                                          <thead>
+                                          <tr>
+                                              <th>Date</th>
+                                              <th style="text-align: left">Description</th>
+                                              <th>Amount</th>
+                                          </tr>
+                                          </thead>
+                                          <tbody>
+
+                                          {# For each entry in the cost code #}
+                                          {% for entry in cost_codes[cost_code] %}
+                                              <tr>
+                                                  <td>{{ entry[0] }}</td>
+                                                  <td style="text-align: left">{{ entry[1] }}</td>
+                                                  {% if "-" in entry[2] %}
+                                                      <td style="color: darkred">{{ entry[2] }}</td>
+                                                  {% else %}
+                                                      <td>{{ entry[2] }}</td>
+                                                  {% endif %}
+                                              </tr>
+                                          {% endfor %}
+
+                                          {# Create the table footer #}
+                                          </tbody>
+                                          <tr class="tfoot">
+                                              <td colspan="2" style="text-align: left">Total change
+                                                  for {{ cost_code }}</td>
+                                              {% if "-" in cost_code_totals[cost_code][0] %}
+                                                  <td style="color: darkred">{{ cost_code_totals[cost_code][0] }}</td>
+                                              {% else %}
+                                                  <td>{{ cost_code_totals[cost_code][0] }}</td>
+                                              {% endif %}
+                                          </tr>
+                                          <tr class="tfoot" style="border-top: none">
+                                              <td colspan="2" style="text-align: left; font-size: 15px">Total balance
+                                                  for {{ cost_code }}</td>
+                                              {% if "-" in cost_code_totals[cost_code][1] %}
+                                                  <td style="color: darkred; font-size: 15px">{{ cost_code_totals[cost_code][1] }}</td>
+                                              {% else %}
+                                                  <td style="font-size: 15px">{{ cost_code_totals[cost_code][1] }}</td>
+                                              {% endif %}
+                                          </tr>
+                                      </table>
+                                      <br>
+                                  {% endfor %}
+
+                                  {# Print the total change #}
+                                  {% if "-" in cost_code_totals["grand_total"][0] %}
+                                      <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                                          The sum of the above changes in the ledger is <b
+                                              style="color: darkred">{{ cost_code_totals["grand_total"][0] }}</b>.
+                                      </p>
+                                  {% else %}
+                                      <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                                          The sum of the above changes in the ledger is
+                                          <b>{{ cost_code_totals["grand_total"][0] }}</b>.</p>
+                                  {% endif %}
+
+                                  {# Print the total balance #}
+                                  {% if "-" in cost_code_totals["grand_total"][1] %}
+                                      <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                                          <b style="color: darkred"> The total balance for {{ society_name }} is
+                                              {{ cost_code_totals["grand_total"][1] }}</b>{{ cost_code_totals["grand_total"][2] }}
+                                      </p>
+                                  {% else %}
+                                      <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                                          The total balance for {{ society_name }} is
+                                          <b>{{ cost_code_totals["grand_total"][1] }}</b>{{ cost_code_totals["grand_total"][2] }}
+                                      </p>
+                                  {% endif %}
+
+                                  {# Print the buttons #}
+                                  <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
+                                      Please see the attached PDF ledger for further details, or click the buttons below
+                                      to
+                                      open the
+                                      uploaded
+                                      ledger in Google Sheets & in Google Drive.</p>
+                                  <br>
+                                  <table border="0" cellpadding="0" cellspacing="0" class="btn btn-primary"
+                                         style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; box-sizing: border-box;">
+                                      <tbody>
+                                      <tr>
+                                          <td align="left"
+                                              style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; padding-bottom: 15px;">
+                                              <table border="0" cellpadding="0" cellspacing="20px"
+                                                     style="border-collapse: separate; width: 100%">
+                                                  <tbody style="width: 100%">
+                                                  <tr>
+                                                      <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; border-radius: 5px; text-align: center; width: 50%">
+                                                          <a href="{{ sheet_url }}" target="_blank"
+                                                             style="width: 85%; display: inline-block; color: #ffffff; background-color: #1B73CA; border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 16px; font-weight: bold; margin: 5px; padding: 12px 15px; border-color: #1B73CA">Open
+                                                              the ledger<br>in Google Sheets</a></td>
+                                                      <td style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; vertical-align: top; border-radius: 5px; text-align: center; width: 50%">
                                 <a href="{{ pdf_url }}" target="_blank"
                                    style="width: 85%; display: inline-block; color: #ffffff; background-color: #1B73CA; border: solid 1px #1B73CA; border-radius: 5px; box-sizing: border-box; cursor: pointer; text-decoration: none; font-size: 16px; font-weight: bold; margin: 5px; padding: 12px 15px; border-color: #1B73CA">Open
-                                  the PDF ledger<br>in Google Drive</a></td>
-                            </tr>
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                      </tbody>
-                    </table>
+                                    the PDF ledger<br>in Google Drive</a></td>
+                                                  </tr>
+                                                  </tbody>
+                                              </table>
+                                          </td>
+                                      </tr>
+                                      </tbody>
+                                  </table>
+
+
+                              </td>
+                          </tr>
+                      </table>
                   </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+              </tr>
 
-          <!-- END MAIN CONTENT AREA -->
-        </table>
+              <!-- END MAIN CONTENT AREA -->
+          </table>
 
-        <!-- START FOOTER -->
-        <div class="footer" style="clear: both; Margin-top: 10px; text-align: center; width: 100%;">
-          <table border="0" cellpadding="0" cellspacing="0"
-                 style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
-            <tr>
-              <td class="content-block"
-                  style="font-family: Tahoma, Helvetica, sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; font-size: 12px; color: #999999; text-align: center;">
-                <span class="apple-link" style="color: #999999; font-size: 12px; text-align: center;">This email was sent automatically by a computer program.<br>If you want to leave some feedback then please reply directly to it.</span>
-              </td>
-            </tr>
-            <tr>
+          <!-- START FOOTER -->
+          <div class="footer" style="clear: both; Margin-top: 10px; text-align: center; width: 100%;">
+              <table border="0" cellpadding="0" cellspacing="0"
+                     style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%;">
+                  <tr>
+                      <td class="content-block"
+                          style="font-family: Tahoma, Helvetica, sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; font-size: 12px; color: #999999; text-align: center;">
+                          <span class="apple-link" style="color: #999999; font-size: 12px; text-align: center;">This email was sent automatically by a computer program.<br>If you want to leave some feedback then please reply directly to it.</span>
+                      </td>
+                  </tr>
+                  <tr>
               <td class="content-block powered-by"
                   style="font-family: sans-serif; vertical-align: top; padding-bottom: 10px; padding-top: 10px; font-size: 12px; color: #999999; text-align: center;">
                 Powered by <a href="http://htmlemail.io"
