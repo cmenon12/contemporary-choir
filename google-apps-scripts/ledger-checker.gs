@@ -10,6 +10,17 @@
 /**
  * This function checks if there are any new entries in the sheet,
  * and if so returns a list of them all, tagged with their cost code.
+ * It also returns the new sheet ID and the cost code totals.
+ *
+ * The returned array (changes) has the structure:
+ * [sheetId,
+ *  [Entry cost code, Entry date, Entry description, £in, £out],
+ *  [Entry cost code, Entry date, Entry description, £in, £out],
+ *  [Entry cost code, Entry date, Entry description, £in, £out],
+ *  [[Cost code 1, £in, £out, £balance, lastRowNumber],
+ *   [Cost code 2, £in, £out, £balance, lastRowNumber],
+ *   [Cost code 3, £in, £out, £balance, lastRowNumber],
+ *   [Society name, £totalIn, £totalOut, £totalBalance, lastRowNumber, balanceBroughtForward]]]
  */
 function checkForNewTotals(sheetName) {
 
@@ -55,6 +66,7 @@ function checkForNewTotals(sheetName) {
   changes.push(newCostCodeTotals)
   Logger.log(changes)
   return changes;
+
 }
 
 
@@ -62,6 +74,11 @@ function checkForNewTotals(sheetName) {
  * This function is used to search for changes in the newSheet compared
  * with the oldSheet (not vice-versa). It will categorise them by cost
  * code and return them.
+ *
+ * The returned array (changes) has the structure:
+ * [[Entry cost code, Entry date, Entry description, £in, £out],
+ *  [Entry cost code, Entry date, Entry description, £in, £out],
+ *  [Entry cost code, Entry date, Entry description, £in, £out]]
  */
 function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
 
@@ -109,12 +126,21 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
     }
   }
   Logger.log("Finished comparing sheets!")
+  Logger.log(changes)
   return changes;
+
 }
+
 
 /**
  * This function retrieves the total income, expenditure, and balance for
  * each cost code, as well as the grand total for the entire ledger.
+ *
+ * The returned array (costCodeTotals) has the structure:
+ * [[Cost code 1, £in, £out, £balance, lastRowNumber],
+ *  [Cost code 2, £in, £out, £balance, lastRowNumber],
+ *  [Cost code 3, £in, £out, £balance, lastRowNumber],
+ *  [Society name, £totalIn, £totalOut, £totalBalance, lastRowNumber, balanceBroughtForward]]
  */
 function getCostCodeTotals(sheet) {
 
@@ -135,6 +161,11 @@ function getCostCodeTotals(sheet) {
       foundRanges[i].offset(1, 2).getValue(),
       foundRanges[i].getRow()])
   }
+
+  // Get the Balance Brought Forward and add it to the grand total cost code
+  var balanceBroughtForward = foundRanges[foundRanges.length - 1].offset(2, 2).getValue();
+  costCodeTotals[costCodeTotals.length - 1].push(balanceBroughtForward)
+
   Logger.log(costCodeTotals)
   return costCodeTotals
 
