@@ -130,7 +130,7 @@ def prepare_email_body(config: configparser.SectionProxy,
     if changes[-1][-1][5] != 0:
         balance_brought_forward = format_currency(float(changes[-1][-1][5]),
                                                   'GBP', locale='en_GB')
-        cost_code_totals["grand_total"].append(", including %s that was brought forward." %
+        cost_code_totals["grand_total"].append(" including %s that was brought forward." %
                                                balance_brought_forward)
     else:
         cost_code_totals["grand_total"].append(".")

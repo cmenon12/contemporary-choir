@@ -94,7 +94,7 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
     cell = newSheet.getRange(row, 1);
     cellValue = String(cell.getValue());
 
-    // If we still haven't pased the first header row then skip it
+    // If we still haven't passed the first header row then skip it
     if (passedHeader == false) {
       if (cellValue == "Date") {
         passedHeader = true;
@@ -165,6 +165,9 @@ function getCostCodeTotals(sheet) {
   // Get the Balance Brought Forward and add it to the grand total cost code
   var balanceBroughtForward = foundRanges[foundRanges.length - 1].offset(2, 2).getValue();
   costCodeTotals[costCodeTotals.length - 1].push(balanceBroughtForward)
+
+  // Replace the grand total with the closing balance (which includes the Balance Brought Forward)
+  costCodeTotals[costCodeTotals.length - 1][3] = foundRanges[foundRanges.length - 1].offset(3, 2).getValue();
 
   Logger.log(costCodeTotals)
   return costCodeTotals
