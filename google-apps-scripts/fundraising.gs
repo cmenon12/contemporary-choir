@@ -21,14 +21,14 @@ function maddyBakes() {
   const URL = "https://www.gofundme.com/f/letterbox-bakes-for-macmillan-cancer-support";
 
   // Make the GET request
-  var response = UrlFetchApp.fetch(URL);
-  var status = response.getResponseCode();
-  var html = response.getContentText();
+  const response = UrlFetchApp.fetch(URL);
+  const status = response.getResponseCode();
+  const html = response.getContentText();
 
   // If successful then extract the amount and number of donors
   if (status == 200) {
-    var regex = /(\"current_amount\":\d{1,})/
-    var match = html.match(regex)[0];
+    let regex = /("current_amount\":\d{1,})/;
+    let match = html.match(regex)[0];
     regex = /\d{1,}/
     var amount = Number(match.match(regex)[0])
     Logger.log(amount);
@@ -49,7 +49,7 @@ function maddyBakes() {
   // Locate the named range
   var namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
   var range;
-  for (var i=0; i<namedRanges.length; i++) {
+  for (let i = 0; i < namedRanges.length; i++) {
     if (namedRanges[i].getName() == "MaddyBakes") {
       range = namedRanges[i].getRange();
     }
@@ -59,7 +59,7 @@ function maddyBakes() {
   // and fill the range
   if (range != undefined) {
 
-    var amountMinusFeesAndPostage = (amount*0.971)-(0.25*donors)-(POSTAGE_COST*donors);
+    const amountMinusFeesAndPostage = (amount * 0.971) - (0.25 * donors) - (POSTAGE_COST * donors);
     range.setValue(amountMinusFeesAndPostage);
     Logger.log("Updated the named range successfully.");
 
@@ -73,7 +73,7 @@ function maddyBakes() {
  * Adds the Scripts menu to the menu bar at the top.
  */
 function onOpen(e) {
-  var menu = SpreadsheetApp.getUi().createMenu("Scripts");
+  const menu = SpreadsheetApp.getUi().createMenu("Scripts");
   menu.addItem("Update Maddy's Letterbox Bakes", "maddyBakes");
   menu.addToUi();
 }
