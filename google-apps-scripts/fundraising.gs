@@ -16,9 +16,12 @@
  */
 function maddyBakes() {
 
+
   // Constants
   const POSTAGE_COST = 2;
   const URL = "https://www.gofundme.com/f/letterbox-bakes-for-macmillan-cancer-support";
+  let amount;
+  let donors;
 
   // Make the GET request
   const response = UrlFetchApp.fetch(URL);
@@ -27,16 +30,16 @@ function maddyBakes() {
 
   // If successful then extract the amount and number of donors
   if (status == 200) {
-    let regex = /("current_amount\":\d{1,})/;
+    let regex = /("current_amount":\d+)/;
     let match = html.match(regex)[0];
-    regex = /\d{1,}/
-    var amount = Number(match.match(regex)[0])
+    regex = /\d+/
+    amount = Number(match.match(regex)[0]);
     Logger.log(amount);
 
-    regex = /(\"donation_count\":\d{1,})/
+    regex = /("donation_count":\d+)/
     match = html.match(regex)[0];
-    regex = /\d{1,}/
-    var donors = Number(match.match(regex)[0]);
+    regex = /\d+/
+    donors = Number(match.match(regex)[0]);
     Logger.log(donors);
 
     // Otherwise log the error and stop
@@ -47,8 +50,8 @@ function maddyBakes() {
   }
 
   // Locate the named range
-  var namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
-  var range;
+  const namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
+  let range;
   for (let i = 0; i < namedRanges.length; i++) {
     if (namedRanges[i].getName() == "MaddyBakes") {
       range = namedRanges[i].getRange();
@@ -72,7 +75,7 @@ function maddyBakes() {
 /**
  * Adds the Scripts menu to the menu bar at the top.
  */
-function onOpen(e) {
+function onOpen() {
   const menu = SpreadsheetApp.getUi().createMenu("Scripts");
   menu.addItem("Update Maddy's Letterbox Bakes", "maddyBakes");
   menu.addToUi();

@@ -25,31 +25,31 @@
 function checkForNewTotals(sheetName) {
 
   // Get the spreadsheet & sheet
-  var spreadsheet = SpreadsheetApp.getActive();
-  var newSheet = spreadsheet.getSheetByName(sheetName)
+  const spreadsheet = SpreadsheetApp.getActive();
+  const newSheet = spreadsheet.getSheetByName(sheetName)
   Logger.log("Looking at the sheet called " + newSheet.getName())
 
   // Find the income & expenditure for each cost code
-  var newCostCodeTotals = getCostCodeTotals(newSheet)
+  const newCostCodeTotals = getCostCodeTotals(newSheet);
 
   // Format the sheet neatly, and rename it to reflect that this is automated
   formatNeatlyWithSheet(newSheet)
   newSheet.setName(newSheet.getName() + " auto")
 
   // Locate the named range with the URL to the old sheet
-  var namedRanges = spreadsheet.getNamedRanges();
-  var url;
-  for (var i=0; i<namedRanges.length; i++) {
+  const namedRanges = spreadsheet.getNamedRanges();
+  let url;
+  for (let i = 0; i < namedRanges.length; i++) {
     if (namedRanges[i].getName() == "DefaultUrl") {
       url = namedRanges[i].getRange().getValue();
     }
   }
 
   // Find the total income and expense in the Original (the one that we are comparing against)
-  var oldSpreadsheet = SpreadsheetApp.openByUrl(url);
+  const oldSpreadsheet = SpreadsheetApp.openByUrl(url);
   Logger.log("Script has opened spreadsheet " + url);
-  var oldSheet = oldSpreadsheet.getSheetByName("Original");
-  var oldCostCodeTotals = getCostCodeTotals(oldSheet);
+  const oldSheet = oldSpreadsheet.getSheetByName("Original");
+  const oldCostCodeTotals = getCostCodeTotals(oldSheet);
 
   // If there's no difference then stop and delete the sheet
   if (newCostCodeTotals[newCostCodeTotals.length - 1][1] == oldCostCodeTotals[oldCostCodeTotals.length - 1][1] &&
@@ -61,7 +61,7 @@ function checkForNewTotals(sheetName) {
 
   // If there is a difference then make comparisons and return the changes
   Logger.log("There is a difference in the total income and/or expenditure!")
-  var changes = compareLedgersWithCostCodes(newSheet, oldSheet, newCostCodeTotals)
+  const changes = compareLedgersWithCostCodes(newSheet, oldSheet, newCostCodeTotals);
   changes.unshift(newSheet.getSheetId())
   changes.push(newCostCodeTotals)
   Logger.log(changes)
@@ -84,13 +84,13 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
 
   // Fetch the old sheet and it's values
   // This saves making multiple requests, which is slow
-  var oldSheetValues = oldSheet.getSheetValues(1, 1, oldSheet.getLastRow(), 4);
+  const oldSheetValues = oldSheet.getSheetValues(1, 1, oldSheet.getLastRow(), 4);
 
-  var passedHeader = false;
-  var cell;
-  var cellValue;
-  var changes = [];
-  for (var row = 1; row<=newSheet.getLastRow(); row+=1) {
+  let passedHeader = false;
+  let cell;
+  let cellValue;
+  const changes = [];
+  for (let row = 1; row <= newSheet.getLastRow(); row += 1) {
     cell = newSheet.getRange(row, 1);
     cellValue = String(cell.getValue());
 
@@ -104,7 +104,7 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
       // Compare it with the original/old sheet
       // Comparing all rows allows us to identify changes in the totals too
     } else {
-      var isNew = compareWithOld(row, oldSheetValues, newSheet);
+      const isNew = compareWithOld(row, oldSheetValues, newSheet);
 
       // If it is a new row and has a date then save it with its cost code
       if (isNew && isADate(newSheet.getRange(row, 1).getValue())) {
@@ -112,7 +112,7 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
         newSheet.getRange(row, 1, 1, 4).setBackground("#FFA500");
 
         // Identify the relevant cost code and save it
-        for (var i = 0; i < costCodes.length; i++) {
+        for (let i = 0; i < costCodes.length; i++) {
           if (row < costCodes[i][4]) {
             changes.push([costCodes[i][0],
               newSheet.getRange(row, 1).getValue(),
@@ -144,13 +144,13 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
  */
 function getCostCodeTotals(sheet) {
 
-  var costCodeTotals = [];
-  var costCode;
+  const costCodeTotals = [];
+  let costCode;
 
   // Search for the total for each cost code (and the grand total)
-  var finder = sheet.createTextFinder("Totals for ").matchEntireCell(false)
-  var foundRanges = finder.findAll()
-  for (var i=0; i< foundRanges.length; i++) {
+  const finder = sheet.createTextFinder("Totals for ").matchEntireCell(false);
+  const foundRanges = finder.findAll();
+  for (let i = 0; i < foundRanges.length; i++) {
 
     // Get the name of the cost code
     costCode = String(foundRanges[i].getValue()).replace("Totals for ", "")
@@ -163,7 +163,7 @@ function getCostCodeTotals(sheet) {
   }
 
   // Get the Balance Brought Forward and add it to the grand total cost code
-  var balanceBroughtForward = foundRanges[foundRanges.length - 1].offset(2, 2).getValue();
+  const balanceBroughtForward = foundRanges[foundRanges.length - 1].offset(2, 2).getValue();
   costCodeTotals[costCodeTotals.length - 1].push(balanceBroughtForward)
 
   // Replace the grand total with the closing balance (which includes the Balance Brought Forward)

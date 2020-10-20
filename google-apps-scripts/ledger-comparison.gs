@@ -7,8 +7,9 @@
   =============================================================================
  */
 
-var spreadsheet = SpreadsheetApp.getActive();
-var sheet = spreadsheet.getActiveSheet();
+const spreadsheet = SpreadsheetApp.getActive();
+const sheet = spreadsheet.getActiveSheet();
+const ui = SpreadsheetApp.getUi();
 
 /**
  * Does everything at once: the formatting and the comparison.
@@ -20,9 +21,9 @@ function processWithDefaultUrl() {
   formatNeatly();
 
   // Locate the named range
-  var namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
-  var url;
-  for (var i=0; i<namedRanges.length; i++) {
+  const namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
+  let url;
+  for (let i = 0; i < namedRanges.length; i++) {
     if (namedRanges[i].getName() == "DefaultUrl") {
       url = namedRanges[i].getRange().getValue();
     }
@@ -30,7 +31,6 @@ function processWithDefaultUrl() {
 
   compareLedgers(url);
   copyToLedger(url);
-  var ui = SpreadsheetApp.getUi();
   ui.alert("Complete!",
       "The process completed successfully. " +
       "You can view the logs here: " +
@@ -44,18 +44,19 @@ function processWithDefaultUrl() {
  * https://stackoverflow.com/questions/10744760/google-apps-script-to-open-a-url
  */
 function openUrl(url) {
-  var html = HtmlService.createHtmlOutput('<html><script>'
+  const html = HtmlService.createHtmlOutput('<html lang="en-GB"><script>'
       + 'window.close = function(){window.setTimeout(function(){google.script.host.close()},9)};'
-      + 'var a = document.createElement("a"); a.href="' + url + '"; a.target="_blank";'
+      + 'let a = document.createElement("a"); a.href="' + url + '"; a.target="_blank";'
       + 'if(document.createEvent){'
-      + '  var event=document.createEvent("MouseEvents");'
+      + '  let event=document.createEvent("MouseEvents");'
       + '  if(navigator.userAgent.toLowerCase().indexOf("firefox")>-1){window.document.body.append(a)}'
       + '  event.initEvent("click",true,true); a.dispatchEvent(event);'
       + '}else{ a.click() }'
       + 'close();'
       + '</script>'
       // Offer URL as clickable link in case above code fails.
-      + '<body style="word-break:break-word;font-family:sans-serif;">Failed to open automatically. <a href="' + url + '" target="_blank" onclick="window.close()">Click here to proceed</a>.</body>'
+      + '<body style="word-break:break-word;font-family:sans-serif;">Failed to open automatically. '
+      + '<a href="' + url + '" target="_blank" onclick="window.close()">Click here to proceed</a>.</body>'
       + '<script>google.script.host.setHeight(40);google.script.host.setWidth(410)</script>'
       + '</html>')
       .setWidth(90).setHeight(1);
@@ -75,17 +76,17 @@ function isADate(value) {
  * appears in the oldSheet.
  * Returns true if it's new, or false if it's old.
  */
-function compareWithOld(row, oldSheetValues, newSheet) {
+function compareWithOld(row, oldSheetValues, newSheet = undefined) {
 
   // If newSheet has been supplied then use it, otherwise use the default
-  var rowValues;
+  let rowValues;
   if (newSheet == undefined) {
     rowValues = sheet.getSheetValues(row, 1, 1, 4)[0];
   } else {
     rowValues = newSheet.getSheetValues(row, 1, 1, 4)[0];
   }
-  var newRow = true;
-  for (i=0; i<oldSheetValues.length; i+=1) {
+  let newRow = true;
+  for (let i = 0; i < oldSheetValues.length; i += 1) {
     if (rowValues.toString() == oldSheetValues[i].toString()) {
       newRow = false;
       break;
@@ -103,16 +104,15 @@ function compareWithOld(row, oldSheetValues, newSheet) {
 function showPrompt() {
 
   // Create the prompt and save the result
-  var ui = SpreadsheetApp.getUi();
-  var result = ui.prompt(
+  const result = ui.prompt(
       "Do you want to use the default URL?",
       "If No then enter a new one, otherwise the default will be used. " +
       "Click Cancel to abort.",
       ui.ButtonSet.YES_NO_CANCEL);
 
   // Process the user's response
-  var button = result.getSelectedButton();
-  var url = result.getResponseText();
+  const button = result.getSelectedButton();
+  let url = result.getResponseText();
 
   // If the user wants to use a different URL
   if (button == ui.Button.NO) {
@@ -133,38 +133,38 @@ function showPrompt() {
  * The sheet in the other spreadsheet must be called Original.
  * The sheet in this sheet must be the newer version. The Original sheet is
  * not modified.
- * This will highlight all the rows, and unhighlight them as it progresses.
+ * This will highlight all the rows, and un-highlight them as it progresses.
  * Changed rows will be highlighted in red.
  * Note that any differences in whitespace will be recognised as a difference.
-*/
+ */
 function compareLedgers(url) {
 
   // Fetch the old sheet and it's values
   // This saves making multiple requests, which is slow
-  var originalSpreadsheet = SpreadsheetApp.openByUrl(url);
+  const originalSpreadsheet = SpreadsheetApp.openByUrl(url);
   Logger.log("Script has opened spreadsheet " + url);
-  var originalSheet = originalSpreadsheet.getSheetByName("Original");
-  var originalSheetValues = originalSheet.getSheetValues(1, 1, originalSheet.getLastRow(), 4);
+  const originalSheet = originalSpreadsheet.getSheetByName("Original");
+  const originalSheetValues = originalSheet.getSheetValues(1, 1, originalSheet.getLastRow(), 4);
 
-  var passedHeader = false;
-  var cell;
-  var cellValue;
-  for (row = 1; row<=sheet.getLastRow(); row+=1) {
+  let passedHeader = false;
+  let cell;
+  let cellValue;
+  for (let row = 1; row <= sheet.getLastRow(); row += 1) {
     cell = sheet.getRange(row, 1);
     cellValue = String(cell.getValue());
 
-    // If we still haven't pased the first header row then skip it
+    // If we still haven't passed the first header row then skip it
     if (passedHeader == false) {
       if (cellValue == "Date") {
         passedHeader = true;
-        sheet.getRange(row+1, 1, sheet.getLastRow()-row-1).setBackground("green");
+        sheet.getRange(row + 1, 1, sheet.getLastRow() - row - 1).setBackground("green");
       }
 
 
       // Compare it with the original/old sheet
       // Comparing all rows allows us to identify changes in the totals too
     } else {
-      var isNew = compareWithOld(row, originalSheetValues);
+      const isNew = compareWithOld(row, originalSheetValues);
 
       // If it is a new row then colour it
       if (isNew) {
@@ -190,14 +190,14 @@ function compareLedgers(url) {
 function copyToLedger(url) {
 
   // Gets the ledger spreadsheet
-  var ledgerSpreadsheet = SpreadsheetApp.openByUrl(url);
+  const ledgerSpreadsheet = SpreadsheetApp.openByUrl(url);
   Logger.log("Script has opened spreadsheet " + url);
 
   // Copies to the ledger spreadsheet
-  var newSheet = sheet.copyTo(ledgerSpreadsheet);
+  const newSheet = sheet.copyTo(ledgerSpreadsheet);
 
   // Remove protections from the old Original sheet and delete it
-  var oldOriginalSheet = ledgerSpreadsheet.getSheetByName("Original")
+  const oldOriginalSheet = ledgerSpreadsheet.getSheetByName("Original");
   oldOriginalSheet.protect().remove();
   ledgerSpreadsheet.deleteSheet(oldOriginalSheet);
 
@@ -208,15 +208,14 @@ function copyToLedger(url) {
   Logger.log("Finished copying the sheet to the ledger spreadsheet.")
 
   // Ask the user if they want to open the new sheet
-  var ui = SpreadsheetApp.getUi();
-  var result = ui.alert(
+  const result = ui.alert(
       "Do you want to open the ledger?",
       "This will open the ledger in a new tab.",
       ui.ButtonSet.YES_NO);
 
   // Open it if the user want to
   if (result == ui.Button.YES) {
-    var sheetUrl = url + "#gid=" + newSheet.getSheetId();
+    const sheetUrl = url + "#gid=" + newSheet.getSheetId();
     openUrl(sheetUrl);
   }
 }
@@ -225,7 +224,7 @@ function copyToLedger(url) {
  * Prompt the user for a URL and then run compareLedgers(url).
  */
 function compareLedgersGetUrl() {
-  var url = showPrompt()
+  const url = showPrompt();
   if (url == false) {
     return;
   }
@@ -236,7 +235,7 @@ function compareLedgersGetUrl() {
  * Prompt the user for a URL and then run copyToLedger(url).
  */
 function copyToLedgerGetUrl() {
-  var url = showPrompt()
+  const url = showPrompt();
   if (url == false) {
     return;
   }
@@ -268,7 +267,7 @@ function formatNeatly() {
  * Formats the ledger neatly.
  * This can be used with any sheet (not necessarily the active one)
  * This function renames the sheet, resizes the columns,
- * removes unnecesary headers, and removes excess columns & rows.
+ * removes unnecessary headers, and removes excess columns & rows.
  */
 function formatNeatlyWithSheet(thisSheet) {
 
@@ -279,11 +278,11 @@ function formatNeatlyWithSheet(thisSheet) {
   thisSheet.setTabColor("white")
 
   // Rename the sheet
-  var dateString = "\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d \\d\\d:\\d\\d:\\d\\d"
-  var finder = thisSheet.createTextFinder(dateString).matchEntireCell(true).useRegularExpression(true)
-  var foundRange = finder.findNext()
+  const dateString = "\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d \\d\\d:\\d\\d:\\d\\d";
+  let finder = thisSheet.createTextFinder(dateString).matchEntireCell(true).useRegularExpression(true);
+  let foundRange = finder.findNext();
   foundRange.setNumberFormat("@")
-  var datetime = foundRange.getValue()
+  const datetime = foundRange.getValue();
   thisSheet.setName(datetime)
 
   // Resize the columns
@@ -294,16 +293,16 @@ function formatNeatlyWithSheet(thisSheet) {
 
   // Get all occurrences of UNIV01 (except for the first one)
   finder = thisSheet.createTextFinder("UNIV01")
-  var matches = finder.findAll()
+  const matches = finder.findAll();
   matches.shift()
   matches.reverse() // start at the bottom to avoid changing future ranges
 
   // Remove each of these headers
   // If the totals are on a new page with no entries, then we should delete one less row
-  for (i = 0; i<matches.length; i+=1) {
-    row = matches[i].getRow()-2
-    if (matches[i].offset(3,0).getValue() != "") {
-      thisSheet.deleteRows(row,5)
+  for (let i = 0; i < matches.length; i += 1) {
+    let row = matches[i].getRow() - 2
+    if (matches[i].offset(3, 0).getValue() != "") {
+      thisSheet.deleteRows(row, 5)
       Logger.log("Deleted five rows starting at row " + row)
     } else {
       thisSheet.deleteRows(row, 6)
