@@ -9,7 +9,6 @@
 
 const spreadsheet = SpreadsheetApp.getActive();
 const sheet = spreadsheet.getActiveSheet();
-const ui = SpreadsheetApp.getUi();
 
 /**
  * Does everything at once: the formatting and the comparison.
@@ -31,6 +30,7 @@ function processWithDefaultUrl() {
 
   compareLedgers(url);
   copyToLedger(url);
+  const ui = SpreadsheetApp.getUi();
   ui.alert("Complete!",
       "The process completed successfully. " +
       "You can view the logs here: " +
@@ -104,6 +104,7 @@ function compareWithOld(row, oldSheetValues, newSheet = undefined) {
 function showPrompt() {
 
   // Create the prompt and save the result
+  const ui = SpreadsheetApp.getUi();
   const result = ui.prompt(
       "Do you want to use the default URL?",
       "If No then enter a new one, otherwise the default will be used. " +
@@ -208,6 +209,7 @@ function copyToLedger(url) {
   Logger.log("Finished copying the sheet to the ledger spreadsheet.")
 
   // Ask the user if they want to open the new sheet
+  const ui = SpreadsheetApp.getUi();
   const result = ui.alert(
       "Do you want to open the ledger?",
       "This will open the ledger in a new tab.",
