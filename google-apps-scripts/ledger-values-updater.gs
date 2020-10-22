@@ -113,6 +113,64 @@ function getNewCostCodeValues() {
 
 }
 
+
+/**
+ * Compare the named ranges with the new values,
+ * and return those that have changed.
+ */
+function compareNamedRanges(namedRanges, newValues) {
+
+  const changedRanges = {};
+
+  for (let key in namedRanges) {
+
+    // If the value has changed then save it
+    if (namedRanges[key].getValue() != newValues[key]) {
+
+      // This saves [old value, new value, Range]
+      changedRanges[key] = [namedRanges[key].getValue(), newValues[key], namedRanges[key]]
+
+      Logger.log(key + " has changed");
+      Logger.log("old:" + namedRanges[key].getValue() + ", new:" + newValues[key]);
+    }
+  }
+
+  return changedRanges;
+}
+
+
+function getUserConsent(changedValues) {
+}
+
+
+function updateNamedRanges(changedRanges) {
+}
+
+
+function runWithConsent() {
+
+  const namedRanges = getNamedRangesFromSheet();
+  const newValues = getNewCostCodeValues();
+  const changedRanges = compareNamedRanges(namedRanges, newValues);
+
+  if (Object.keys(changedRanges).length > 0 && getUserConsent(changedRanges) === true) {
+    updateNamedRanges(changedRanges)
+  }
+}
+
+
+function runWithoutConsent() {
+
+  const namedRanges = getNamedRangesFromSheet();
+  const newValues = getNewCostCodeValues();
+  const changedRanges = compareNamedRanges(namedRanges, newValues);
+
+  if (Object.keys(changedRanges).length > 0) {
+    updateNamedRanges(changedRanges)
+  }
+}
+
+
 /**
  * Creates the menu.
  */
@@ -122,5 +180,3 @@ function onOpen() {
       .addItem("getNewCostCodeValues", "getNewCostCodeValues")
       .addToUi();
 }
-
-
