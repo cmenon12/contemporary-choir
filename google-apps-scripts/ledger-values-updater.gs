@@ -7,15 +7,18 @@
   =============================================================================
  */
 
+// The name of the sheet with these named ranges.
+const NAMED_RANGES_SHEET_NAME = "Values";
+
+// The name of the sheet with the imported ledger
+const LEDGER_SHEET_NAME = "Original";
+
 /**
  * Locates and returns the named ranges that we'll want to update.
  * These are the named ranges in the Values sheet that will also appear
  * in the PDF ledger.
  */
 function getNamedRangesFromSheet() {
-
-  // The name of the sheet with these named ranges.
-  const NAMED_RANGES_SHEET_NAME = "Values";
 
   // Define the sheet and get the named ranges.
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
@@ -50,13 +53,11 @@ function getNamedRangesFromSheet() {
 
 /**
  * Extracts the income, expenditure, and balance for each cost code.
- * This also includes the total income, expenditure, and balance, as well as the balance brought forward.
+ * This also includes the total income, expenditure, and balance,
+ * as well as the balance brought forward.
  * It also groups all of the individual TOMS cost codes together.
  */
 function getNewCostCodeValues() {
-
-  // The name of the sheet with the imported ledger
-  const LEDGER_SHEET_NAME = "Original";
 
   // Define the sheet and get the named ranges.
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
@@ -87,7 +88,7 @@ function getNewCostCodeValues() {
       costCodeValues["TOMSBalance"] += foundRanges[i].offset(1, 2).getValue()
 
       // If it's the last element then this must be the grand total
-      // This uses the cost code name Total and includes the balance brought forward
+      // This uses the name Total and includes the balance brought forward
     } else if (i == foundRanges.length - 1) {
       costCodeValues["TotalIncome"] = foundRanges[i].offset(0, 1).getValue()
       costCodeValues["TotalExpenditure"] = foundRanges[i].offset(0, 2).getValue()
@@ -128,12 +129,16 @@ function compareNamedRanges(namedRanges, newValues) {
     if (namedRanges[key].getValue() != newValues[key]) {
 
       // This saves [old value, new value, Range]
-      changedRanges[key] = [namedRanges[key].getValue(), newValues[key], namedRanges[key]]
+      changedRanges[key] = [namedRanges[key].getValue(),
+        newValues[key], namedRanges[key]]
 
-      Logger.log(key + " has changed");
-      Logger.log("old:" + namedRanges[key].getValue() + ", new:" + newValues[key]);
+      Logger.log(key + " has changed: old:" +
+          namedRanges[key].getValue() + ", new:" + newValues[key]);
     }
   }
+
+  Logger.log("There are " + Object.keys(changedRanges).length +
+      " values that have changed.");
 
   return changedRanges;
 }
