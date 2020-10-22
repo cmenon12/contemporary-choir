@@ -143,10 +143,35 @@ function getUserConsent(changedValues) {
 }
 
 
+/**
+ * Update the named ranges with the new values.
+ */
 function updateNamedRanges(changedRanges) {
+
+  // Get the current date and time
+  const now = new Date();
+
+  // For each key in changedRanges
+  for (let key in changedRanges) {
+
+    // Set the range to the new value
+    changedRanges[key][2].setValue(changedRanges[key][1])
+
+    // Set the source to reflect that this is an automatic update
+    changedRanges[key][2].offset(0, 3).setValue("PDF (auto)")
+    //changedRanges[key][2].offset(0, 3).setNote(now)
+
+    Logger.log("Changed " + key + " in " +
+        changedRanges[key][2].getA1Notation() + " from " +
+        changedRanges[key][0] + " to " + changedRanges[key][1]);
+
+  }
+
 }
 
-
+/**
+ * Run the script, and ask the user to confirm the changes to the values.
+ */
 function runWithConsent() {
 
   const namedRanges = getNamedRangesFromSheet();
