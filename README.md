@@ -23,10 +23,10 @@ For the Python Scripts and the Google Apps Scripts:
 
 **[`python-scripts/ledger_fetcher.py`](python-scripts/ledger_fetcher.py)** 
 can be used  to download the society ledger from eXpense365 to your computer (instead of having to use the app). 
-* It can also then convert it from a PDF to an XLSX spreadsheet (using [pdftoexcel.com](https://www.pdftoexcel.com/)) and then upload the newly-converted spreadsheet to a Google Sheet (as a new sheet within a pre-existing spreadsheet). 
+* It can also then convert it from a PDF to an XLSX spreadsheet (using [pdftoexcelconverter.net](https://www.pdftoexcelconverter.net/)) and then upload the newly-converted spreadsheet to a Google Sheet (as a new sheet within a pre-existing spreadsheet). 
 * Finally, it can also upload the PDF ledger to a pre-existing PDF file in Drive by adding it as a new version (and thereby preserving the old versions in the [version history](https://support.google.com/drive/answer/2409045?co=GENIE.Platform%3DDesktop&hl=en#7177508:~:text=Save%20and%20restore%20recent%20versions)). 
 
-*Please note that I'm not affiliated with pdftoexcel.com and that use of their service is bound by their terms & privacy policy - it's just a handy service that I've found can convert the ledger accurately.*
+*Please note that I'm not affiliated with pdftoexcelconverter.net and that use of their service is bound by their terms & privacy policy - it's just a handy service that I've found can convert the ledger accurately.*
 
 
 **[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger on a regular basis and notify the user via email of any changes. 
