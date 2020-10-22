@@ -144,10 +144,6 @@ function compareNamedRanges(namedRanges, newValues) {
 }
 
 
-function getUserConsent(changedValues) {
-}
-
-
 /**
  * Update the named ranges with the new values.
  */
@@ -171,6 +167,44 @@ function updateNamedRanges(changedRanges) {
         changedRanges[key][0] + " to " + changedRanges[key][1]);
 
   }
+
+}
+
+
+function getUserConsent(changedRanges) {
+
+  const css = "table.blueTable{font-family:Tahoma,Geneva,sans-serif;" +
+      "border:1px solid #4aabc4;background-color:#fff;width:100%;tex" +
+      "t-align:center;border-collapse:collapse}table.blueTable td,ta" +
+      "ble.blueTable th{border:1px solid #4aabc4;padding:2px 3px}tab" +
+      "le.blueTable tbody td{font-size:13px;color:#353744}table.blue" +
+      "Table tr:nth-child(even){background:#d0e4f5}table.blueTable t" +
+      "head{background:#4aabc4;border-bottom:2px solid #444}table.bl" +
+      "ueTable thead th{font-size:15px;font-weight:700;color:#fff;bo" +
+      "rder-left:2px solid #d0e4f5}table.blueTable thead th:first-ch" +
+      "ild{border-left:none}table.blueTable tfoot td{font-size:14px}"
+
+  let htmlText = "<html lang='en-GB'><style>" + css + "</style>" +
+      "<table class='blueTable'><thead><tr><th>Named Range</th><th>Old Value</th>" +
+      "<th>New Value</th><th>Difference</th></tr></thead><tbody>"
+
+  let difference;
+  for (let key in changedRanges) {
+
+    difference = (changedRanges[key][1] - changedRanges[key][0]).toFixed(2)
+    htmlText = htmlText + "<tr><td>" + key + "</td><td>" +
+        changedRanges[key][0] + "</td><td>" + changedRanges[key][1] +
+        "</td><td>" + difference + "</td></tr>"
+  }
+
+  htmlText = htmlText + "</tbody></table>";
+
+  Logger.log(htmlText);
+
+  let html = HtmlService.createHtmlOutput(htmlText);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Do you want to make these changes?');
+
+  return false;
 
 }
 
