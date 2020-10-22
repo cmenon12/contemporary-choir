@@ -178,20 +178,35 @@ function runWithConsent() {
   const newValues = getNewCostCodeValues();
   const changedRanges = compareNamedRanges(namedRanges, newValues);
 
-  if (Object.keys(changedRanges).length > 0 && getUserConsent(changedRanges) === true) {
-    updateNamedRanges(changedRanges)
+  // If there are new values then get consent and update them
+  if (Object.keys(changedRanges).length > 0) {
+    if (getUserConsent(changedRanges)) {
+      updateNamedRanges(changedRanges)
+    }
+
+    // Notify the user if no new values were found
+  } else {
+    SpreadsheetApp.getActiveSpreadsheet().toast('No new values were found.');
   }
 }
 
 
+/**
+ * Run the script and make any changes without asking the user first.
+ */
 function runWithoutConsent() {
 
   const namedRanges = getNamedRangesFromSheet();
   const newValues = getNewCostCodeValues();
   const changedRanges = compareNamedRanges(namedRanges, newValues);
 
+  // If there are new values then get consent and update them
   if (Object.keys(changedRanges).length > 0) {
     updateNamedRanges(changedRanges)
+
+    // Notify the user if no new values were found
+  } else {
+    SpreadsheetApp.getActiveSpreadsheet().toast('No new values were found.');
   }
 }
 
@@ -201,7 +216,7 @@ function runWithoutConsent() {
  */
 function onOpen() {
   SpreadsheetApp.getUi().createMenu("Scripts")
-      .addItem("getNamedRangesFromSheet", "getNamedRangesFromSheet")
-      .addItem("getNewCostCodeValues", "getNewCostCodeValues")
+      .addItem("Update values", "runWithoutConsent")
+      .addItem("Update values (ask before making changes)", "runWithConsent")
       .addToUi();
 }
