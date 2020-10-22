@@ -14,29 +14,34 @@
  */
 function getNamedRangesFromSheet() {
 
+  // The name of the sheet with these named ranges.
   const NAMED_RANGES_SHEET_NAME = "Values";
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(NAMED_RANGES_SHEET_NAME);
+  // Define the sheet and get the named ranges.
+  const sheet = SpreadsheetApp.getActiveSpreadsheet()
+      .getSheetByName(NAMED_RANGES_SHEET_NAME);
   const namedRanges = sheet.getNamedRanges();
-  let namedRangesArray = []
+  const namedRangesDict = {};
 
   // For each named range in this sheet
   for (let i = 0; i < namedRanges.length; i++) {
 
     // If the named range name doesn't include Pre,
     // and the A1 notation doesn't include a : (so it's a single cell)
-    if (!namedRanges[i].getName().includes("Pre") && !namedRanges[i].getRange().getA1Notation().includes(":")) {
+    if (!namedRanges[i].getName().includes("Pre") && !namedRanges[i]
+        .getRange().getA1Notation().includes(":")) {
 
-      // Add it to our array
-      namedRangesArray.push([namedRanges[i].getName(), namedRanges[i].getRange()]);
+      // Add it to our dictionary, using the name as the key.
+      namedRangesDict[namedRanges[i].getName()] = namedRanges[i].getRange();
 
     }
   }
 
-  Logger.log("We found " + namedRangesArray.length + " named ranges.");
-  Logger.log(namedRangesArray);
+  Logger.log("We found " + Object.keys(namedRangesDict).length +
+      " named ranges.");
+  Logger.log(JSON.stringify(namedRangesDict));
 
-  return namedRangesArray;
+  return namedRangesDict;
 
 }
 
