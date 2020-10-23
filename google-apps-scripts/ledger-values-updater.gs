@@ -215,11 +215,14 @@ function compareNamedRanges(namedRanges, newValues) {
 
 /**
  * Update the named ranges with the new values.
+ *
+ * If includeDate is true, then the current date & time will be added
+ * as a note to the source.
  */
-function updateNamedRanges(changedRanges) {
+function updateNamedRanges(changedRanges, includeDate = true) {
 
   // Get the current date and time
-  const now = new Date();
+  const now = new Date().toLocaleString("en-GB");
 
   // For each key in changedRanges
   for (let key in changedRanges) {
@@ -229,11 +232,14 @@ function updateNamedRanges(changedRanges) {
 
     // Set the source to reflect that this is an automatic update
     changedRanges[key][2].offset(0, 3).setValue("PDF (auto)")
-    //changedRanges[key][2].offset(0, 3).setNote(now)
 
-    Logger.log("Changed " + key + " in " +
-        changedRanges[key][2].getA1Notation() + " from " +
-        changedRanges[key][0] + " to " + changedRanges[key][1]);
+    // Add the date & time as a note to the source if requested
+    if (includeDate) {
+      changedRanges[key][2].offset(0, 3).setNote(now)
+    }
+
+    Logger.log(`Changed ${key} in ${changedRanges[key][2].getA1Notation()}` +
+               ` from ${changedRanges[key][0]} to ${changedRanges[key][1]}`);
 
   }
 
@@ -289,7 +295,7 @@ function runWithConsent() {
   // If there are new values then get consent and update them
   if (Object.keys(changedRanges).length > 0) {
     if (getUserConsent(changedRanges)) {
-      updateNamedRanges(changedRanges)
+      updateNamedRanges(changedRanges, true)
     }
 
     // Notify the user if no new values were found
@@ -310,7 +316,7 @@ function runWithoutConsent() {
 
   // If there are new values then get consent and update them
   if (Object.keys(changedRanges).length > 0) {
-    updateNamedRanges(changedRanges)
+    updateNamedRanges(changedRanges, true)
 
     // Notify the user if no new values were found
   } else {
