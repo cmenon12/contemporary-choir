@@ -79,8 +79,12 @@ function getNamedRangesFromSheet() {
  * This also includes the total income, expenditure, and balance,
  * as well as the balance brought forward.
  * It also groups all of the individual TOMS cost codes together.
+ *
+ * If addNotesToLedger is true, it will add notes to the totals on the
+ * imported ledger, labelling it with the named ranges. This allows you
+ * to refer back and see where the program got its values from.
  */
-function getNewCostCodeValues() {
+function getNewCostCodeValues(addNotesToLedger = true) {
 
   // Define the sheet and get the named ranges.
   const sheet = SpreadsheetApp.getActiveSpreadsheet()
@@ -92,7 +96,12 @@ function getNewCostCodeValues() {
   costCodeValues["TOMSExpenditure"] = 0
   costCodeValues["TOMSBalance"] = 0
 
+  // Define the required variables
   let costCodeName;
+  let income;
+  let expenditure;
+  let balance;
+  let balanceBroughtForward;
 
   // Search for the total for each cost code (and the grand total)
   const finder = sheet.createTextFinder("Totals for ").matchEntireCell(false);
@@ -103,29 +112,66 @@ function getNewCostCodeValues() {
     costCodeName = String(foundRanges[i].getValue())
         .replace("Totals for ", "");
 
+    // Get these ranges
+    income = foundRanges[i].offset(0, 1)
+    expenditure = foundRanges[i].offset(0, 2)
+    balance = foundRanges[i].offset(1, 2)
+
     // If it's a TOMS cost code then add it to the existing TOMS values
     // This keeps all of the TOMS grouped together
     if (costCodeName.includes("TOMS")) {
-      costCodeValues["TOMSIncome"] += foundRanges[i].offset(0, 1).getValue()
-      costCodeValues["TOMSExpenditure"] += foundRanges[i].offset(0, 2).getValue()
-      costCodeValues["TOMSBalance"] += foundRanges[i].offset(1, 2).getValue()
+      costCodeValues["TOMSIncome"] += income.getValue()
+      costCodeValues["TOMSExpenditure"] += expenditure.getValue()
+      costCodeValues["TOMSBalance"] += balance.getValue()
 
-      // If it's the last element then this must be the grand total
-      // This uses the name Total and includes the balance brought forward
+      // Add notes to the imported ledger if requested
+      if (addNotesToLedger) {
+        income.setNote("Part of TOMSIncome")
+        expenditure.setNote("Part of TOMSExpenditure")
+        balance.setNote("Part of TOMSBalance")
+      }
+
+
+    // If it's the last element then this must be the grand total
+    // This uses the name Total and includes the balance brought forward
     } else if (i == foundRanges.length - 1) {
-      costCodeValues["TotalIncome"] = foundRanges[i].offset(0, 1).getValue()
-      costCodeValues["TotalExpenditure"] = foundRanges[i].offset(0, 2).getValue()
-      costCodeValues["BalanceBroughtForward"] = foundRanges[i].offset(2, 2).getValue()
-      costCodeValues["TotalBalance"] = foundRanges[i].offset(3, 2).getValue()
 
-      // Otherwise just add the standalone cost code itself
+      // Update these values, specifically for the grand total
+      balanceBroughtForward = foundRanges[i].offset(2, 2)
+      balance = foundRanges[i].offset(3, 2)
+
+      // Add the values
+      costCodeValues["TotalIncome"] = income.getValue()
+      costCodeValues["TotalExpenditure"] = expenditure.getValue()
+      costCodeValues["BalanceBroughtForward"] = balanceBroughtForward.getValue()
+      costCodeValues["TotalBalance"] = balance.offset(3, 2).getValue()
+
+      // Add notes to the imported ledger if requested
+      if (addNotesToLedger) {
+        income.setNote("TotalIncome")
+        expenditure.setNote("TotalExpenditure")
+        balanceBroughtForward.setNote("BalanceBroughtForward")
+        balance.setNote("TotalBalance")
+      }
+
+
+    // Otherwise just add the standalone cost code itself
     } else {
-      costCodeValues[costCodeName.replace(/\s/g, '') + "Income"] =
-          foundRanges[i].offset(0, 1).getValue()
-      costCodeValues[costCodeName.replace(/\s/g, '') + "Expenditure"] =
-          foundRanges[i].offset(0, 2).getValue()
-      costCodeValues[costCodeName.replace(/\s/g, '') + "Balance"] =
-          foundRanges[i].offset(1, 2).getValue()
+
+      // Remove the spaces from the cost code name
+      costCodeName = costCodeName.replace(/\s/g, '')
+
+      // Add the values
+      costCodeValues[costCodeName + "Income"] = income.getValue()
+      costCodeValues[costCodeName + "Expenditure"] = expenditure.getValue()
+      costCodeValues[costCodeName + "Balance"] = balance.getValue()
+
+      // Add notes to the imported ledger if requested
+      if (addNotesToLedger) {
+        income.setNote(costCodeName + "Income")
+        expenditure.setNote(costCodeName + "Expenditure")
+        balance.setNote(costCodeName + "Balance")
+      }
     }
   }
 
