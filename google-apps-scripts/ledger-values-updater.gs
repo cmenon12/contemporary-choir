@@ -67,7 +67,7 @@ function getNamedRangesFromSheet() {
 
   Logger.log("We found " + Object.keys(namedRangesDict).length +
       " named ranges.");
-  Logger.log(JSON.stringify(namedRangesDict));
+  Logger.log(`namedRangesDict is: ${JSON.stringify(namedRangesDict)}`);
 
   return namedRangesDict;
 
@@ -144,7 +144,7 @@ function getNewCostCodeValues(addNotesToLedger = true) {
       costCodeValues["TotalIncome"] = income.getValue()
       costCodeValues["TotalExpenditure"] = expenditure.getValue()
       costCodeValues["BalanceBroughtForward"] = balanceBroughtForward.getValue()
-      costCodeValues["TotalBalance"] = balance.offset(3, 2).getValue()
+      costCodeValues["TotalBalance"] = balance.getValue()
 
       // Add notes to the imported ledger if requested
       if (addNotesToLedger) {
@@ -159,25 +159,24 @@ function getNewCostCodeValues(addNotesToLedger = true) {
     } else {
 
       // Remove the spaces from the cost code name
-      costCodeName = costCodeName.replace(/\s/g, '')
+      costCodeName = costCodeName.replace(/\s/g, "")
 
       // Add the values
-      costCodeValues[costCodeName + "Income"] = income.getValue()
-      costCodeValues[costCodeName + "Expenditure"] = expenditure.getValue()
-      costCodeValues[costCodeName + "Balance"] = balance.getValue()
+      costCodeValues[`${costCodeName}Income`] = income.getValue()
+      costCodeValues[`${costCodeName}Expenditure`] = expenditure.getValue()
+      costCodeValues[`${costCodeName}Balance`] = balance.getValue()
 
       // Add notes to the imported ledger if requested
       if (addNotesToLedger) {
-        income.setNote(costCodeName + "Income")
-        expenditure.setNote(costCodeName + "Expenditure")
-        balance.setNote(costCodeName + "Balance")
+        income.setNote(`${costCodeName}Income`)
+        expenditure.setNote(`${costCodeName}Expenditure`)
+        balance.setNote(`${costCodeName}Balance`)
       }
     }
   }
 
-  Logger.log("We found " + Object.keys(costCodeValues).length +
-      " cost code values.");
-  Logger.log(JSON.stringify(costCodeValues));
+  Logger.log(`We found ${Object.keys(costCodeValues).length} cost code values`);
+  Logger.log(`costCodeValues is: ${JSON.stringify(costCodeValues)}`);
 
   return costCodeValues;
 
@@ -206,8 +205,8 @@ function compareNamedRanges(namedRanges, newValues) {
     }
   }
 
-  Logger.log("There are " + Object.keys(changedRanges).length +
-      " values that have changed.");
+  Logger.log(`There are ${Object.keys(changedRanges).length} ` +
+      `values that have changed.`);
 
   return changedRanges;
 }
@@ -259,25 +258,24 @@ function getUserConsent(changedRanges) {
       "rder-left:2px solid #d0e4f5}table.blueTable thead th:first-ch" +
       "ild{border-left:none}table.blueTable tfoot td{font-size:14px}"
 
-  let htmlText = "<html lang='en-GB'><style>" + css + "</style>" +
-      "<table class='blueTable'><thead><tr><th>Named Range</th><th>Old Value</th>" +
-      "<th>New Value</th><th>Difference</th></tr></thead><tbody>"
+  let htmlText = `<html lang="en-GB"><style>${css}</style><table ` +
+      `class="blueTable"><thead><tr><th>Named Range</th><th>Old Value` +
+      `</th><th>New Value</th><th>Difference</th></tr></thead><tbody>`
 
   let difference;
   for (let key in changedRanges) {
 
     difference = (changedRanges[key][1] - changedRanges[key][0]).toFixed(2)
-    htmlText = htmlText + "<tr><td>" + key + "</td><td>" +
-        changedRanges[key][0] + "</td><td>" + changedRanges[key][1] +
-        "</td><td>" + difference + "</td></tr>"
+    htmlText = `${htmlText}<tr><td>${key}</td><td>${changedRanges[key][0]}` +
+        `</td><td>${changedRanges[key][1]}</td><td>${difference}</td></tr>`
   }
 
-  htmlText = htmlText + "</tbody></table>";
+  htmlText = `${htmlText}</tbody></table>`;
 
   Logger.log(htmlText);
 
   let html = HtmlService.createHtmlOutput(htmlText);
-  SpreadsheetApp.getUi().showModalDialog(html, 'Do you want to make these changes?');
+  SpreadsheetApp.getUi().showModalDialog(html, "Do you want to make these changes?");
 
   return false;
 
@@ -300,7 +298,7 @@ function runWithConsent() {
 
     // Notify the user if no new values were found
   } else {
-    SpreadsheetApp.getActiveSpreadsheet().toast('No new values were found.');
+    SpreadsheetApp.getActiveSpreadsheet().toast("No new values were found.");
   }
 }
 
@@ -320,7 +318,7 @@ function runWithoutConsent() {
 
     // Notify the user if no new values were found
   } else {
-    SpreadsheetApp.getActiveSpreadsheet().toast('No new values were found.');
+    SpreadsheetApp.getActiveSpreadsheet().toast("No new values were found.");
   }
 }
 
