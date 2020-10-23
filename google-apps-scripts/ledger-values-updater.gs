@@ -13,6 +13,29 @@ const NAMED_RANGES_SHEET_NAME = "Values";
 // The name of the sheet with the imported ledger
 const LEDGER_SHEET_NAME = "Original";
 
+
+/**
+ * This can be used to delete and then recreate most of the named ranges.
+ * It's designed for one-time use after something bad happens.
+ */
+function recreateNamedRanges() {
+
+  // Delete all of the named ranges on this sheet
+  const namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
+  for (let i = 0; i < namedRanges.length; i++) {
+    namedRanges[i].remove()
+  }
+
+  // Recreate the named ranges in the selection
+  const thisRange = SpreadsheetApp.getActiveRange();
+  for (let i = 0; i < thisRange.getValues().length; i++) {
+    Logger.log(thisRange.getValues()[i][1])
+    SpreadsheetApp.getActiveSpreadsheet()
+        .setNamedRange(thisRange.getValues()[i][1], thisRange.getCell(i + 1, 1));
+  }
+}
+
+
 /**
  * Locates and returns the named ranges that we'll want to update.
  * These are the named ranges in the Values sheet that will also appear
@@ -257,5 +280,6 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu("Scripts")
       .addItem("Update values", "runWithoutConsent")
       .addItem("Update values (ask before making changes)", "runWithConsent")
+      // .addItem("Recreate named ranges (make selection first)", "recreateNamedRanges")
       .addToUi();
 }
