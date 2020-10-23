@@ -23,13 +23,13 @@ function recreateNamedRanges() {
   // Delete all of the named ranges on this sheet
   const namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
   for (let i = 0; i < namedRanges.length; i++) {
-    namedRanges[i].remove()
+    namedRanges[i].remove();
   }
 
   // Recreate the named ranges in the selection
   const thisRange = SpreadsheetApp.getActiveRange();
   for (let i = 0; i < thisRange.getValues().length; i++) {
-    Logger.log(thisRange.getValues()[i][1])
+    Logger.log(thisRange.getValues()[i][1]);
     SpreadsheetApp.getActiveSpreadsheet()
         .setNamedRange(thisRange.getValues()[i][1], thisRange.getCell(i + 1, 1));
   }
@@ -92,9 +92,9 @@ function getNewCostCodeValues(addNotesToLedger = true) {
 
   // Prepare to save the values
   const costCodeValues = {};
-  costCodeValues["TOMSIncome"] = 0
-  costCodeValues["TOMSExpenditure"] = 0
-  costCodeValues["TOMSBalance"] = 0
+  costCodeValues["TOMSIncome"] = 0;
+  costCodeValues["TOMSExpenditure"] = 0;
+  costCodeValues["TOMSBalance"] = 0;
 
   // Define the required variables
   let costCodeName;
@@ -113,22 +113,22 @@ function getNewCostCodeValues(addNotesToLedger = true) {
         .replace("Totals for ", "");
 
     // Get these ranges
-    income = foundRanges[i].offset(0, 1)
-    expenditure = foundRanges[i].offset(0, 2)
-    balance = foundRanges[i].offset(1, 2)
+    income = foundRanges[i].offset(0, 1);
+    expenditure = foundRanges[i].offset(0, 2);
+    balance = foundRanges[i].offset(1, 2);
 
     // If it's a TOMS cost code then add it to the existing TOMS values
     // This keeps all of the TOMS grouped together
     if (costCodeName.includes("TOMS")) {
-      costCodeValues["TOMSIncome"] += income.getValue()
-      costCodeValues["TOMSExpenditure"] += expenditure.getValue()
-      costCodeValues["TOMSBalance"] += balance.getValue()
+      costCodeValues["TOMSIncome"] += income.getValue();
+      costCodeValues["TOMSExpenditure"] += expenditure.getValue();
+      costCodeValues["TOMSBalance"] += balance.getValue();
 
       // Add notes to the imported ledger if requested
       if (addNotesToLedger) {
-        income.setNote("Part of TOMSIncome")
-        expenditure.setNote("Part of TOMSExpenditure")
-        balance.setNote("Part of TOMSBalance")
+        income.setNote("Part of TOMSIncome");
+        expenditure.setNote("Part of TOMSExpenditure");
+        balance.setNote("Part of TOMSBalance");
       }
 
 
@@ -137,21 +137,21 @@ function getNewCostCodeValues(addNotesToLedger = true) {
     } else if (i == foundRanges.length - 1) {
 
       // Update these values, specifically for the grand total
-      balanceBroughtForward = foundRanges[i].offset(2, 2)
-      balance = foundRanges[i].offset(3, 2)
+      balanceBroughtForward = foundRanges[i].offset(2, 2);
+      balance = foundRanges[i].offset(3, 2);
 
       // Add the values
-      costCodeValues["TotalIncome"] = income.getValue()
-      costCodeValues["TotalExpenditure"] = expenditure.getValue()
-      costCodeValues["BalanceBroughtForward"] = balanceBroughtForward.getValue()
-      costCodeValues["TotalBalance"] = balance.getValue()
+      costCodeValues["TotalIncome"] = income.getValue();
+      costCodeValues["TotalExpenditure"] = expenditure.getValue();
+      costCodeValues["BalanceBroughtForward"] = balanceBroughtForward.getValue();
+      costCodeValues["TotalBalance"] = balance.getValue();
 
       // Add notes to the imported ledger if requested
       if (addNotesToLedger) {
-        income.setNote("TotalIncome")
-        expenditure.setNote("TotalExpenditure")
-        balanceBroughtForward.setNote("BalanceBroughtForward")
-        balance.setNote("TotalBalance")
+        income.setNote("TotalIncome");
+        expenditure.setNote("TotalExpenditure");
+        balanceBroughtForward.setNote("BalanceBroughtForward");
+        balance.setNote("TotalBalance");
       }
 
 
@@ -159,18 +159,18 @@ function getNewCostCodeValues(addNotesToLedger = true) {
     } else {
 
       // Remove the spaces from the cost code name
-      costCodeName = costCodeName.replace(/\s/g, "")
+      costCodeName = costCodeName.replace(/\s/g, "");
 
       // Add the values
-      costCodeValues[`${costCodeName}Income`] = income.getValue()
-      costCodeValues[`${costCodeName}Expenditure`] = expenditure.getValue()
-      costCodeValues[`${costCodeName}Balance`] = balance.getValue()
+      costCodeValues[`${costCodeName}Income`] = income.getValue();
+      costCodeValues[`${costCodeName}Expenditure`] = expenditure.getValue();
+      costCodeValues[`${costCodeName}Balance`] = balance.getValue();
 
       // Add notes to the imported ledger if requested
       if (addNotesToLedger) {
-        income.setNote(`${costCodeName}Income`)
-        expenditure.setNote(`${costCodeName}Expenditure`)
-        balance.setNote(`${costCodeName}Balance`)
+        income.setNote(`${costCodeName}Income`);
+        expenditure.setNote(`${costCodeName}Expenditure`);
+        balance.setNote(`${costCodeName}Balance`);
       }
     }
   }
@@ -198,7 +198,7 @@ function compareNamedRanges(namedRanges, newValues) {
 
       // This saves [old value, new value, Range]
       changedRanges[key] = [namedRanges[key].getValue(),
-        newValues[key], namedRanges[key]]
+        newValues[key], namedRanges[key]];
 
       Logger.log(key + " has changed: old:" +
           namedRanges[key].getValue() + ", new:" + newValues[key]);
@@ -227,14 +227,14 @@ function updateNamedRanges(changedRanges, includeDate = true) {
   for (let key in changedRanges) {
 
     // Set the range to the new value
-    changedRanges[key][2].setValue(changedRanges[key][1])
+    changedRanges[key][2].setValue(changedRanges[key][1]);
 
     // Set the source to reflect that this is an automatic update
-    changedRanges[key][2].offset(0, 3).setValue("PDF (auto)")
+    changedRanges[key][2].offset(0, 3).setValue("PDF (auto)");
 
     // Add the date & time as a note to the source if requested
     if (includeDate) {
-      changedRanges[key][2].offset(0, 3).setNote(now)
+      changedRanges[key][2].offset(0, 3).setNote(now);
     }
 
     Logger.log(`Changed ${key} in ${changedRanges[key][2].getA1Notation()}` +
@@ -256,18 +256,18 @@ function getUserConsent(changedRanges) {
       "head{background:#4aabc4;border-bottom:2px solid #444}table.bl" +
       "ueTable thead th{font-size:15px;font-weight:700;color:#fff;bo" +
       "rder-left:2px solid #d0e4f5}table.blueTable thead th:first-ch" +
-      "ild{border-left:none}table.blueTable tfoot td{font-size:14px}"
+      "ild{border-left:none}table.blueTable tfoot td{font-size:14px}";
 
   let htmlText = `<html lang="en-GB"><style>${css}</style><table ` +
       `class="blueTable"><thead><tr><th>Named Range</th><th>Old Value` +
-      `</th><th>New Value</th><th>Difference</th></tr></thead><tbody>`
+      `</th><th>New Value</th><th>Difference</th></tr></thead><tbody>`;
 
   let difference;
   for (let key in changedRanges) {
 
-    difference = (changedRanges[key][1] - changedRanges[key][0]).toFixed(2)
+    difference = (changedRanges[key][1] - changedRanges[key][0]).toFixed(2);
     htmlText = `${htmlText}<tr><td>${key}</td><td>${changedRanges[key][0]}` +
-        `</td><td>${changedRanges[key][1]}</td><td>${difference}</td></tr>`
+        `</td><td>${changedRanges[key][1]}</td><td>${difference}</td></tr>`;
   }
 
   htmlText = `${htmlText}</tbody></table>`;
@@ -293,7 +293,7 @@ function runWithConsent() {
   // If there are new values then get consent and update them
   if (Object.keys(changedRanges).length > 0) {
     if (getUserConsent(changedRanges)) {
-      updateNamedRanges(changedRanges, true)
+      updateNamedRanges(changedRanges, true);
     }
 
     // Notify the user if no new values were found
@@ -314,7 +314,7 @@ function runWithoutConsent() {
 
   // If there are new values then get consent and update them
   if (Object.keys(changedRanges).length > 0) {
-    updateNamedRanges(changedRanges, true)
+    updateNamedRanges(changedRanges, true);
 
     // Notify the user if no new values were found
   } else {

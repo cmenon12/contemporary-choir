@@ -26,15 +26,15 @@ function checkForNewTotals(sheetName) {
 
   // Get the spreadsheet & sheet
   const spreadsheet = SpreadsheetApp.getActive();
-  const newSheet = spreadsheet.getSheetByName(sheetName)
-  Logger.log(`Looking at the sheet called ${newSheet.getName()}`)
+  const newSheet = spreadsheet.getSheetByName(sheetName);
+  Logger.log(`Looking at the sheet called ${newSheet.getName()}`);
 
   // Find the income & expenditure for each cost code
   const newCostCodeTotals = getCostCodeTotals(newSheet);
 
   // Format the sheet neatly, and rename it to reflect that this is automated
-  formatNeatlyWithSheet(newSheet)
-  newSheet.setName(`${newSheet.getName()} auto`)
+  formatNeatlyWithSheet(newSheet);
+  newSheet.setName(`${newSheet.getName()} auto`);
 
   // Locate the named range with the URL to the old sheet
   const namedRanges = spreadsheet.getNamedRanges();
@@ -54,17 +54,17 @@ function checkForNewTotals(sheetName) {
   // If there's no difference then stop and delete the sheet
   if (newCostCodeTotals[newCostCodeTotals.length - 1][1] == oldCostCodeTotals[oldCostCodeTotals.length - 1][1] &&
       newCostCodeTotals[newCostCodeTotals.length - 1][2] == oldCostCodeTotals[oldCostCodeTotals.length - 1][2]) {
-    Logger.log("There is no difference in the total income or expenditure.")
-    spreadsheet.deleteSheet(newSheet)
+    Logger.log("There is no difference in the total income or expenditure.");
+    spreadsheet.deleteSheet(newSheet);
     return "False";
   }
 
   // If there is a difference then make comparisons and return the changes
-  Logger.log("There is a difference in the total income and/or expenditure!")
+  Logger.log("There is a difference in the total income and/or expenditure!");
   const changes = compareLedgersWithCostCodes(newSheet, oldSheet, newCostCodeTotals);
-  changes.unshift(newSheet.getSheetId())
-  changes.push(newCostCodeTotals)
-  Logger.log(`changes is: ${changes}`)
+  changes.unshift(newSheet.getSheetId());
+  changes.push(newCostCodeTotals);
+  Logger.log(`changes is: ${changes}`);
   return changes;
 
 }
@@ -118,15 +118,15 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
               newSheet.getRange(row, 1).getValue(),
               newSheet.getRange(row, 2).getValue(),
               newSheet.getRange(row, 3).getValue(),
-              newSheet.getRange(row, 4).getValue()])
+              newSheet.getRange(row, 4).getValue()]);
             break;
           }
         }
       }
     }
   }
-  Logger.log("Finished comparing sheets!")
-  Logger.log(`changes is: ${changes}`)
+  Logger.log("Finished comparing sheets!");
+  Logger.log(`changes is: ${changes}`);
   return changes;
 
 }
@@ -153,23 +153,23 @@ function getCostCodeTotals(sheet) {
   for (let i=0; i< foundRanges.length; i++) {
 
     // Get the name of the cost code
-    costCode = String(foundRanges[i].getValue()).replace("Totals for ", "")
+    costCode = String(foundRanges[i].getValue()).replace("Totals for ", "");
 
     // Append the name, total income, total expenditure, balance, and row number
     costCodeTotals.push([costCode, foundRanges[i].offset(0, 1).getValue(),
       foundRanges[i].offset(0, 2).getValue(),
       foundRanges[i].offset(1, 2).getValue(),
-      foundRanges[i].getRow()])
+      foundRanges[i].getRow()]);
   }
 
   // Get the Balance Brought Forward and add it to the grand total cost code
   const balanceBroughtForward = foundRanges[foundRanges.length - 1].offset(2, 2).getValue();
-  costCodeTotals[costCodeTotals.length - 1].push(balanceBroughtForward)
+  costCodeTotals[costCodeTotals.length - 1].push(balanceBroughtForward);
 
   // Replace the grand total with the closing balance (which includes the Balance Brought Forward)
   costCodeTotals[costCodeTotals.length - 1][3] = foundRanges[foundRanges.length - 1].offset(3, 2).getValue();
 
-  Logger.log(`costCodeTotals is: ${costCodeTotals}`)
-  return costCodeTotals
+  Logger.log(`costCodeTotals is: ${costCodeTotals}`);
+  return costCodeTotals;
 
 }

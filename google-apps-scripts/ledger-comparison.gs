@@ -72,7 +72,7 @@ function showPrompt() {
   // If the user wants to use the default URL
   } else if (button == ui.Button.YES) {
     url = spreadsheet.getNamedRanges()[0].getRange().getValue();  // There's only one named range.
-    return url
+    return url;
   } else {
     return false;
   }
@@ -88,52 +88,52 @@ function showPrompt() {
 function formatNeatlyWithSheet(thisSheet) {
 
   // Convert the first column to text
-  thisSheet.getRange(1, 1, thisSheet.getLastRow()).setNumberFormat("@")
+  thisSheet.getRange(1, 1, thisSheet.getLastRow()).setNumberFormat("@");
 
   // Change the tab colour to be white
-  thisSheet.setTabColor("white")
+  thisSheet.setTabColor("white");
 
   // Rename the sheet
   const dateString = "\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d \\d\\d:\\d\\d:\\d\\d";
   let finder = thisSheet.createTextFinder(dateString)
       .matchEntireCell(true).useRegularExpression(true);
   let foundRange = finder.findNext();
-  foundRange.setNumberFormat("@")
+  foundRange.setNumberFormat("@");
   const datetime = foundRange.getValue();
-  thisSheet.setName(datetime)
+  thisSheet.setName(datetime);
 
   // Resize the columns
-  finder = thisSheet.createTextFinder("Please note recent transactions may not be included.")
-  foundRange = finder.findNext()
-  foundRange.setValue("")
-  thisSheet.autoResizeColumns(1, 4)
+  finder = thisSheet.createTextFinder("Please note recent transactions may not be included.");
+  foundRange = finder.findNext();
+  foundRange.setValue("");
+  thisSheet.autoResizeColumns(1, 4);
 
   // Get all occurrences of UNIV01 (except for the first one)
-  finder = thisSheet.createTextFinder("UNIV01")
+  finder = thisSheet.createTextFinder("UNIV01");
   const matches = finder.findAll();
-  matches.shift()
-  matches.reverse() // start at the bottom to avoid changing future ranges
+  matches.shift();
+  matches.reverse(); // start at the bottom to avoid changing future ranges
 
   // Remove each of these headers
   // If the totals are on a new page with no entries,
   // then we should delete one less row
   for (let i = 0; i < matches.length; i += 1) {
-    let row = matches[i].getRow() - 2
+    let row = matches[i].getRow() - 2;
     if (matches[i].offset(3, 0).getValue() != "") {
-      thisSheet.deleteRows(row, 5)
-      Logger.log(`Deleted five rows starting at row ${row}`)
+      thisSheet.deleteRows(row, 5);
+      Logger.log(`Deleted five rows starting at row ${row}`);
     } else {
-      thisSheet.deleteRows(row, 6)
-      Logger.log(`Deleted six rows starting at row ${row}`)
+      thisSheet.deleteRows(row, 6);
+      Logger.log(`Deleted six rows starting at row ${row}`);
     }
   }
 
   // Remove all the excess rows & columns.
   try {
     thisSheet.deleteRows(thisSheet.getLastRow()+5,
-        thisSheet.getMaxRows()-thisSheet.getLastRow()-5)
+        thisSheet.getMaxRows()-thisSheet.getLastRow()-5);
     thisSheet.deleteColumns(thisSheet.getLastColumn()+1,
-        thisSheet.getMaxColumns()-thisSheet.getLastColumn()-1)
+        thisSheet.getMaxColumns()-thisSheet.getLastColumn()-1);
   } catch (error){
     Logger.log(`There was an error removing the excess rows & columns: ${error.message}`);
   }
@@ -217,7 +217,7 @@ function compareLedgers(url) {
       }
     }
   }
-  Logger.log("Finished comparing sheets!")
+  Logger.log("Finished comparing sheets!");
 }
 
 
@@ -245,7 +245,7 @@ function copyToLedger(url) {
   newSheet.setName("Original");
   newSheet.protect().setWarningOnly(true);
 
-  Logger.log("Finished copying the sheet to the ledger spreadsheet.")
+  Logger.log("Finished copying the sheet to the ledger spreadsheet.");
 
   // Ask the user if they want to open the new sheet
   const ui = SpreadsheetApp.getUi();
@@ -270,7 +270,7 @@ function compareLedgersGetUrl() {
   if (url == false) {
     return;
   }
-  compareLedgers(url)
+  compareLedgers(url);
 }
 
 
@@ -278,7 +278,7 @@ function compareLedgersGetUrl() {
  * Runs formatNeatlyWithSheet() with the active sheet.
  */
 function formatNeatly() {
-  formatNeatlyWithSheet(sheet)
+  formatNeatlyWithSheet(sheet);
 }
 
 
@@ -290,7 +290,7 @@ function copyToLedgerGetUrl() {
   if (url == false) {
     return;
   }
-  copyToLedger(url)
+  copyToLedger(url);
 }
 
 
