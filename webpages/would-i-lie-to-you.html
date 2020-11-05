@@ -3,7 +3,7 @@ generate either a lie or a prompt to use their truth for the
 participant when they click the button. -->
 
 <button id="wilty-generate"
-        style="background-color: #E62073; width: 100%; font-size: 25px"
+        style="background-color: #E62073; width: 100%; font-size: 25px; padding: 0.5em 2em"
         onclick="generateWilty()">
     Click for a truth or a lie!</button>
 
@@ -12,7 +12,10 @@ participant when they click the button. -->
 
 <script>
 
-  // Put the lies in here. They cannot contain any "
+  // HELLO MADDY!
+  // Put the lies in this array. They cannot contain any speech marks (")
+  // Just add new lines to this (but before the closing square bracket) as needed
+  // The indentation doesn't matter
   const lies = ["1This sentence is a lie.",
     "2This sentence is a lie.",
     "3This sentence is a lie.",
@@ -35,7 +38,6 @@ participant when they click the button. -->
     theButton.style.width = "auto";
     theButton.style.margin = "0 auto";
     theButton.style.display = "block";
-    theButton.style.padding = "0.5em 2em";
     theButton.style.fontSize = "22px";
     theButton.onclick = randomLie;
 
@@ -68,7 +70,7 @@ participant when they click the button. -->
 
     // If all of the lies have been used
     if (lies.length === 0) {
-      document.getElementById("wilty-answer").innerHTML = "We're out of lies! Can you read out your truth?";
+      document.getElementById("wilty-answer").innerHTML = "We're out of lies! 😱 Can you read out your truth?";
 
       // Hide the button to generate a new lie
       theButton.style.visibility = "hidden";
@@ -81,7 +83,7 @@ participant when they click the button. -->
       document.getElementById("wilty-answer").innerHTML = chosenLie;
 
       // Provide a button to generate a new lie
-      theButton.innerHTML = "We've already had this lie."
+      theButton.innerHTML = "We've already had this lie"
       theButton.style.visibility = "visible";
     }
   }
