@@ -2,6 +2,14 @@
 generate either a lie or a prompt to use their truth for the
 participant when they click the button. -->
 
+<button id="wilty-generate"
+        style="background-color: #E62073; width: 100%; font-size: 25px"
+        onclick="generateWilty()">
+    Click for a truth or a lie!</button>
+
+<h2 id="wilty-answer"
+    style="text-align: center; color: #222; font: bold 32px NowRegular, sans-serif"></h2>
+
 <script>
 
   // Put the lies in here. They cannot contain any "
@@ -13,7 +21,7 @@ participant when they click the button. -->
     "6This sentence is a lie."];
 
   let justHadTruth = false;
-  const secondButton = document.getElementById("wilty-generate-new-lie");
+  const theButton = document.getElementById('wilty-generate');
 
   /**
    * 50/50 chance of asking for their truth or providing a lie.
@@ -22,6 +30,15 @@ participant when they click the button. -->
    */
   function generateWilty() {
 
+    // Alter the button
+    theButton.style.backgroundColor = "#333";
+    theButton.style.width = "auto";
+    theButton.style.margin = "0 auto";
+    theButton.style.display = "block";
+    theButton.style.padding = "0.5em 2em";
+    theButton.style.fontSize = "22px";
+    theButton.onclick = randomLie;
+
     // Returns a random integer from 0 to 1, so 50/50
     // Will also not ask for a truth if it just asked for one.
     if (Math.floor(Math.random() * 2) === 1 && justHadTruth === false) {
@@ -29,16 +46,18 @@ participant when they click the button. -->
       // Ask for their truth
       // Provide the option to get a lie if they don't have a truth
       document.getElementById("wilty-answer").innerHTML = "Read out your truth to the group.";
-      secondButton.innerHTML = "I didn't bring a truth";
-      secondButton.style.visibility = "visible";
+      theButton.innerHTML = "I didn't bring a truth";
+      theButton.style.visibility = "visible";
       justHadTruth = true;
 
     } else {
       // Provide a random lie
-      randomLie()
+      randomLie();
       justHadTruth = false;
 
     }
+
+
 
   }
 
@@ -52,7 +71,7 @@ participant when they click the button. -->
       document.getElementById("wilty-answer").innerHTML = "We're out of lies! Can you read out your truth?";
 
       // Hide the button to generate a new lie
-      secondButton.style.visibility = "hidden";
+      theButton.style.visibility = "hidden";
 
     } else {
       // Pick a random lie, remove it, and return it
@@ -62,13 +81,9 @@ participant when they click the button. -->
       document.getElementById("wilty-answer").innerHTML = chosenLie;
 
       // Provide a button to generate a new lie
-      secondButton.innerHTML = "We've already had this lie."
-      secondButton.style.visibility = "visible";
+      theButton.innerHTML = "We've already had this lie."
+      theButton.style.visibility = "visible";
     }
   }
 </script>
-
-<button id="wilty-generate" style="background-color: #E62073; width: 100%; font-size: 25px" onclick="generateWilty()">Click for a truth or a lie!</button>
-<h2 id="wilty-answer" style="text-align: center; color: #222; font: bold 32px NowRegular, sans-serif"></h2>
-<button id="wilty-generate-new-lie" style="visibility: hidden; background-color: #333; width: 100%; font-size: 22px" onclick="randomLie()">We've already had this lie</button>
 
