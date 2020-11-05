@@ -1,0 +1,56 @@
+<!-- This is the code used in a custom HTML block on the website to
+generate either a lie or a prompt to use their truth for the
+participant when they click the button. -->
+
+<script>
+
+  let lies = ["1This sentence is a lie.",
+    "2This sentence is a lie.",
+    "3This sentence is a lie.",
+    "4This sentence is a lie.",
+    "5This sentence is a lie.",
+    "6This sentence is a lie."]
+
+  let justHadTruth = false;
+
+  /**
+   * 50/50 chance of asking for their truth or providing a lie.
+   * Importantly if the button is clicked again,
+   * then they won't be asked for their truth again.
+   */
+  function generateWilty() {
+
+    let answer;
+
+    // Returns a random integer from 0 to 1, so 50/50
+    // Will also not ask for a truth if it just asked for one.
+    if (Math.floor(Math.random() * 2) === 1 && justHadTruth === false) {
+      let answer = "Read out your truth to the group."
+      document.getElementById("wilty-answer").innerHTML = answer
+      document.getElementById("wilty-generate-new-lie").style.visibility = "hidden";
+      justHadTruth = true;
+
+    // Provide a random lie, and show the button to generate a new one
+    } else {
+      randomLie()
+      document.getElementById("wilty-generate-new-lie").style.visibility = "visible";
+      justHadTruth = false;
+
+    }
+
+  }
+
+  /**
+   * Provides a random lie.
+   */
+  function randomLie() {
+    let answer = lies[Math.floor(Math.random() * lies.length)]
+    justHadTruth = false;
+    document.getElementById("wilty-answer").innerHTML = answer
+    document.getElementById("wilty-generate-new-lie").style.visibility = "visible";
+  }
+</script>
+
+<button id="wilty-generate" style="background-color: #E62073; width: 100%" onclick="generateWilty()">Click for a truth or lie!</button>
+<h2 id="wilty-answer" style="text-align: center; color: #222; font: bold 30px NowRegular, sans-serif"></h2>
+<button id="wilty-generate-new-lie" style="visibility: hidden; background-color: #333; width: 100%" onclick="randomLie()">Already had this lie</button>
