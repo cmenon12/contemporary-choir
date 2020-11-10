@@ -23,7 +23,6 @@ participant when they click the button. -->
     "5This sentence is a lie.",
     "6This sentence is a lie."];
 
-  let justHadTruth = false;
   const theButton = document.getElementById('wilty-generate');
 
   /**
@@ -43,19 +42,17 @@ participant when they click the button. -->
 
     // Returns a random integer from 0 to 1, so 50/50
     // Will also not ask for a truth if it just asked for one.
-    if (Math.floor(Math.random() * 2) === 1 && justHadTruth === false) {
+    if (Math.floor(Math.random() * 2) === 1) {
 
       // Ask for their truth
       // Provide the option to get a lie if they don't have a truth
       document.getElementById("wilty-answer").innerHTML = "Read out your truth to the group.";
       theButton.innerHTML = "I didn't bring a truth";
       theButton.style.visibility = "visible";
-      justHadTruth = true;
 
     } else {
       // Provide a random lie
       randomLie();
-      justHadTruth = false;
 
     }
 
