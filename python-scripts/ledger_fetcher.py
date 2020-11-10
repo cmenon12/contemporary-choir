@@ -81,7 +81,7 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     url = "https://service.expense365.com/ws/rest/eXpense365/RequestDocument"
     headers = {
         "Host": "service.expense365.com:443",
-        "User-Agent": "eXpense365|1.5.2|Google Pixel XL|Android|10|en_GB",
+        "User-Agent": "eXpense365|1.6.1|Google Pixel XL|Android|10|en_GB",
         "Authorization": auth,
         "Accept": "application/json",
         "If-Modified-Since": "Mon, 1 Oct 1990 05:00:00 GMT",
@@ -95,7 +95,7 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
 
     # Make the request and check it was successful
     LOGGER.info("Making the HTTP request to service.expense365.com...")
-    response = requests.post(url=url, headers=headers, data=data)
+    response = requests.post(url=url, headers=headers, data=data, verify=False)
     response.raise_for_status()
     LOGGER.info("The request was successful with no HTTP errors.")
 
@@ -150,31 +150,31 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     """
 
     # Prepare for the request
-    url = "https://www.pdftoexcelconverter.net/upload.instant.php"
+    url = "https://www.pdftoexcel.com/upload.instant.php"
     user_agent = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                   'AppleWebKit/537.36 (KHTML, like Gecko) '
                   'Chrome/86.0.4240.111 Safari/537.36')
     headers = {
         'Connection': 'keep-alive',
-        'Accept': 'application/json',
+        'Accept': '*/*',
         'X-Requested-With': 'XMLHttpRequest',
         'DNT': '1',
         'User-Agent': user_agent,
-        'Origin': 'https://www.pdftoexcelconverter.net',
+        'Origin': 'https://www.pdftoexcel.com',
         'Sec-Fetch-Site': 'same-origin',
         'Sec-Fetch-Mode': 'cors',
         'Sec-Fetch-Dest': 'empty',
-        'Referer': 'https://www.pdftoexcelconverter.net/',
+        'Referer': 'https://www.pdftoexcel.com/',
         'Accept-Language': 'en-GB,en;q=0.9',
     }
-    files = {'file[0]': open(pdf_filepath, 'rb')}
+    files = {'Filedata': open(pdf_filepath, 'rb')}
 
     # Create a session that we can add headers to
     session = requests.Session()
     session.headers.update(headers)
 
     # Make the request and check that it was successful
-    LOGGER.info("Sending the PDF for conversion to pdftoexcelconverter.net...")
+    LOGGER.info("Sending the PDF for conversion to pdftoexcel.com...")
     response = session.post(url=url, files=files)
     response.raise_for_status()
     job_id = response.json()["jobId"]
@@ -183,7 +183,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
     # Prepare to keep checking the status of the conversion
     download_url = ""
-    url = "https://www.pdftoexcelconverter.net/getIsConverted.php"
+    url = "https://www.pdftoexcel.com/status"
 
     # Whilst it is still being converted
     check_count = 0
@@ -208,7 +208,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
             time.sleep(2)
 
     # Prepare and make the request to download the file
-    url = "https://www.pdftoexcelconverter.net" + download_url
+    url = "https://www.pdftoexcel.com" + download_url
     LOGGER.info("Downloading the converted file...")
     response = session.get(url=url, params={'id': job_id})
 
@@ -457,7 +457,7 @@ def main(app_gui: gui):
     # Ask the user if they want to convert it to an XLSX spreadsheet
     if app_gui.yesNoBox("Convert to XLSX?",
                         ("Do you want to convert the PDF ledger to an XLSX " +
-                         "spreadsheet using pdftoexcelconverter.net, and then upload " +
+                         "spreadsheet using pdftoexcel.com, and then upload " +
                          "it to %s?" %
                          config["destination_sheet_name"])) is True:
 

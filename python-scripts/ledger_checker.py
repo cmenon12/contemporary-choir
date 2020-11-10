@@ -34,6 +34,7 @@ import html2text
 from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
+# noinspection PyUnresolvedReferences
 from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
     authorize, update_pdf_ledger
 
