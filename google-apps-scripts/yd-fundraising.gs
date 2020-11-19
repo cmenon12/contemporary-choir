@@ -15,7 +15,7 @@ function enthuse() {
 
   // Constants
   const URL = "https://exeterguild.enthuse.com/execontempchoir/profile";
-  const RANGE_NAME = "SantaRun"
+  const RANGE_NAME = "SantaRun";
   let amount;
 
   // Make the GET request
@@ -27,12 +27,16 @@ function enthuse() {
   if (status == 200) {
     let regex = /£\d+/;
     let match = html.match(regex)[0];
-    regex = /\d+/
+    regex = /\d+/;
     amount = Number(match.match(regex)[0]);
-    Logger.log(amount);
 
   // Otherwise log the error and stop
   } else {
+    Logger.log(`There was an error fetching ${URL}.`)
+    SpreadsheetApp
+        .getActiveSpreadsheet()
+        .toast(`There was an error (status ${status}) fetching ${URL}.`,
+            "ERROR", -1);
     Logger.log(status);
     Logger.log(html);
     return;
@@ -49,7 +53,8 @@ function enthuse() {
 function updateRange(name, value) {
 
   // Locate the named range
-  const namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
+  const namedRanges = SpreadsheetApp
+      .getActiveSpreadsheet().getNamedRanges();
   let range;
   for (let i = 0; i < namedRanges.length; i++) {
     if (namedRanges[i].getName() == name) {
@@ -66,7 +71,7 @@ function updateRange(name, value) {
   } else {
     Logger.log(`Could not find the named range called ${name}`);
     SpreadsheetApp.getActiveSpreadsheet()
-        .toast(`Could not find the named range called ${name}`, "ERROR")
+        .toast(`Could not find the named range called ${name}`, "ERROR", -1);
   }
 }
 
@@ -87,6 +92,6 @@ function onOpen() {
  */
 function updateAll() {
 
-  enthuse()
+  enthuse();
 
 }
