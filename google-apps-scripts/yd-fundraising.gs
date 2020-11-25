@@ -8,18 +8,14 @@
  */
 
 /**
- * Fetches our fundraising total from Enthuse,
- * and updates the total in the sheet.
+ * Fetch the fundraising total from the Enthuse page at url.
  */
-function enthuse() {
+function getEnthuseAmount(url) {
 
-  // Constants
-  const URL = "https://exeterguild.enthuse.com/execontempchoir/profile";
-  const RANGE_NAME = "SantaRun";
   let amount;
 
   // Make the GET request
-  const response = UrlFetchApp.fetch(URL);
+  const response = UrlFetchApp.fetch(url);
   const status = response.getResponseCode();
   const html = response.getContentText();
 
@@ -42,8 +38,7 @@ function enthuse() {
     return;
   }
 
-  updateRange(RANGE_NAME, amount)
-
+  return amount;
 }
 
 
@@ -81,8 +76,7 @@ function updateRange(name, value) {
  */
 function onOpen() {
   const menu = SpreadsheetApp.getUi().createMenu("Scripts");
-  menu.addItem("Update Santa Run total (Enthuse)", "enthuse");
-  menu.addItem("Update all", "updateAll");
+  menu.addItem("Update all amounts", "updateAll");
   menu.addToUi();
 }
 
@@ -92,6 +86,9 @@ function onOpen() {
  */
 function updateAll() {
 
-  enthuse();
+  const enthuseTotal = getEnthuseAmount("https://exeterguild.enthuse.com/execontempchoir/profile");
+  const adventCalendarTotal = getEnthuseAmount("https://exeterguild.enthuse.com/cf/contemporary-choir-s-advent-calendar")
+  updateRange("SantaRun", enthuseTotal-adventCalendarTotal)
+  updateRange("AdventCalendar", adventCalendarTotal)
 
 }
