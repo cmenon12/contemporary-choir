@@ -45,7 +45,7 @@ function getEnthuseAmount(url) {
 /**
  * Update the named range with the name to the value (if it exists).
  */
-function updateRange(name, value) {
+function updateRange(name, value, toastMsg) {
 
   // Locate the named range
   const namedRanges = SpreadsheetApp
@@ -57,17 +57,29 @@ function updateRange(name, value) {
     }
   }
 
-  // If the range has been located then update it
+  // If the range has been located
   if (range != undefined) {
 
-    range.setValue(value);
-    Logger.log(`Updated the named range ${name} to ${value} successfully.`);
+    // If the value has changed then update it and update the toast
+    const oldValue = range.getValue()
+    if (value != oldValue) {
+      toastMsg = toastMsg.concat(`${name} has increased by £${value-oldValue}. `);
+      range.setValue(value);
+      Logger.log(`Updated the named range ${name} to ${value} successfully.`);
 
+    // If it hasn't changed then just log it
+    } else {
+      Logger.log(`Range ${name} already had a value of ${value}.`);
+    }
+
+  // If the range could not be found
   } else {
     Logger.log(`Could not find the named range called ${name}`);
-    SpreadsheetApp.getActiveSpreadsheet()
-        .toast(`Could not find the named range called ${name}`, "ERROR", -1);
+    toastMsg = toastMsg.concat(`Could not find the named range called ${name}. `);
   }
+
+  // Return the possibly-updated toast message
+  return toastMsg;
 }
 
 
@@ -86,9 +98,21 @@ function onOpen() {
  */
 function updateAll() {
 
+  // Retrieve the totals
   const enthuseTotal = getEnthuseAmount("https://exeterguild.enthuse.com/execontempchoir/profile");
   const adventCalendarTotal = getEnthuseAmount("https://exeterguild.enthuse.com/cf/contemporary-choir-s-advent-calendar")
-  updateRange("SantaRun", enthuseTotal-adventCalendarTotal)
-  updateRange("AdventCalendar", adventCalendarTotal)
+
+  // Run the update functions
+  let toastMsg = "";
+  toastMsg = updateRange("SantaRun",
+      enthuseTotal-adventCalendarTotal, toastMsg);
+  toastMsg = updateRange("AdventCalendar",
+      adventCalendarTotal, toastMsg);
+
+  // Produce the toast to notify the user
+  if (toastMsg == "") {
+    toastMsg = "No new changes were found.";
+  }
+  SpreadsheetApp.getActiveSpreadsheet().toast(toastMsg, "", -1);
 
 }
