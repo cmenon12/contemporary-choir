@@ -132,7 +132,11 @@ function updateAll() {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const dateString = `Script last run on ${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} at ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}.`
+    let minutes = date.getMinutes();
+    if (minutes < 10) {
+      minutes = "0" + minutes;
+    }
+    const dateString = `Script last run on ${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} at ${date.getHours()}:${minutes}.`
     range.setValue(dateString);
   }
 
