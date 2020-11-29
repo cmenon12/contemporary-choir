@@ -21,6 +21,24 @@ function isADate(value) {
 
 
 /**
+ * Get the range with the name from the spreadsheet.
+ * Returns the range if found, otherwise undefined.
+ */
+function getNamedRange(name, spreadsheet) {
+
+  const namedRanges = spreadsheet.getNamedRanges();
+  let range;
+  for (let i = 0; i < namedRanges.length; i++) {
+    if (namedRanges[i].getName() == name) {
+      range = namedRanges[i].getRange();
+      break;
+    }
+  }
+  return range;
+}
+
+
+/**
  * Open a URL in a new tab.
  * This is from StackOverflow
  * https://stackoverflow.com/questions/10744760/google-apps-script-to-open-a-url
@@ -301,16 +319,10 @@ function copyToLedgerGetUrl() {
  * they know it hasn't stalled).
  */
 function processWithDefaultUrl() {
-  formatNeatly();
 
-  // Locate the named range
-  const namedRanges = SpreadsheetApp.getActiveSpreadsheet().getNamedRanges();
-  let url;
-  for (let i = 0; i < namedRanges.length; i++) {
-    if (namedRanges[i].getName() == "DefaultUrl") {
-      url = namedRanges[i].getRange().getValue();
-    }
-  }
+  formatNeatly();
+  const url = getNamedRange("DefaultUrl",
+      SpreadsheetApp.getActiveSpreadsheet()).getValue()
 
   compareLedgers(url);
   copyToLedger(url);

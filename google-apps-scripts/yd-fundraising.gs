@@ -43,19 +43,29 @@ function getEnthuseAmount(url) {
 
 
 /**
- * Update the named range with the name to the value (if it exists).
+ * Get the range with the name from the spreadsheet.
+ * Returns the range if found, otherwise undefined.
  */
-function updateRange(name, value, toastMsg) {
+function getNamedRange(name, spreadsheet) {
 
-  // Locate the named range
-  const namedRanges = SpreadsheetApp
-      .getActiveSpreadsheet().getNamedRanges();
+  const namedRanges = spreadsheet.getNamedRanges();
   let range;
   for (let i = 0; i < namedRanges.length; i++) {
     if (namedRanges[i].getName() == name) {
       range = namedRanges[i].getRange();
+      break;
     }
   }
+  return range;
+}
+
+
+/**
+ * Update the named range with the name to the value (if it exists).
+ */
+function updateRange(name, value, toastMsg) {
+
+  const range = getNamedRange(name, SpreadsheetApp.getActiveSpreadsheet())
 
   // If the range has been located
   if (range != undefined) {
