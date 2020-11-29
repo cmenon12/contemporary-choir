@@ -125,4 +125,15 @@ function updateAll() {
   }
   SpreadsheetApp.getActiveSpreadsheet().toast(toastMsg, "", -1);
 
+  // Update when this script was last run
+  const range = getNamedRange("ScriptLastRun", SpreadsheetApp.getActiveSpreadsheet())
+  if (range != undefined) {
+    const date = new Date()
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dateString = `Script last run on ${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} at ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}.`
+    range.setValue(dateString);
+  }
+
 }
