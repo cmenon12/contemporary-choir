@@ -25,6 +25,7 @@ from datetime import datetime
 import requests
 from appJar import gui
 from dateutil import tz
+from exceptions import ConversionTimeoutException
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -39,6 +40,9 @@ REPORT_ID = "30"
 
 # The number of PDF to XLSX converters that this program has
 NUMBER_OF_CONVERTERS = 2
+
+# How long to wait for conversion (in seconds)
+CONVERSION_TIMEOUT = 120
 
 # This variable specifies the name of a file that contains the
 # OAuth 2.0 information for this application, including its client_id
@@ -215,6 +219,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     :rtype: str
     :raises HTTPError: if an unsuccessful HTTP status code is returned
     :raises JSONDecodeError: if we can't decode the response
+    :raises ConversionTimeoutException: if the conversion takes too long
     """
 
     # Prepare for the request
@@ -235,7 +240,6 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
     # Prepare to keep checking the status of the conversion
     download_url = ""
-    url = "https://www.pdftoexcel.com/status"
 
     # Whilst it is still being converted
     check_count = 0
@@ -255,8 +259,10 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
             check_count += 1
 
             # Stop if we've been waiting for 2 minutes
-            if check_count == 60:
-                raise Exception("Waited too long for file conversion.")
+            if check_count == (CONVERSION_TIMEOUT/2):
+                raise ConversionTimeoutException(
+                    "Waited %d seconds for file conversion from %s."
+                    % (CONVERSION_TIMEOUT, converter["name"]))
             time.sleep(2)
 
     # Prepare and make the request to download the file

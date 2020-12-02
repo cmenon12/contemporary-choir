@@ -1,0 +1,2 @@
+class ConversionTimeoutException(Exception):
+    pass
