@@ -17,6 +17,7 @@ import configparser
 import logging
 import os
 import pickle
+import random
 import time
 import webbrowser
 from datetime import datetime
@@ -35,6 +36,9 @@ __license__ = "gpl-3.0"
 
 # 30 is used for the ledger, 31 for the balance
 REPORT_ID = "30"
+
+# The number of PDF to XLSX converters that this program has
+NUMBER_OF_CONVERTERS = 2
 
 # This variable specifies the name of a file that contains the
 # OAuth 2.0 information for this application, including its client_id
@@ -131,6 +135,69 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     # If successful then return the file path
     LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
     return pdf_filepath
+
+
+def choose_xlsx_converter(pdf_filepath: str,
+                          converter_number: int = 0) -> dict:
+    """Choose a PDF to XLSX converter_number and return its data.
+
+    :param pdf_filepath: the path to the PDF file to convert
+    :type pdf_filepath: str
+    :param converter_number: the number of the converter to use
+    :type converter_number: int, optional
+    :return: the data needed for the converter
+    :rtype: dict
+    """
+
+    # Define the user agent, which doesn't change
+    user_agent = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                  'AppleWebKit/537.36 (KHTML, like Gecko) '
+                  'Chrome/86.0.4240.111 Safari/537.36')
+
+    # Define the fixed headers
+    headers = {
+        'Connection': 'keep-alive',
+        'X-Requested-With': 'XMLHttpRequest',
+        'DNT': '1',
+        'User-Agent': user_agent,
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Dest': 'empty',
+        'Accept-Language': 'en-GB,en;q=0.9',
+    }
+
+    # If no valid number was specified then choose randomly
+    if converter_number not in range(1, NUMBER_OF_CONVERTERS + 1):
+        converter_number = random.randint(1, NUMBER_OF_CONVERTERS + 1)
+
+    converter = {}
+
+    # Use pdftoexcel.com
+    if converter_number == 1:
+        converter["name"] = "pdftoexcel.com"
+        converter["request_url"] = "https://www.pdftoexcel.com/upload.instant.php"
+        headers["Accept"] = "*/*"
+        headers["Origin"] = "https://www.pdftoexcel.com"
+        headers["Referer"] = "https://www.pdftoexcel.com/"
+        converter["headers"] = headers
+        converter["files"] = {'Filedata': open(pdf_filepath, 'rb')}
+        converter["status_url"] = "https://www.pdftoexcel.com/status"
+        converter["download_url"] = "https://www.pdftoexcel.com"
+
+    # Use pdftoexcelconverter.net
+    else:
+        converter["name"] = "pdftoexcelconverter.net"
+        converter["request_url"] = "https://www.pdftoexcelconverter.net/upload.instant.php"
+        headers["Accept"] = "application/json"
+        headers["Origin"] = "https://www.pdftoexcelconverter.net"
+        headers["Referer"] = "https://www.pdftoexcelconverter.net/"
+        converter["headers"] = headers
+        converter["files"] = {'file[0]': open(pdf_filepath, 'rb')}
+        converter["status_url"] = "https://www.pdftoexcelconverter.net/getIsConverted.php"
+        converter["download_url"] = "https://www.pdftoexcelconverter.net"
+
+    # Return the data
+    return converter
 
 
 def convert_to_xlsx(pdf_filepath: str, dir_name: str,
