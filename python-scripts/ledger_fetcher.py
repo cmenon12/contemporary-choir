@@ -197,6 +197,7 @@ def choose_xlsx_converter(pdf_filepath: str,
         converter["download_url"] = "https://www.pdftoexcelconverter.net"
 
     # Return the data
+    LOGGER.info("Using %s to convert the XLSX", converter["name"])
     return converter
 
 
@@ -217,32 +218,16 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     """
 
     # Prepare for the request
-    url = "https://www.pdftoexcel.com/upload.instant.php"
-    user_agent = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                  'AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/86.0.4240.111 Safari/537.36')
-    headers = {
-        'Connection': 'keep-alive',
-        'Accept': '*/*',
-        'X-Requested-With': 'XMLHttpRequest',
-        'DNT': '1',
-        'User-Agent': user_agent,
-        'Origin': 'https://www.pdftoexcel.com',
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Dest': 'empty',
-        'Referer': 'https://www.pdftoexcel.com/',
-        'Accept-Language': 'en-GB,en;q=0.9',
-    }
-    files = {'Filedata': open(pdf_filepath, 'rb')}
+    converter = choose_xlsx_converter(pdf_filepath)
 
     # Create a session that we can add headers to
     session = requests.Session()
-    session.headers.update(headers)
+    session.headers.update(converter["headers"])
 
     # Make the request and check that it was successful
-    LOGGER.info("Sending the PDF for conversion to pdftoexcel.com...")
-    response = session.post(url=url, files=files)
+    LOGGER.info("Sending the PDF for conversion to %s..." % converter["name"])
+    response = session.post(url=converter["request_url"],
+                            files=converter["files"])
     response.raise_for_status()
     job_id = response.json()["jobId"]
     LOGGER.info("The request was successful with no HTTP errors.")
@@ -258,7 +243,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
         # Prepare and make the request
         LOGGER.info("Checking if the conversion is complete...")
-        response = session.get(url=url,
+        response = session.get(url=converter["status_url"],
                                params=(("jobId", job_id), ("rand", "16")))
 
         # Check that the request was successful
@@ -275,7 +260,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
             time.sleep(2)
 
     # Prepare and make the request to download the file
-    url = "https://www.pdftoexcel.com" + download_url
+    url = converter["download_url"] + download_url
     LOGGER.info("Downloading the converted file...")
     response = session.get(url=url, params={'id': job_id})
 
