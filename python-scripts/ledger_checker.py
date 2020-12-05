@@ -203,15 +203,13 @@ def send_email(config: configparser.SectionProxy, changes: list,
         with open(pdf_filepath, "rb") as attachment:
             # Add file as application/octet-stream
             # Email client can usually download this automatically as attachment
-            part = MIMEBase("application", "octet-stream")
+            part = MIMEBase("application", "pdf")
             part.set_payload(attachment.read())
         encoders.encode_base64(part)
         # Add header as key/value pair to attachment part
         head, filename = os.path.split(pdf_filepath)
-        part.add_header(
-            "Content-Disposition",
-            f"attachment; filename= {filename}",
-        )
+        part.add_header("Content-Disposition",
+                        "attachment; filename=\"%s\"" % filename)
 
         # Add the attachment to message and send the message
         message.attach(part)
@@ -339,6 +337,7 @@ def check_ledger():
         send_email(config=parser["email"], changes=changes,
                    pdf_filepath=pdf_filepath,
                    sheet_url=sheet_url, pdf_url=pdf_url)
+        print("Email sent successfully!")
         LOGGER.info("Deleting the old sheet...")
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
@@ -402,7 +401,8 @@ def send_error_email(config: configparser.SectionProxy, error_stacks: str,
         text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
                 "Please see the stack trace below and check the logs.\n\n %s "
                 "———\nThis email was sent automatically by a "
-                "computer program. If you want to leave some feedback "
+                "computer program (cmenon12/contemporary-choir). "
+                "If you want to leave some feedback "
                 "then please reply directly to it." % (fails,
                                                        error_stacks))
         message.attach(MIMEText(text, "plain"))
