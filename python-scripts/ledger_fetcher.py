@@ -97,9 +97,9 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     }
 
     # Prepare the body
-    data = ('{"ReportID":' + report_id +
-            ',"UserGroupID":' + group_id +
-            ',"SubGroupID":' + subgroup_id + '}')
+    data = ("{\"ReportID\":" + report_id +
+            ",\"UserGroupID\":" + group_id +
+            ",\"SubGroupID\":" + subgroup_id + "}")
 
     # Make the request and check it was successful
     LOGGER.info("Making the HTTP request to service.expense365.com...")
@@ -154,20 +154,20 @@ def choose_xlsx_converter(pdf_filepath: str,
     """
 
     # Define the user agent, which doesn't change
-    user_agent = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                  'AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/86.0.4240.111 Safari/537.36')
+    user_agent = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/86.0.4240.111 Safari/537.36")
 
     # Define the fixed headers
     headers = {
-        'Connection': 'keep-alive',
-        'X-Requested-With': 'XMLHttpRequest',
-        'DNT': '1',
-        'User-Agent': user_agent,
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Dest': 'empty',
-        'Accept-Language': 'en-GB,en;q=0.9',
+        "Connection": "keep-alive",
+        "X-Requested-With": "XMLHttpRequest",
+        "DNT": "1",
+        "User-Agent": user_agent,
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
+        "Accept-Language": "en-GB,en;q=0.9",
     }
 
     # If no valid number was specified then choose randomly
@@ -184,7 +184,7 @@ def choose_xlsx_converter(pdf_filepath: str,
         headers["Origin"] = "https://www.pdftoexcel.com"
         headers["Referer"] = "https://www.pdftoexcel.com/"
         converter["headers"] = headers
-        converter["files"] = {'Filedata': open(pdf_filepath, 'rb')}
+        converter["files"] = {"Filedata": open(pdf_filepath, "rb")}
         converter["status_url"] = "https://www.pdftoexcel.com/status"
         converter["download_url"] = "https://www.pdftoexcel.com"
 
@@ -196,7 +196,7 @@ def choose_xlsx_converter(pdf_filepath: str,
         headers["Origin"] = "https://www.pdftoexcelconverter.net"
         headers["Referer"] = "https://www.pdftoexcelconverter.net/"
         converter["headers"] = headers
-        converter["files"] = {'file[0]': open(pdf_filepath, 'rb')}
+        converter["files"] = {"file[0]": open(pdf_filepath, "rb")}
         converter["status_url"] = "https://www.pdftoexcelconverter.net/getIsConverted.php"
         converter["download_url"] = "https://www.pdftoexcelconverter.net"
 
@@ -268,7 +268,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     # Prepare and make the request to download the file
     url = converter["download_url"] + download_url
     LOGGER.info("Downloading the converted file...")
-    response = session.get(url=url, params={'id': job_id})
+    response = session.get(url=url, params={"id": job_id})
 
     # Check that the request was successful
     response.raise_for_status()

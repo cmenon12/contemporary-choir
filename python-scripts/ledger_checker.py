@@ -88,7 +88,7 @@ def prepare_email_body(config: configparser.SectionProxy,
     grand_total = 0
     for key, value in cost_code_totals.items():
         grand_total += value
-        value = format_currency(float(value), 'GBP', locale='en_GB')
+        value = format_currency(float(value), "GBP", locale="en_GB")
         cost_code_totals[key] = value
 
     # Process each entry for each cost code
@@ -100,7 +100,7 @@ def prepare_email_body(config: configparser.SectionProxy,
         # Save the income and +ve and expenditure as -ve
         if item[3] == "":
             item[3] = -float(item[4])
-        item[3] = format_currency(float(item[3]), 'GBP', locale='en_GB')
+        item[3] = format_currency(float(item[3]), "GBP", locale="en_GB")
         # Add new cost code (key)
         if item[0] not in cost_codes.keys():
             cost_codes[item[0]] = []
@@ -118,19 +118,19 @@ def prepare_email_body(config: configparser.SectionProxy,
         for item in changes[-1]:
             if item[0] == key:
                 total.append(format_currency(float(item[3]),
-                                             'GBP', locale='en_GB'))
+                                             "GBP", locale="en_GB"))
         cost_code_totals[key] = total
 
     # Add the total changes and total balance
     cost_code_totals["grand_total"] = [format_currency(float(grand_total),
-                                                       'GBP', locale='en_GB'),
+                                                       "GBP", locale="en_GB"),
                                        format_currency(float(changes[-1][-1][3]),
-                                                       'GBP', locale='en_GB')]
+                                                       "GBP", locale="en_GB")]
 
     # Include the balance brought forward if it's not £0.
     if changes[-1][-1][5] != 0:
         balance_brought_forward = format_currency(float(changes[-1][-1][5]),
-                                                  'GBP', locale='en_GB')
+                                                  "GBP", locale="en_GB")
         cost_code_totals["grand_total"].append(" including %s that was brought forward." %
                                                balance_brought_forward)
     else:
@@ -143,7 +143,7 @@ def prepare_email_body(config: configparser.SectionProxy,
     # Render the template
     root = os.path.dirname(os.path.abspath(__file__))
     env = Environment(loader=FileSystemLoader(root))
-    template = env.get_template('email-template.html')
+    template = env.get_template("email-template.html")
     html = template.render(society_name=config["society_name"],
                            cost_codes=cost_codes,
                            cost_code_totals=cost_code_totals,
@@ -273,18 +273,18 @@ def check_ledger():
                                          scriptId=config["script_id"]).execute()
 
     # Catch and then raise an error during execution
-    if 'error' in response:
+    if "error" in response:
         LOGGER.error("There was an error with the Apps Script function!")
         LOGGER.error(response["error"])
-        error = response['error']['details'][0]
-        print("Script error message: " + error['errorMessage'])
-        if 'scriptStackTraceElements' in error:
+        error = response["error"]["details"][0]
+        print("Script error message: " + error["errorMessage"])
+        if "scriptStackTraceElements" in error:
             # There may not be a stacktrace if the script didn't start
             # executing.
             print("Script error stacktrace:")
-            for trace in error['scriptStackTraceElements']:
-                print("\t{0}: {1}".format(trace['function'],
-                                          trace['lineNumber']))
+            for trace in error["scriptStackTraceElements"]:
+                print("\t{0}: {1}".format(trace["function"],
+                                          trace["lineNumber"]))
         raise Exception(response["error"])
 
     # Otherwise save the data that the Apps Script returns

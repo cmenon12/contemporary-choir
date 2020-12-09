@@ -23,7 +23,8 @@ participant when they click the button. -->
     "5This sentence is a lie.",
     "6This sentence is a lie."];
 
-  const theButton = document.getElementById('wilty-generate');
+  const theButton = document.getElementById("wilty-generate");
+
 
   /**
    * 50/50 chance of asking for their truth or providing a lie.
@@ -53,12 +54,10 @@ participant when they click the button. -->
     } else {
       // Provide a random lie
       randomLie();
-
     }
 
-
-
   }
+
 
   /**
    * Returns a random lie and removes that from the array.
@@ -83,6 +82,7 @@ participant when they click the button. -->
       theButton.innerHTML = "We've already had this lie"
       theButton.style.visibility = "visible";
     }
+
   }
 </script>
 
