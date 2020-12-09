@@ -39,28 +39,18 @@ function getNamedRange(name, spreadsheet) {
 
 
 /**
- * Open a URL in a new tab.
- * This is from StackOverflow
- * https://stackoverflow.com/questions/10744760/google-apps-script-to-open-a-url
+ * Open a URL in a new tab using the openUrl.html HTML template.
  */
 function openUrl(url) {
-  const html = HtmlService.createHtmlOutput('<html lang="en-GB"><script>'
-      + 'window.close = function(){window.setTimeout(function(){google.script.host.close()},9)};'
-      + 'let a = document.createElement("a"); a.href="' + url + '"; a.target="_blank";'
-      + 'if(document.createEvent){'
-      + '  let event=document.createEvent("MouseEvents");'
-      + '  if(navigator.userAgent.toLowerCase().indexOf("firefox")>-1){window.document.body.append(a)}'
-      + '  event.initEvent("click",true,true); a.dispatchEvent(event);'
-      + '}else{ a.click() }'
-      + 'close();'
-      + '</script>'
-      // Offer URL as clickable link in case above code fails.
-      + '<body style="word-break:break-word;font-family:sans-serif;">Failed to open automatically. '
-      + '<a href="' + url + '" target="_blank" onclick="window.close()">Click here to proceed</a>.</body>'
-      + '<script>google.script.host.setHeight(40);google.script.host.setWidth(410)</script>'
-      + '</html>')
-      .setWidth(90).setHeight(1);
-  SpreadsheetApp.getUi().showModalDialog(html, "Opening ...");
+
+  // Create the HTML template and incorporate the URL
+  const html = HtmlService.createTemplateFromFile("openUrl");
+  html.url = url;
+
+  // Create and show the dialog
+  const dialog = html.evaluate().setWidth(90).setHeight(1);
+  SpreadsheetApp.getUi().showModalDialog(dialog, "Opening ...");
+
 }
 
 
