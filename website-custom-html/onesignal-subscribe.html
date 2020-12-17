@@ -11,7 +11,7 @@
 <br>
 <p>
     <span id="my-notification-button-text">Finally, you can also
-        <a id="my-notification-button" style="display: none;" href="#">subscribe to push notifications</a>
+        <a id="my-notification-button" href="#">subscribe to push notifications</a>
         through your web browser.</span>
 </p>
 
@@ -48,18 +48,19 @@
    * Used to update the button text
    */
   function updateMangeWebPushSubscriptionButton(buttonSelector) {
-    var hideWhenSubscribed = false;
-    var subscribeText = "subscribe to push notifications";
-    var unsubscribeText = "unsubscribe from push notifications";
+
+    // The text shown on the button
+    const subscribeText = "subscribe to push notifications";
+    const unsubscribeText = "unsubscribe from push notifications";
 
     getSubscriptionState().then(function (state) {
 
       /* If they haven't enabled push notifications or have opted out
          then show the subscribeText, otherwise the unsubscribeText  */
-      var buttonText = !state.isPushEnabled || state.isOptedOut ? subscribeText : unsubscribeText;
+      const buttonText = !state.isPushEnabled || state.isOptedOut ? subscribeText : unsubscribeText;
 
       // Get the element that they click on
-      var element = document.querySelector(buttonSelector);
+      const element = document.querySelector(buttonSelector);
       if (element === null) {
         return;
       }
@@ -83,12 +84,10 @@
       OneSignal.isPushNotificationsEnabled(),
       OneSignal.isOptedOut()
     ]).then(function (result) {
-      var isPushEnabled = result[0];
-      var isOptedOut = result[1];
 
       return {
-        isPushEnabled: isPushEnabled,
-        isOptedOut: isOptedOut
+        isPushEnabled: result[0],
+        isOptedOut: result[1]
       };
     });
   }
@@ -96,7 +95,7 @@
   var OneSignal = OneSignal || [];
 
   // This is the ID of the element that they click (the a tag)
-  var buttonSelector = "#my-notification-button";
+  const buttonSelector = "#my-notification-button";
 
   // This example assumes you've already initialized OneSignal
   OneSignal.push(function () {

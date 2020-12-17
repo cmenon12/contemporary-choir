@@ -4,32 +4,34 @@
 
 <script>
 
-    // Get the widget, the list, and the list items
-    var div = document.getElementById("rpwwt-wp-widget-recent-posts-widget-with-thumbnails");
-    var ul = div.getElementsByTagName("ul")[0];
-    var items = ul.getElementsByTagName("li");
+  // Get the widget, the list, and the list items
+  const div = document.getElementById("rpwwt-wp-widget-recent-posts-widget-with-thumbnails");
+  const ul = div.getElementsByTagName("ul")[0];
+  const items = ul.getElementsByTagName("li");
 
-    // For each item in the list
-    for (var i = 0; i < items.length; ++i) {
+  let author, authorText, date, dateText, newText;
 
-        // Combine the author and date into the author element
-        author = items[i].getElementsByClassName("rpwwt-post-author")[0];
-        authorText = author.innerText;
-        date = items[i].getElementsByClassName("rpwwt-post-date")[0];
-        dateText = date.innerText;
-        newText = "POSTED ON ".concat(dateText, " ", authorText);
-        author.innerHTML = newText;
-        date.parentNode.removeChild(date);
+  // For each item in the list
+  for (let i = 0; i < items.length; ++i) {
 
-        // Remove the bullet point
-        items[i].style.display = "block";
+    // Combine the author and date into the author element
+    author = items[i].getElementsByClassName("rpwwt-post-author")[0];
+    authorText = author.innerText;
+    date = items[i].getElementsByClassName("rpwwt-post-date")[0];
+    dateText = date.innerText;
+    newText = "POSTED ON ".concat(dateText, " ", authorText);
+    author.innerHTML = newText;
+    date.parentNode.removeChild(date);
 
-    }
+    // Remove the bullet point
+    items[i].style.display = "block";
 
-    // Make the title of the post into the main widget title
-    var title = div.getElementsByClassName("rpwwt-post-title")[0];
-    var newTitle = "Our Latest Update: " + title.innerText;
-    title.innerHTML = newTitle;
-    title.style.fontSize = "2.5rem";
+  }
+
+  // Make the title of the post into the main widget title
+  const title = div.getElementsByClassName("rpwwt-post-title")[0];
+  const newTitle = "Our Latest Update: " + title.innerText;
+  title.innerHTML = newTitle;
+  title.style.fontSize = "2.5rem";
 
 </script>
