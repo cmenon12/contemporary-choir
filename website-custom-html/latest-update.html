@@ -1,8 +1,15 @@
+<!-- This is used to format the 'Recent Posts' widget. It rearranges
+     the author and date, removes the bullet point, and alters the
+     title. It's designed for when the widget only displays one post. -->
+
 <script>
+
+    // Get the widget, the list, and the list items
     var div = document.getElementById("rpwwt-wp-widget-recent-posts-widget-with-thumbnails");
     var ul = div.getElementsByTagName("ul")[0];
     var items = ul.getElementsByTagName("li");
 
+    // For each item in the list
     for (var i = 0; i < items.length; ++i) {
 
         // Combine the author and date into the author element

@@ -1,11 +1,18 @@
+<!-- This is used to format the 'Recent Posts' widget. It rearranges
+     the author and date. It's designed for when the widget displays
+     multiple posts. -->
+
 <script>
+
+    // Get the widget, the list, and the list items
     var div = document.getElementById("rpwwt-wp-widget-recent-posts-widget-with-thumbnails");
     var ul = div.getElementsByTagName("ul")[0];
     var items = ul.getElementsByTagName("li");
 
+    // For each item in the list
     for (var i = 0; i < items.length; ++i) {
 
-        // do something with items[i], which is a <li> element
+        // Combine the author and date into the author element
         author = items[i].getElementsByClassName("rpwwt-post-author")[0];
         authorText = author.innerText;
         date = items[i].getElementsByClassName("rpwwt-post-date")[0];
@@ -15,4 +22,5 @@
         date.parentNode.removeChild(date);
 
     }
+
 </script>
