@@ -1,19 +1,42 @@
-<br><p><span id="my-notification-button-text">Finally, you can also <a id="my-notification-button"
-                                                                       style="display: none;" href="#">subscribe to push notifications</a> through your web browser.</span>
+<!-- Shows text prompting the user to subscribe to push notifications.
+     It will replace subscribe with unsubscribe if they’re already
+     subscribed.
+     When they click on the link, the text will change between subscribe
+     and unsubscribe (as they subscribe and unsubscribe).
+     The whole sentence will be completely hidden if they’re using an
+     unsupported browser (e.g. Safari).
+
+     This is adapted from https://documentation.onesignal.com/docs/web-push-custom-code-examples#trigger-custom-link-prompt -->
+
+<br>
+<p>
+    <span id="my-notification-button-text">Finally, you can also
+        <a id="my-notification-button" style="display: none;" href="#">subscribe to push notifications</a>
+        through your web browser.</span>
 </p>
 
 <script>
+
+  /**
+   * Runs when the link is clicked.
+   */
   function onManageWebPushSubscriptionButtonClicked(event) {
     getSubscriptionState().then(function (state) {
+
+      // Already subscribed, so unsubscribe them
       if (state.isPushEnabled) {
-        /* Subscribed, opt them out */
         OneSignal.setSubscription(false);
+
+      // Subscribe them
       } else {
+
+        // If they previously opted out, opt them back in
         if (state.isOptedOut) {
           /* Opted out, opt them back in */
           OneSignal.setSubscription(true);
+
+        // If they haven't subscribed before then set them up
         } else {
-          /* Unsubscribed, subscribe them */
           OneSignal.registerForPushNotifications();
         }
       }
@@ -21,47 +44,40 @@
     event.preventDefault();
   }
 
+  /**
+   * Used to update the button text
+   */
   function updateMangeWebPushSubscriptionButton(buttonSelector) {
     var hideWhenSubscribed = false;
     var subscribeText = "subscribe to push notifications";
     var unsubscribeText = "unsubscribe from push notifications";
 
-    /*
-    var isSafari = /constructor/i.test(window.HTMLElement) || (function (p) { return p.toString() === "[object SafariRemoteNotification]"; })(!window['safari'] || (typeof safari !== 'undefined' && safari.pushNotification));
-    var isSafari = navigator.vendor && navigator.vendor.indexOf('Apple') > -1 &&
-           navigator.userAgent &&
-           navigator.userAgent.indexOf('CriOS') == -1 &&
-           navigator.userAgent.indexOf('FxiOS') == -1;
-    console.log(isSafari);
-    if (isSafari === true) {
-            document.getElementById("my-notification-button-text").style.display = "none"
-            element.style.display = "none";
-            return;
-    }
-
-    */
-
     getSubscriptionState().then(function (state) {
+
+      /* If they haven't enabled push notifications or have opted out
+         then show the subscribeText, otherwise the unsubscribeText  */
       var buttonText = !state.isPushEnabled || state.isOptedOut ? subscribeText : unsubscribeText;
 
+      // Get the element that they click on
       var element = document.querySelector(buttonSelector);
       if (element === null) {
         return;
       }
 
-
+      // Run onManageWebPushSubscriptionButtonClicked() when the element is clicked
       element.removeEventListener('click', onManageWebPushSubscriptionButtonClicked);
       element.addEventListener('click', onManageWebPushSubscriptionButtonClicked);
-      element.textContent = buttonText;
 
-      if (state.hideWhenSubscribed && state.isPushEnabled) {
-        element.style.display = "none";
-      } else {
-        element.style.display = "";
-      }
+      // Set the text of the element
+      element.textContent = buttonText;
     });
   }
 
+  /**
+   * Determines and returns the user's subscription state.
+   * This includes if they've enabled push notifications
+   * and if they've opted in/out.
+   */
   function getSubscriptionState() {
     return Promise.all([
       OneSignal.isPushNotificationsEnabled(),
@@ -78,18 +94,25 @@
   }
 
   var OneSignal = OneSignal || [];
+
+  // This is the ID of the element that they click (the a tag)
   var buttonSelector = "#my-notification-button";
 
-  /* This example assumes you've already initialized OneSignal */
+  // This example assumes you've already initialized OneSignal
   OneSignal.push(function () {
-    // If we're on an unsupported browser, do nothing
+
+    // If we're on an unsupported browser then hide all the text and stop here
     if (!OneSignal.isPushNotificationsSupported()) {
       document.getElementById("my-notification-button-text").style.display = "none"
       return;
     }
+
+    // Update what the button says on (first run on page load)
     updateMangeWebPushSubscriptionButton(buttonSelector);
+
+    /* If the user's subscription state changes during the
+       page's session then update the button text  */
     OneSignal.on("subscriptionChange", function (isSubscribed) {
-      /* If the user's subscription state changes during the page's session, update the button text */
       updateMangeWebPushSubscriptionButton(buttonSelector);
     });
   });
