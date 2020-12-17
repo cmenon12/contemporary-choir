@@ -1,7 +1,7 @@
 # Contemporary Choir
 
 As the Treasurer of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. 
-<br><br>In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. This repo currently has a plugin that I've tweaked myself especially for our website.
+<br><br>In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. This repository currently contains some custom HTML that's used on the website, as well as a plugin that I've tweaked myself especially for our website.
 <br><br>*Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
 [![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
@@ -52,6 +52,9 @@ can be used  to download the society ledger from eXpense365 to your computer (in
 **[`apps-script/macmillan-fundraising.gs`](google-apps-scripts/macmillan-fundraising.gs)** updates how much has been fundraised for Macmillan from a GoFundMe page. It fetches the page, extracts the total fundraised and the total number of donors, applies a reduction due to payment processor fees & postage, and then updates a pre-defined named range in the sheet with the total.
 
 **[`apps-script/yd-fundraising.gs`](google-apps-scripts/yd-fundraising.gs)** updates how much has been fundraised for Young Devon. It currently fetches this from an Enthuse page, extracts the total fundraised, and then updates a pre-defined named range in the sheet with the total. More sources may be added in the future depending on future fundraising efforts.
+
+## Website Custom HTML
+**[`website-custom-html/`](website-custom-html/)** contains various snippets of HTML (including CSS and JavaScript) that are used on Contemporary Choir's websites. These are all incorporated using the custom HTML block in Wordpress.
 
 ## Wordpress Plugins 
 **[`wordpress-plugins/password-protected/`](wordpress-plugins/password-protected/)** is my own customised version of [Password Protected by Ben Huson](https://wordpress.org/plugins/password-protected/). I have modified it to include a Google CAPTCHA on the password page, which is implemented using the plugin [Advanced noCaptcha & invisible Captcha (v2 & v3) by Shamim Hasan](https://wordpress.org/plugins/advanced-nocaptcha-recaptcha/). It also has a custom logo (instead of the Wordpress one) and some brief text for people arriving at the site.
