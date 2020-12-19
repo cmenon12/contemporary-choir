@@ -122,6 +122,15 @@ do_action( 'password_protected_login_head' );
         <?php _e("If you think that you should be able to access this site but can't, please do ") ?><a target="_blank"
                                                                                                         href="https://exetercontemporarychoir.com/stay-in-touch/"><?php _e("get in touch") ?></a><?php _e(" with us.") ?>
     </p>
+
+	<?php /*
+	<p style="text-align: center"><?php _e("We're still developing this site, so it's not quite ready yet.") ?><br>
+		<?php _e("You can still go and ") ?><a href="https://exetercontemporarychoir.com/">
+		<?php _e("check out our main website") ?></a><?php _e(" in the meantime!") ?><br>
+        <?php _e("If you're a current member, we'll let you know when this site is ready for you.") ?>
+    </p>
+	 */ ?>
+
     <?php do_action('password_protected_before_login_form'); ?>
 
 	<form name="loginform" id="loginform" action="<?php echo esc_url( $Password_Protected->login_url() ); ?>" method="post">
