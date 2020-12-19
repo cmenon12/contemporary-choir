@@ -1,11 +1,11 @@
 === Password Protected ===
-Contributors: husobj, Christopher Menon
+Contributors: husobj
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=DXRJDNCMK9U3N
 Tags: password, protect, password protect, login
 Requires at least: 4.6
-Tested up to: 5.4
+Tested up to: 5.5.1
 Requires PHP: 5.6
-Stable tag: 2.3
+Stable tag: 2.4
 License: GPLv2 or later
 
 A very simple way to quickly password protect your WordPress site with a single password.
@@ -23,7 +23,6 @@ Features include:
 * Option to allow administrators access without entering password.
 * Works with Mark Jaquith's [Login Logo](https://wordpress.org/plugins/login-logo/) plugin.
 * Works with the [Uber Login Logo](https://wordpress.org/plugins/uber-login-logo/) plugin.
-* NEW: Works with the [Advanced noCaptcha](https://en-gb.wordpress.org/plugins/advanced-nocaptcha-recaptcha/) plugin.
 
 > Please note, this plugin works by setting a cookie to allow access to the site. If you are using a caching plugin or web hosting such as WP Engine that has in-built caching, you will need to configure the caching service to be disabled if the Password Protected cookie is set.
 
@@ -81,9 +80,11 @@ If you would like to translate this plugin you can easily contribute at the [Tra
 
 == Changelog ==
 
-= latest =
-- Customised exclusively for Contemporary Choir
-- Added a CAPTCHA using [Advanced noCaptcha](https://en-gb.wordpress.org/plugins/advanced-nocaptcha-recaptcha/)
+= 2.4 =
+- Add a Nocache header to the login page redirect to prevent the browser from caching the redirect page. Props [De'Yonte W.](https://github.com/rxnlabs)
+- Remove ‘password-protected’ query from redirects on successful login or logout.
+- Check "redirect_to" query var is set in hidden form field. Props [Matthias Kittsteiner](https://wordpress.org/support/users/kittmedia/).
+- Add favicon to password protected login page.
 
 = 2.3 =
 - Adds `password_protected_cookie_name` filter for the cookie name. Props [Jose Castaneda](https://github.com/jocastaneda).
@@ -99,7 +100,7 @@ If you would like to translate this plugin you can easily contribute at the [Tra
 - Update Portuguese translation. Props [Jonathan Hult](https://github.com/jhult).
 - Update Russian translation. Props [Alexey Chumakov](https://github.com/achumakov).
 
-= 2.2.4 =
+= 2.2.4 = 
 - Check that `$_SERVER['REMOTE_ADDR']` is set.
 
 = 2.2.3 =
@@ -226,7 +227,7 @@ If you would like to translate this plugin you can easily contribute at the [Tra
 == Upgrade Notice ==
 
 = 2.4 =
-Customised exclusively for Contemporary Choir and added a CAPTCHA
+Fixes to help with caching issues and favicon on login page.
 
 = 2.3 =
 Fixed an issue with "testcookie" on some hosts. Added `password_protected_cookie_name` and `password_protected_options_page_capability` filters.
