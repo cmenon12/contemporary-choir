@@ -4,7 +4,7 @@
 Plugin Name: Password Protected
 Plugin URI: https://wordpress.org/plugins/password-protected/
 Description: A very simple way to quickly password protect your WordPress site with a single password. Please note: This plugin does not restrict access to uploaded files and images and does not work with some caching setups.
-Version: 2.3
+Version: 2.4
 Author: Ben Huson
 Text Domain: password-protected
 Author URI: http://github.com/benhuson/password-protected/
@@ -40,20 +40,18 @@ define( 'PASSWORD_PROTECTED_DIR', plugin_dir_path( __FILE__ ) );
 global $Password_Protected;
 $Password_Protected = new Password_Protected();
 
-class Password_Protected
-{
+class Password_Protected {
 
-    var $version = '2.4';
-    var $admin = null;
-    var $errors = null;
+	var $version = '2.3';
+	var $admin   = null;
+	var $errors  = null;
 
-    /**
-     * Constructor
-     */
-    public function __construct()
-    {
+	/**
+	 * Constructor
+	 */
+	public function __construct() {
 
-        $this->errors = new WP_Error();
+		$this->errors = new WP_Error();
 
 		register_activation_hook( __FILE__, array( &$this, 'install' ) );
 
@@ -73,6 +71,11 @@ class Password_Protected
 		add_action( 'init', array( $this, 'compat' ) );
 		add_action( 'password_protected_login_messages', array( $this, 'login_messages' ) );
 		add_action( 'login_enqueue_scripts', array( $this, 'load_theme_stylesheet' ), 5 );
+
+		// Available from WordPress 4.3+
+		if ( function_exists( 'wp_site_icon' ) ) {
+			add_action( 'password_protected_login_head', 'wp_site_icon' );
+		}
 
 		add_shortcode( 'password_protected_logout_link', array( $this, 'logout_link_shortcode' ) );
 
@@ -280,7 +283,7 @@ class Password_Protected
 			$this->logout();
 
 			if ( isset( $_REQUEST['redirect_to'] ) ) {
-				$redirect_to = esc_url_raw( $_REQUEST['redirect_to'], array( 'http', 'https' ) );
+				$redirect_to = remove_query_arg( 'password-protected', esc_url_raw( $_REQUEST['redirect_to'], array( 'http', 'https' ) ) );
 			} else {
 				$redirect_to = home_url( '/' );
 			}
@@ -298,26 +301,29 @@ class Password_Protected
 	public function maybe_process_login() {
 
 		if ( $this->is_active() && isset( $_REQUEST['password_protected_pwd'] ) ) {
-            $password_protected_pwd = $_REQUEST['password_protected_pwd'];
-            $pwd = get_option('password_protected_password');
+			$password_protected_pwd = $_REQUEST['password_protected_pwd'];
+			$pwd = get_option( 'password_protected_password' );
 
             // If correct password and CAPTCHA
             if (((hash_equals($pwd, $this->encrypt_password($password_protected_pwd)) &&
                         $pwd != '') ||
                     apply_filters('password_protected_process_login', false, $password_protected_pwd)) && anr_verify_captcha()) {
 
-                $remember = isset($_REQUEST['password_protected_rememberme']) ? boolval($_REQUEST['password_protected_rememberme']) : false;
+				$remember = isset( $_REQUEST['password_protected_rememberme'] ) ? boolval( $_REQUEST['password_protected_rememberme'] ) : false;
 
-                if (!$this->allow_remember_me()) {
-                    $remember = false;
-                }
+				if ( ! $this->allow_remember_me() ) {
+					$remember = false;
+				}
 
-                $this->set_auth_cookie($remember);
-                $redirect_to = isset($_REQUEST['redirect_to']) ? $_REQUEST['redirect_to'] : '';
-                $redirect_to = apply_filters('password_protected_login_redirect', $redirect_to);
+				$this->set_auth_cookie( $remember );
+				$redirect_to = isset( $_REQUEST['redirect_to'] ) ? $_REQUEST['redirect_to'] : '';
+				$redirect_to = apply_filters( 'password_protected_login_redirect', $redirect_to );
 
 				if ( ! empty( $redirect_to ) ) {
-					$this->safe_redirect( $redirect_to );
+					$this->safe_redirect( remove_query_arg( 'password-protected', $redirect_to ) );
+					exit;
+				} elseif ( isset( $_GET['password_protected_pwd'] ) ) {
+					$this->safe_redirect( remove_query_arg( 'password-protected' ) );
 					exit;
 				}
 
@@ -337,7 +343,7 @@ class Password_Protected
 
                 }
 
-            }
+			}
 
 		}
 
@@ -398,6 +404,7 @@ class Password_Protected
 				$redirect_to = add_query_arg( 'redirect_to', urlencode( $redirect_to_url ), $redirect_to );
 			}
 
+			nocache_headers();
 			wp_redirect( $redirect_to );
 			exit();
 
