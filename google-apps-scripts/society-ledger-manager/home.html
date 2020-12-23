@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+
+    <style>
+        .tooltip {
+          position: relative;
+          display: inline-block;
+          border-bottom: 1px dotted black;
+        }
+
+        .tooltip .tooltiptext {
+          visibility: hidden;
+          width: 120px;
+          background-color: black;
+          color: #fff;
+          text-align: center;
+          border-radius: 5px;
+          padding: 5px 0;
+
+          /* Position the tooltip */
+          position: absolute;
+          z-index: 1;
+          top: -5px;
+          left: 105%;
+        }
+
+        .tooltip:hover .tooltiptext {
+          visibility: visible;
+        }
+    </style>
+
+    <script>
+    function handleFormSubmitSuccessHandler(result) {
+      if (result == null) {
+        result = "success!!"
+      }
+      document.getElementById("result").innerHTML = result;
+    }
+
+    function handleFormSubmitFailureHandler(error) {
+      document.getElementById("result").innerHTML = error.message;
+    }
+
+    // Prevent forms from submitting.
+      function preventFormSubmit() {
+        var forms = document.querySelectorAll('form');
+        for (var i = 0; i < forms.length; i++) {
+          forms[i].addEventListener('submit', function(event) {
+            event.preventDefault();
+          });
+        }
+      }
+      window.addEventListener('load', preventFormSubmit);
+
+      function submitForm(action) {
+        document.getElementById('ledgerForm').action = action;
+        document.getElementById('ledgerForm').submit();
+      }
+
+      function handleFormSubmit(form) {
+        google.script.run.withSuccessHandler(handleFormSubmitSuccessHandler).withFailureHandler(handleFormSubmitFailureHandler).fetchLedger(form);
+        document.getElementById("result").innerHTML = "Downloading...";
+      }
+
+    </script>
+
+</head>
+<body>
+    <div class="sidebar">
+        <h1>Download your Society Ledger</h1>
+
+        <form id="ledgerForm" onsubmit="handleFormSubmit(this)">
+
+
+            <div class="inline form-group">
+              <label for="groupId">Group ID</label>
+              <input type="number" name="groupId" id="groupId" value="<?= expense365Config.groupId ?>">
+            </div>
+            <br>
+            <div class="inline form-group">
+              <label for="email">Email</label>
+              <input type="email" name="email" id="email" value="<?= expense365Config.email ?>">
+            </div>
+            <br>
+            <div class="form-group">
+              <label for="password">Password</label>
+                <input type="password" name="password" id="password" value="<?= expense365Config.password ?>">
+            </div>
+            <br>
+            What do you want to do?
+            <div>
+              <input type="checkbox" name="savePDF" id="savePDF" value="savePDF" <? if (expense365Config.lastAction == "savePDF") { ?>checked<?}?>>
+              <label for="drive">Save PDF to Drive</label>
+            </div>
+            <div>
+              <input type="checkbox" name="saveXLSX" id="saveXLSX" value="saveXLSX" <? if (expense365Config.lastAction == "saveXLSX") { ?>checked<?}?>>
+              <label for="local">Save XLSX to Drive </label>
+            </div>
+            <div>
+              <input type="checkbox" name="import" id="import" value="import" <? if (expense365Config.lastAction == "import") { ?>checked<?}?>>
+              <label for="local">Import into Sheets </label>
+            </div>
+            <br>
+            <div>
+              <input type="checkbox" name="saveDetails" id="saveDetails" <? if (expense365Config.saveForNextTime != false) { ?>checked<?}?>>
+              <label for="saveDetails" class="tooltip">Save for next time
+                  <span class="tooltiptext">This will be saved for you individually.</span>
+              </label>
+            </div>
+            <br>
+            <button class="create" onclick="submitForm('GO!')">GO!</button>
+            <button onclick="submitForm('Clear saved data')">Clear saved data</button>
+
+        </form>
+        <br>
+        <div id="result"></div>
+
+    </div>
+</body>
+</html>
