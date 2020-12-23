@@ -56,13 +56,21 @@
       window.addEventListener('load', preventFormSubmit);
 
       function submitForm(action) {
-        document.getElementById('ledgerForm').action = action;
+        document.getElementById("actionInput").value = action;
         document.getElementById('ledgerForm').submit();
+
+        if (action == "Clear saved data") {
+          document.getElementById("result").innerHTML = "Clearing..."
+        } else if (action == "GO!") {
+          document.getElementById("result").innerHTML = "Downloading..."
+        }
       }
 
       function handleFormSubmit(form) {
-        google.script.run.withSuccessHandler(handleFormSubmitSuccessHandler).withFailureHandler(handleFormSubmitFailureHandler).fetchLedger(form);
-        document.getElementById("result").innerHTML = "Downloading...";
+        google.script.run
+          .withSuccessHandler(handleFormSubmitSuccessHandler)
+          .withFailureHandler(handleFormSubmitFailureHandler)
+          .processSidebarForm(form);
       }
 
     </script>
@@ -113,6 +121,7 @@
             <br>
             <button class="create" onclick="submitForm('GO!')">GO!</button>
             <button onclick="submitForm('Clear saved data')">Clear saved data</button>
+            <input type="hidden" name="action" id="actionInput" value="">
 
         </form>
         <br>

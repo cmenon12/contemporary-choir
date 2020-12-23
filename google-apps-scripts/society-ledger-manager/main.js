@@ -1,9 +1,9 @@
 /**
  * Create the sidebar.
  */
-function createHome() {
-  
-  const htmlTemplate = HtmlService.createTemplateFromFile("home");
+function createSidebar() {
+
+  const htmlTemplate = HtmlService.createTemplateFromFile("sidebar");
   htmlTemplate.expense365Config = getUserProperties();
   const html = htmlTemplate.evaluate().setTitle("Society Ledger Manager").setWidth(300);
   SpreadsheetApp.getUi().showSidebar(html);
@@ -16,7 +16,7 @@ function createHome() {
  */
 function onInstall(e) {
   onOpen(e);
-  createHome();
+  createSidebar();
 }
 
 
@@ -25,13 +25,18 @@ function onInstall(e) {
  */
 function onOpen(e) {
   SpreadsheetApp.getUi().createAddonMenu()
-      .addItem("Start", "createHome")
+      .addItem("Start", "createSidebar")
       .addItem("Delete all saved user data", "deleteSavedData")
       .addToUi();
 }
 
-
-function deleteSavedData() { PropertiesService.getUserProperties().deleteAllProperties(); };
+/**
+ * Deletes all the saved user data.
+ */
+function deleteSavedData() {
+  PropertiesService.getUserProperties().deleteAllProperties();
+  SpreadsheetApp.getActiveSpreadsheet().toast("All saved user data deleted.");
+}
 
 
 /**
@@ -39,13 +44,13 @@ function deleteSavedData() { PropertiesService.getUserProperties().deleteAllProp
  * JavaScript code for the Google Picker API.
  */
 function showPicker() {
-  
+
   var html = HtmlService.createHtmlOutputFromFile('picker.html')
       .setWidth(600)
       .setHeight(425)
       .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   SpreadsheetApp.getUi().showModalDialog(html, 'Select a file');
-  
+
 }
 
 
@@ -64,20 +69,26 @@ function getOAuthToken() {
   return ScriptApp.getOAuthToken();
 }
 
+/**
+ * Processes the form submission from the sidebar.
+ */
+function processSidebarForm(formData) {
 
-function fetchLedger(formData) {
-  
-  Logger.log(formData.action);
-  
+  Logger.log(`User clicked the button labelled ${formData.action}`);
+
+  // Clears the saved data
   if (formData.action == "Clear saved data") {
     PropertiesService.getUserProperties().deleteAllProperties();
-    return "All saved user data deleted!"; 
-  }
-  
-  if (formData.saveDetails == "on") {
-    Logger.log("Saving form data.");
-    saveUserProperties(formData);
-  }
+    return "All saved user data deleted.";
 
-  const pdfBlob = downloadLedger(formData);
+  // Runs the main script
+  } else if (formData.action == "GO!") {
+
+    if (formData.saveDetails == "on") {
+      Logger.log("Saving form data.");
+      saveUserProperties(formData);
+    }
+
+    const pdfBlob = downloadLedger(formData);
+  }
 }
