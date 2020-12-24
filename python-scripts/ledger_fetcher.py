@@ -103,7 +103,7 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
 
     # Make the request and check it was successful
     LOGGER.info("Making the HTTP request to service.expense365.com...")
-    response = requests.post(url=url, headers=headers, data=data, verify=False)
+    response = requests.post(url=url, headers=headers, data=data)
     response.raise_for_status()
     LOGGER.info("The request was successful with no HTTP errors.")
 
