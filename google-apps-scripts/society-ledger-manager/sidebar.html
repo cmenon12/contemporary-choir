@@ -10,7 +10,7 @@
         }
 
         body {
-            background-color: #e8f2fc;
+            background-color: #DBEDF5;
         }
 
     </style>
@@ -50,17 +50,17 @@
         <div>
             <input type="checkbox" name="savePDF" id="savePDF"
                    value="savePDF" <? if (expense365Config.lastAction == "savePDF") { ?>checked<?}?>>
-            <label for="drive">Save PDF to Drive</label>
+            <label for="savePDF">Save PDF to Drive</label>
         </div>
         <div>
             <input type="checkbox" name="saveXLSX" id="saveXLSX"
                    value="saveXLSX" <? if (expense365Config.lastAction == "saveXLSX") { ?>checked<?}?>>
-            <label for="local">Save XLSX to Drive </label>
+            <label for="saveXLSX">Save XLSX to Drive </label>
         </div>
         <div>
             <input type="checkbox" name="import" id="import"
                    value="import" <? if (expense365Config.lastAction == "import") { ?>checked<?}?>>
-            <label for="local">Import into Sheets </label>
+            <label for="import">Import into Sheets </label>
         </div>
         <span class="error" id="choseNothingError" style="display:none">You must choose something to do.<br></span>
 

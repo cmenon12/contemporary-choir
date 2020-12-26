@@ -11,7 +11,9 @@
 /**
  * Gets and returns the user properties
  */
-function getUserProperties() { return PropertiesService.getUserProperties().getProperties(); }
+function getUserProperties() {
+  return PropertiesService.getUserProperties().getProperties();
+}
 
 
 /**
@@ -42,22 +44,26 @@ function downloadLedger(expense365Config) {
   // Prepare the URL, headers, and body
   const url = "https://service.expense365.com/ws/rest/eXpense365/RequestDocument";
   const auth = "Basic " + Utilities.base64Encode(expense365Config.email + ":" + expense365Config.password);
-  const headers = {"User-Agent": "eXpense365|1.6.1|Google Pixel XL|Android|10|en_GB",
-                   "Authorization": auth,
-                   "Accept": "application/json",
-                   "If-Modified-Since": "Mon, 1 Oct 1990 05:00:00 GMT",
-                   "Content-Type": "text/plain;charset=UTF-8"};
+  const headers = {
+    "User-Agent": "eXpense365|1.6.1|Google Pixel XL|Android|10|en_GB",
+    "Authorization": auth,
+    "Accept": "application/json",
+    "If-Modified-Since": "Mon, 1 Oct 1990 05:00:00 GMT",
+    "Content-Type": "text/plain;charset=UTF-8"
+  };
   const data = ("{\"ReportID\": " + REPORT_ID +
-                ",\"UserGroupID\": " + expense365Config.groupId +
-                ",\"SubGroupID\": " + SUBGROUP_ID + "}");
+    ",\"UserGroupID\": " + expense365Config.groupId +
+    ",\"SubGroupID\": " + SUBGROUP_ID + "}");
 
   // Condense the above into a single object
-  const params = {"contentType": "text/plain;charset=UTF-8",
-                  "headers": headers,
-                  "method": "post",
-                  "payload": data,
-                  "validateHttpsCertificates": false,
-                  "muteHttpExceptions": true};
+  const params = {
+    "contentType": "text/plain;charset=UTF-8",
+    "headers": headers,
+    "method": "post",
+    "payload": data,
+    "validateHttpsCertificates": false,
+    "muteHttpExceptions": true
+  };
 
   // Make the POST request
   const response = UrlFetchApp.fetch(url, params);
@@ -65,17 +71,17 @@ function downloadLedger(expense365Config) {
   const responseText = response.getContentText();
 
   // If successful then return the content (the PDF)
-  if (status == 200) {
+  if (status === 200) {
 
     return response.getBlob();
-    
-  // 401 means that they failed to authenticate
-  } else if (status == 401) {
-    
+
+    // 401 means that they failed to authenticate
+  } else if (status === 401) {
+
     Logger.log("401: User entered incorrect email and/or password");
     throw new Error("Oops! Looks like you entered the wrong email address and/or password.");
 
-  // Otherwise log the error and stop
+    // Otherwise log the error and stop
   } else {
     Logger.log(`There was a ${status} error fetching ${url}.`);
     Logger.log(responseText);

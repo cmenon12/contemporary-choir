@@ -25,11 +25,12 @@ from datetime import datetime
 import requests
 from appJar import gui
 from dateutil import tz
-from exceptions import ConversionTimeoutException
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+
+from exceptions import ConversionTimeoutException
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"

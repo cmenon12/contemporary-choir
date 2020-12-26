@@ -25,15 +25,15 @@ function onInstall(e) {
  */
 function onOpen(e) {
   SpreadsheetApp.getUi().createAddonMenu()
-      .addItem("Start", "createSidebar")
-      .addItem("Delete all saved user data", "deleteSavedData")
-      .addToUi();
+    .addItem("Start", "createSidebar")
+    .addItem("Clear all saved user data", "clearSavedData")
+    .addToUi();
 }
 
 /**
  * Deletes all the saved user data.
  */
-function deleteSavedData() {
+function clearSavedData() {
   PropertiesService.getUserProperties().deleteAllProperties();
   SpreadsheetApp.getActiveSpreadsheet().toast("All saved user data deleted.");
 }
@@ -45,10 +45,10 @@ function deleteSavedData() {
  */
 function showPicker() {
 
-  var html = HtmlService.createHtmlOutputFromFile('picker.html')
-      .setWidth(600)
-      .setHeight(425)
-      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  const html = HtmlService.createHtmlOutputFromFile('picker.html')
+    .setWidth(600)
+    .setHeight(425)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   SpreadsheetApp.getUi().showModalDialog(html, 'Select a file');
 
 }
@@ -77,14 +77,14 @@ function processSidebarForm(formData) {
   Logger.log(`User clicked the button labelled ${formData.action}`);
 
   // Clears the saved data
-  if (formData.action == "Clear saved data") {
+  if (formData.action === "Clear saved data") {
     PropertiesService.getUserProperties().deleteAllProperties();
     return "All saved user data deleted.";
 
-  // Runs the main script
-  } else if (formData.action == "GO!") {
+    // Runs the main script
+  } else if (formData.action === "GO!") {
 
-    if (formData.saveDetails == "on") {
+    if (formData.saveDetails === "on") {
       Logger.log("Saving form data.");
       saveUserProperties(formData);
     }
