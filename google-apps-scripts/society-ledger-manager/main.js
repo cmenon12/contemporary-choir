@@ -2,12 +2,10 @@
  * Create the sidebar.
  */
 function createSidebar() {
-
   const htmlTemplate = HtmlService.createTemplateFromFile("sidebar");
   htmlTemplate.expense365Config = getUserProperties();
   const html = htmlTemplate.evaluate().setTitle("Society Ledger Manager").setWidth(300);
   SpreadsheetApp.getUi().showSidebar(html);
-
 }
 
 
@@ -45,6 +43,14 @@ function onOpen(e) {
 function clearSavedData() {
   PropertiesService.getUserProperties().deleteAllProperties();
   SpreadsheetApp.getActiveSpreadsheet().toast("All saved user data deleted.");
+}
+
+
+/**
+ * Gets and returns the user properties
+ */
+function getUserProperties() {
+  return PropertiesService.getUserProperties().getProperties();
 }
 
 
@@ -93,11 +99,31 @@ function processSidebarForm(formData) {
     // Runs the main script
   } else if (formData.action === "GO!") {
 
+    // Save the preferences if requested
     if (formData.saveDetails === "on") {
       Logger.log("Saving form data.");
       saveUserProperties(formData);
     }
 
+    // Download the PDF
+    Logger.log("Downloading the PDF ledger...");
     const pdfBlob = downloadLedger(formData);
+    Logger.log("PDF ledger downloaded successfully!");
+    
+    // Save the PDF if asked
+    if (formData.savePDF === "on") {
+      
+      // Ask where they want to save it if we haven't saved this
+      let pdfLocation = getUserProperties().PDFLocation;
+      if (pdfLocation === undefined) {
+        
+        Logger.log("showing picker");
+        showPicker();
+        
+      }
+      
+    }
+    
+    
   }
 }

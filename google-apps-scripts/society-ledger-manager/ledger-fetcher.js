@@ -9,14 +9,6 @@
 
 
 /**
- * Gets and returns the user properties
- */
-function getUserProperties() {
-  return PropertiesService.getUserProperties().getProperties();
-}
-
-
-/**
  * Saves the user properties specified as key-value pairs.
  */
 function saveUserProperties(data) {
