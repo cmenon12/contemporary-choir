@@ -6,7 +6,9 @@
 
     <style>
         h1 {
-            line-height: 1;
+            line-height: 1.1;
+            margin-top: 5px;
+            text-align: center;
         }
 
         body {
@@ -22,8 +24,7 @@
 <div class="sidebar">
     <h1>Download your Society Ledger</h1>
 
-    <form id="ledgerForm" onsubmit="handleFormSubmit(this)">
-
+    <form id="ledgerForm">
 
         <div class="inline form-group">
             <label for="groupId"><b>Group ID</b></label>
@@ -72,14 +73,17 @@
             <span class="secondary">This will be saved for you individually.</span>
         </div>
         <br>
-        <button class="create" onclick="processForm('GO!')">GO!</button>
-        <button onclick="processForm('Clear saved data')" formnovalidate>Clear saved data</button>
+        <button class="create" id="GO!" onclick="processForm('GO!')">GO!</button>
+        <button id="Clear saved data" onclick="processForm('Clear saved data')" formnovalidate>Clear saved data</button>
         <input type="hidden" name="action" id="actionInput" value="">
 
     </form>
+</div>
+
+<div class="result-container">
     <br>
     <div id="result"></div>
-
 </div>
+
 </body>
 </html>
