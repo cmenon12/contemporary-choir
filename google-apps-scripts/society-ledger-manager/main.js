@@ -12,6 +12,15 @@ function createSidebar() {
 
 
 /**
+ * Returns the content in the HTML file. 
+ * No .html file extension is needed.
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+
+/**
  * Runs when the add-on is installed.
  */
 function onInstall(e) {
