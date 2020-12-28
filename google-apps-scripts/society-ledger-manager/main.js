@@ -101,6 +101,32 @@ function getOAuthToken() {
   return ScriptApp.getOAuthToken();
 }
 
+
+/**
+ * Gets the file ID from the URL.
+ * Taken from https://stackoverflow.com/a/40324645.
+ */
+function getIdFrom(url) {
+  let id;
+  let parts = url.split(/^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/);
+
+  if (url.indexOf('?id=') >= 0) {
+    id = (parts[6].split("=")[1]).replace("&usp", "");
+    return id;
+
+  } else {
+    id = parts[5].split("/");
+    //Using sort to get the id as it is the longest element.
+    let sortArr = id.sort(function (a, b) {
+      return b.length - a.length
+    });
+    id = sortArr[0];
+
+    return id;
+  }
+}
+
+
 /**
  * Processes the form submission from the sidebar.
  */
@@ -130,16 +156,8 @@ function processSidebarForm(formData) {
 
     // Save the PDF if asked
     if (formData.savePDF === "on") {
-      
-      // Ask where they want to save it if we haven't saved this
-      let pdfLocation = getUserProperties().PDFLocation;
-      if (pdfLocation === undefined) {
-        
-        Logger.log("showing picker");
-        showPicker();
-        
-      }
-      
+      const id = getIdFrom(formData.PDFLocation);
+      result = result.concat(saveToDrive(pdfBlob, id, "application/pdf"));
     }
 
 

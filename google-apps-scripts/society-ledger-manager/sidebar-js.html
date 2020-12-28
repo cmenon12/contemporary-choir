@@ -1,6 +1,6 @@
 <script>
   function formSuccessHandler(result) {
-    if (result == null) {
+    if (result === null || result === "") {
       result = "success!!";
     }
     document.getElementById("result").className = "";

@@ -66,3 +66,48 @@ function downloadLedger(expense365Config) {
   }
 
 }
+
+
+/**
+ * Saves the blob to the file or folder ID.
+ * Will ensure that if it's a file, that it matches the MIME type specified.
+ * Returns the outcome as HTML-formatted user friendly text.
+ */
+function saveToDrive(blob, id, mimeType) {
+
+  let result;
+
+  // Save it to the folder with that ID
+  try {
+    const folder = DriveApp.getFolderById(id);
+    const newFile = folder.createFile(blob);
+    Logger.log(`Ledger saved to a new file named ${newFile.getName()} in ${folder.getName()}.`);
+    result = `Ledger saved to a new file named <a href="${newFile.getUrl()}" target="_blank">${newFile.getName()}<\/a> in <a href="${folder.getUrl()}" target="_blank">${folder.getName()}<\/a>.<br>`;
+
+    // Try updating the existing file with that ID instead
+  } catch (err1) {
+    try {
+
+      // Check that the file has the correct MIME type
+      const file = Drive.Files.get(id);
+      if (file.mimeType !== mimeType) {
+        Logger.log(`The file MIME type is ${file.mimeType} which doesn't match ${mimeType}.`)
+        result = `Error: The file MIME type is ${file.mimeType} which doesn't match ${mimeType}.`;
+
+      } else {
+        // Upload the new revision
+        const params = {"newRevision": true, "pinned": true};
+        const newFile = Drive.Files.update(file, id, blob, params);
+        Logger.log(`Ledger saved to an existing file named ${newFile.title}.`);
+        result = `Ledger saved to an existing file named <a href="${newFile.alternateLink}" target="_blank">${newFile.title}<\/a>.<br>`;
+      }
+
+      // The ID doesn't match any folder nor file
+    } catch (err2) {
+      Logger.log(`No folder nor file exists for the ID ${id}.`);
+      result = `Error: No folder nor file exists for the ID ${id}.`;
+
+    }
+  }
+  return result;
+}
