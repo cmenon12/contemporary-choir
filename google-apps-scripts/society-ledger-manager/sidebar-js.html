@@ -53,6 +53,24 @@
       document.getElementById("choseNothingError").style.display = "none";
     }
 
+    // Check that the PDF URL was given where necessary
+    if (document.getElementById("savePDF").checked === true &&
+      document.getElementById("PDFLocation").value === "") {
+      document.getElementById("PDFLocationEmpty").style.display = "inline";
+      success = false;
+    } else {
+      document.getElementById("PDFLocationEmpty").style.display = "none";
+    }
+
+    // Check that the XLSX URL was given where necessary
+    if (document.getElementById("saveXLSX").checked === true &&
+      document.getElementById("XLSXLocation").value === "") {
+      document.getElementById("XLSXLocationEmpty").style.display = "inline";
+      success = false;
+    } else {
+      document.getElementById("XLSXLocationEmpty").style.display = "none";
+    }
+
     // Return the result
     return success;
 
@@ -91,6 +109,8 @@
         document.getElementById("result").innerHTML = "Downloading..."
       }
 
+    } else {
+      document.getElementById("ledgerForm").reportValidity();
     }
   }
 

@@ -50,17 +50,23 @@
         <b>What do you want to do?</b>
         <div>
             <input type="checkbox" name="savePDF" id="savePDF"
-                   <? if (expense365Config.lastAction == "savePDF") { ?>checked<?}?>>
+            <? if (expense365Config.savePDF == "on") { ?>checked<?}?>>
             <label for="savePDF">Save PDF to Drive</label>
+            <input type="url" name="PDFLocation" id="PDFLocation" style="width: 100%"
+                   placeholder="URL of folder or PDF file in Drive" value="<?= expense365Config.PDFLocation ?>">
+            <span class="error" id="PDFLocationEmpty" style="display: none">You must enter a URL.<br></span>
         </div>
         <div>
             <input type="checkbox" name="saveXLSX" id="saveXLSX"
-                   <? if (expense365Config.lastAction == "saveXLSX") { ?>checked<?}?>>
-            <label for="saveXLSX">Save XLSX to Drive </label>
+            <? if (expense365Config.saveXLSX == "on") { ?>checked<?}?>>
+            <label for="saveXLSX">Save XLSX to Drive </label><br>
+            <input type="url" name="XLSXLocation" id="XLSXLocation" style="width: 100%"
+                   placeholder="URL of folder or XLSX file in Drive" value="<?= expense365Config.XLSXLocation ?>">
+            <span class="error" id="XLSXLocationEmpty" style="display: none">You must enter a URL.<br></span>
         </div>
         <div>
             <input type="checkbox" name="import" id="import"
-                   <? if (expense365Config.lastAction == "import") { ?>checked<?}?>>
+            <? if (expense365Config.import == "on") { ?>checked<?}?>>
             <label for="import">Import into Sheets </label>
         </div>
         <span class="error" id="choseNothingError" style="display:none">You must choose something to do.<br></span>
@@ -78,7 +84,7 @@
         <input type="hidden" name="action" id="actionInput" value="">
 
     </form>
-    
+
     <br>
     <div id="result"></div>
 </div>
