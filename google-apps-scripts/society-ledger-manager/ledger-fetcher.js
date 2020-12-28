@@ -9,23 +9,6 @@
 
 
 /**
- * Saves the user properties specified as key-value pairs.
- */
-function saveUserProperties(data) {
-
-  // Get the current saved properties
-  const userProperties = PropertiesService.getUserProperties()
-
-  // Save them
-  for (let prop in data) {
-    if (Object.prototype.hasOwnProperty.call(data, prop)) {
-      userProperties.setProperty(prop, data[prop]);
-    }
-  }
-}
-
-
-/**
  * Downloads the ledger from eXpense365 and returns it as a blob.
  */
 function downloadLedger(expense365Config) {
@@ -65,7 +48,9 @@ function downloadLedger(expense365Config) {
   // If successful then return the content (the PDF)
   if (status === 200) {
 
-    return response.getBlob();
+    const fileName = `Ledger at ${response.getHeaders().Date}.pdf`;
+
+    return response.getBlob().setName(fileName);
 
     // 401 means that they failed to authenticate
   } else if (status === 401) {

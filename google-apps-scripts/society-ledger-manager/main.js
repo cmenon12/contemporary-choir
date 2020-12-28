@@ -10,7 +10,7 @@ function createSidebar() {
 
 
 /**
- * Returns the content in the HTML file. 
+ * Returns the content in the HTML file.
  * No .html file extension is needed.
  */
 function include(filename) {
@@ -55,6 +55,23 @@ function getUserProperties() {
 
 
 /**
+ * Saves the user properties specified as key-value pairs.
+ */
+function saveUserProperties(data) {
+
+  // Get the current saved properties
+  const userProperties = PropertiesService.getUserProperties()
+
+  // Save them
+  for (let prop in data) {
+    if (Object.prototype.hasOwnProperty.call(data, prop)) {
+      userProperties.setProperty(prop, data[prop]);
+    }
+  }
+}
+
+
+/**
  * Displays an HTML-service dialog in Google Sheets that contains client-side
  * JavaScript code for the Google Picker API.
  */
@@ -90,11 +107,12 @@ function getOAuthToken() {
 function processSidebarForm(formData) {
 
   Logger.log(`User clicked the button labelled ${formData.action}`);
+  let result = "";
 
-  // Clears the saved data
+  // Clear the saved data
   if (formData.action === "Clear saved data") {
     PropertiesService.getUserProperties().deleteAllProperties();
-    return "All saved user data deleted.";
+    result = "All saved user data deleted.";
 
     // Runs the main script
   } else if (formData.action === "GO!") {
@@ -109,7 +127,7 @@ function processSidebarForm(formData) {
     Logger.log("Downloading the PDF ledger...");
     const pdfBlob = downloadLedger(formData);
     Logger.log("PDF ledger downloaded successfully!");
-    
+
     // Save the PDF if asked
     if (formData.savePDF === "on") {
       
@@ -123,7 +141,9 @@ function processSidebarForm(formData) {
       }
       
     }
-    
-    
+
+
   }
+  return result;
 }
+
