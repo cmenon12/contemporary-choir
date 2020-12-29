@@ -36,8 +36,7 @@ function downloadLedger(expense365Config) {
     "headers": headers,
     "method": "post",
     "payload": data,
-    "validateHttpsCertificates": false,
-    "muteHttpExceptions": true
+    "validateHttpsCertificates": false
   };
 
   // Make the POST request
@@ -75,14 +74,12 @@ function downloadLedger(expense365Config) {
  */
 function saveToDrive(blob, id, mimeType) {
 
-  let result;
-
   // Save it to the folder with that ID
   try {
     const folder = DriveApp.getFolderById(id);
     const newFile = folder.createFile(blob);
     Logger.log(`Ledger saved to a new file named ${newFile.getName()} in ${folder.getName()}.`);
-    result = `Ledger saved to a new file named <a href="${newFile.getUrl()}" target="_blank">${newFile.getName()}<\/a> in <a href="${folder.getUrl()}" target="_blank">${folder.getName()}<\/a>.<br>`;
+    return `Ledger saved to a new file named <a href="${newFile.getUrl()}" target="_blank">${newFile.getName()}<\/a> in <a href="${folder.getUrl()}" target="_blank">${folder.getName()}<\/a>.<br>`;
 
     // Try updating the existing file with that ID instead
   } catch (err1) {
@@ -91,23 +88,75 @@ function saveToDrive(blob, id, mimeType) {
       // Check that the file has the correct MIME type
       const file = Drive.Files.get(id);
       if (file.mimeType !== mimeType) {
-        Logger.log(`The file MIME type is ${file.mimeType} which doesn't match ${mimeType}.`)
-        result = `Error: The file MIME type is ${file.mimeType} which doesn't match ${mimeType}.`;
+        Logger.log(`The file MIME type is ${file.mimeType} which does not match ${mimeType}.`)
+        return `Error: The file MIME type is ${file.mimeType} which does not match ${mimeType}.<br>`;
 
       } else {
         // Upload the new revision
         const params = {"newRevision": true, "pinned": true};
         const newFile = Drive.Files.update(file, id, blob, params);
         Logger.log(`Ledger saved to an existing file named ${newFile.title}.`);
-        result = `Ledger saved to an existing file named <a href="${newFile.alternateLink}" target="_blank">${newFile.title}<\/a>.<br>`;
+        return `Ledger saved to an existing file named <a href="${newFile.alternateLink}" target="_blank">${newFile.title}<\/a>.<br>`;
       }
 
       // The ID doesn't match any folder nor file
     } catch (err2) {
-      Logger.log(`No folder nor file exists for the ID ${id}.`);
-      result = `Error: No folder nor file exists for the ID ${id}.`;
-
+      Logger.log(`No folder nor file exists with the ID ${id}.`);
+      return `Error: No folder nor file exists with the ID ${id}.<br>`;
     }
   }
-  return result;
+}
+
+
+/**
+ * Converts the PDF blob to XLSX using an online convertor.
+ */
+function convertToXLSX(pdfBlob) {
+
+  // Prepare the URL, headers, and body
+  const url = "https://www.pdftoexcel.com/upload.instant.php";
+  const headers = {
+    "Connection": "keep-alive",
+    "X-Requested-With": "XMLHttpRequest",
+    "DNT": "1",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4240.111 Safari/537.36",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Dest": "empty",
+    "Accept-Language": "en-GB,en;q=0.9",
+    "Accept": "*/*",
+    "Origin": "https://www.pdftoexcel.com",
+    "Referrer": "https://www.pdftoexcel.com"
+  };
+  const data = {"Filedata": pdfBlob};
+
+  // Condense the above into a single object
+  const params = {
+    "headers": headers,
+    "method": "post",
+    "payload": data
+  };
+
+  // Make the POST request
+  const response = UrlFetchApp.fetch(url, params);
+  Logger.log(response);
+  Logger.log(response.getResponseCode());
+  Logger.log(response.getAllHeaders())
+  return;
+  const status = response.getResponseCode();
+  const responseText = response.getContentText();
+
+  // If successful
+  if (status === 200) {
+
+    Logger.log(responseText);
+    return responseText;
+
+    // Otherwise log the error and stop.
+  } else {
+    Logger.log(`There was a ${status} error fetching ${url}.`);
+    Logger.log(responseText);
+    return `Error: There was a ${status} error fetching ${url}. The server returned: ${responseText}`;
+  }
+
 }
