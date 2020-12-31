@@ -53,8 +53,8 @@ can be used  to download the society ledger from eXpense365 to your computer (in
 
 **[`google-apps-scripts/yd-fundraising.gs`](google-apps-scripts/yd-fundraising.gs)** updates how much has been fundraised for Young Devon. It currently fetches the totals from multiple Enthuse pages, and updates several named ranges in the sheet with the totals.
 
-### Society Ledger Manager Apps Script Add-On
-**[`google-apps-scripts/society-ledger-manager/`](google-apps-scripts/society-ledger-manager)** is a Google Editor add-on that allows you to download your society ledger and save it straight to Drive.
+### Society Ledger Downloader Apps Script Add-On
+**[`google-apps-scripts/society-ledger-downloader/`](google-apps-scripts/society-ledger-downloader)** is a Google Workspace Add-On that allows you to download your society ledger and save it straight to Drive.
 
 ## Website Custom HTML
 **[`website-custom-html/`](website-custom-html)** contains various snippets of HTML (including CSS and JavaScript) that are used on Contemporary Choir's websites. These are all incorporated using the custom HTML block in Wordpress.

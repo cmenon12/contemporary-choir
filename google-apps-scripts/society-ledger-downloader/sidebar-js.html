@@ -98,7 +98,7 @@
       google.script.run
         .withSuccessHandler(formSuccessHandler)
         .withFailureHandler(formFailureHandler)
-        .processSidebarForm(document.getElementById("ledgerForm"));
+        .processSimplifiedSidebarForm(document.getElementById("ledgerForm"));
 
       // Update the result text
       document.getElementById("actionInput").value = action;
