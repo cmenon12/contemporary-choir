@@ -57,12 +57,12 @@ function getIdFrom(url) {
 
 
 /**
- * Processes the form submission from the sidebar.
+ * Processes the form submission from the Drive sidebar.
  */
-function processSidebarForm(e) {
-  
+function processDriveSidebarForm(e) {
+
   Logger.log(e)
-  
+
   saveUserProperties(e.formInput)
 }
 
@@ -77,11 +77,11 @@ function processSidebarForm(e) {
  * @return {DriveItemsSelectedActionResponse}
  */
 function onRequestFileScopeButtonClicked(e) {
-  
+
   saveUserProperties(e.formInput)
-  
+
   const idToRequest = e.parameters.id;
   return CardService.newDriveItemsSelectedActionResponseBuilder()
-  .requestFileScope(idToRequest)
-  .build();
+    .requestFileScope(idToRequest)
+    .build();
 }

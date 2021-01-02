@@ -5,7 +5,7 @@ function buildCommonHomePage(e) {
 
   Logger.log(e)
 
-  const header = CardService.newCardHeader().setTitle("Download your society ledger");
+  const header = CardService.newCardHeader().setTitle("Download your Society Ledger");
   const card = CardService.newCardBuilder().setHeader(header)
 
   const saveMethod = CardService.newSelectionInput()
@@ -24,7 +24,8 @@ function buildCommonHomePage(e) {
   const buttons = CardService.newButtonSet()
     .addButton(CardService.newTextButton()
       .setText("DOWNLOAD")
-      .setOnClickAction(CardService.newAction().setFunctionName("processSidebarForm")))
+      .setOnClickAction(CardService.newAction().setFunctionName("processSidebarForm"))
+      .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
     .addButton(CardService.newTextButton()
       .setText("Clear saved data")
       .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")))
@@ -49,7 +50,7 @@ function buildDriveHomePage(e) {
   Logger.log(e)
 
   // Start to create the Card
-  const header = CardService.newCardHeader().setTitle("Download your society ledger");
+  const header = CardService.newCardHeader().setTitle("Download your Society Ledger");
   const card = CardService.newCardBuilder().setHeader(header)
 
   // If they haven't selected anything yet
@@ -85,7 +86,8 @@ function buildDriveHomePage(e) {
       buttons = CardService.newButtonSet()
         .addButton(CardService.newTextButton()
           .setText("DOWNLOAD")
-          .setOnClickAction(CardService.newAction().setFunctionName("processSidebarForm")))
+          .setOnClickAction(CardService.newAction().setFunctionName("processDriveSidebarForm"))
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
           .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")))
@@ -95,7 +97,8 @@ function buildDriveHomePage(e) {
       buttons = CardService.newButtonSet()
         .addButton(CardService.newTextButton()
           .setText("AUTHORISE ACCESS")
-          .setOnClickAction(CardService.newAction().setFunctionName("onRequestFileScopeButtonClicked").setParameters({id: currentFile.id})))
+          .setOnClickAction(CardService.newAction().setFunctionName("onRequestFileScopeButtonClicked").setParameters({id: currentFile.id}))
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
           .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")))
@@ -129,7 +132,8 @@ function buildDriveHomePage(e) {
       buttons = CardService.newButtonSet()
         .addButton(CardService.newTextButton()
           .setText("DOWNLOAD")
-          .setOnClickAction(CardService.newAction().setFunctionName("processSidebarForm")))
+          .setOnClickAction(CardService.newAction().setFunctionName("processDriveSidebarForm"))
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
           .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")));
@@ -139,7 +143,8 @@ function buildDriveHomePage(e) {
       buttons = CardService.newButtonSet()
         .addButton(CardService.newTextButton()
           .setText("AUTHORISE ACCESS")
-          .setOnClickAction(CardService.newAction().setFunctionName("onRequestFileScopeButtonClicked").setParameters({id: currentFile.id})))
+          .setOnClickAction(CardService.newAction().setFunctionName("onRequestFileScopeButtonClicked").setParameters({id: currentFile.id}))
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
           .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")));
@@ -165,21 +170,36 @@ function buildDriveHomePage(e) {
  */
 function getLoginSection() {
 
-  const groupId = CardService.newTextInput()
+  let groupId = CardService.newTextInput()
     .setFieldName("groupId")
-    .setTitle("Group ID")
-    .setHint("You can find this from your society admin URL (e.g. 12345 in exeterguild.org/organisation/admin/12345).")
-    .setValue(getUserProperties().groupId);
+    .setTitle("Society Group ID")
+    .setHint("You can find this from your society admin URL (e.g. 12345 in exeterguild.org/organisation/admin/12345).");
 
-  const email = CardService.newTextInput()
+  if (getUserProperties().groupId === undefined) {
+    groupId = groupId.setValue("");
+  } else {
+    groupId = groupId.setValue(getUserProperties().groupId);
+  }
+
+  let email = CardService.newTextInput()
     .setFieldName("email")
-    .setTitle("Email")
-    .setValue(getUserProperties().email);
+    .setTitle("eXpense365 Email");
 
-  const password = CardService.newTextInput()
+  if (getUserProperties().email === undefined) {
+    email = email.setValue("");
+  } else {
+    email = email.setValue(getUserProperties().email);
+  }
+
+  let password = CardService.newTextInput()
     .setFieldName("password")
-    .setTitle("Password")
-    .setValue(getUserProperties().password);
+    .setTitle("eXpense365 Password");
+
+  if (getUserProperties().password === undefined) {
+    password = password.setValue("");
+  } else {
+    password = password.setValue(getUserProperties().password);
+  }
 
   const saveDetails = CardService.newTextParagraph().setText("Your details will be saved for you, and for your use only.");
 
@@ -187,7 +207,7 @@ function getLoginSection() {
     .addWidget(groupId)
     .addWidget(email)
     .addWidget(password)
-    .addWidget(saveDetails)
+    .addWidget(saveDetails);
 
   return section
 
