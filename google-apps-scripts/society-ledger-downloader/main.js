@@ -61,9 +61,43 @@ function getIdFrom(url) {
  */
 function processDriveSidebarForm(e) {
 
-  Logger.log(e)
+  saveUserProperties(e.formInput);
 
-  saveUserProperties(e.formInput)
+  const currentFile = e.drive.activeCursorItem;
+
+  // Download the ledger
+  let result = downloadLedger(e.formInput);
+  let pdfBlob;
+  if (result[0] === true) {
+    pdfBlob = result[1];
+  } else {
+    // If there was an error then stop here
+    return buildErrorNotification(result[1]);
+  }
+
+  // Upload it to Drive
+  let folder = false;
+  let rename = false;
+  if (currentFile.mimeType === "application/vnd.google-apps.folder") {
+    folder = true;
+  } else if (e.formInput.saveMethod === "rename") {
+    rename = true;
+  }
+  result = saveToDrive(pdfBlob, currentFile.id, folder, rename);
+
+  // Open the newly-uploaded ledger
+  if (result[0] === true) {
+    const openLink = CardService.newOpenLink()
+      .setUrl(result[1])
+      .setOpenAs(CardService.OpenAs.FULL_SIZE)
+      .setOnClose(CardService.OnClose.NOTHING)
+    return CardService.newActionResponseBuilder().setOpenLink(openLink).build();
+
+  } else {
+    // Otherwise just notify of the error
+    return buildErrorNotification(result[1]);
+  }
+
 }
 
 
@@ -71,6 +105,7 @@ function processDriveSidebarForm(e) {
  * Callback function for a button action. Instructs Drive to display a
  * permissions dialog to the user, requesting `drive.file` scope for a
  * specific item on behalf of this add-on.
+ * Also saves the form data.
  *
  * @param {Object} e The parameters object that contains the item's
  *   Drive ID.

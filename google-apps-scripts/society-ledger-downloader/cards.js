@@ -213,3 +213,11 @@ function getLoginSection() {
   return section
 
 }
+
+
+function buildErrorNotification(message) {
+  return CardService.newActionResponseBuilder()
+    .setNotification(CardService.newNotification()
+      .setText(message))
+    .build();
+}
