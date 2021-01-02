@@ -13,9 +13,9 @@ function buildCommonHomePage(e) {
     .setType(CardService.SelectionInputType.RADIO_BUTTON)
     .setTitle("How do you want to save the PDF ledger?")
     .setFieldName("saveMethod")
-    .addItem("Save to this folder", "folder", getUserProperties().saveMethodFolder === "true")
-    .addItem("Replace this existing PDF", "replace", getUserProperties().saveMethodReplace === "true")
-    .addItem("Add a new revision to this existing PDF", "update", getUserProperties().saveMethodUpdate === "true");
+    .addItem("Save to this folder", "folder", getUserProperties().saveMethod === "folder")
+    .addItem("Rename this existing PDF", "rename", getUserProperties().saveMethod === "rename")
+    .addItem("Keep the current filename", "keep", getUserProperties().saveMethod === "keep");
 
   const url = CardService.newTextInput()
     .setFieldName("url")
@@ -80,25 +80,28 @@ function buildDriveHomePage(e) {
       .setIconUrl(currentFile.iconUrl)
       .setTopLabel("The ledger will be saved to this folder.");
 
-    let buttons;
+    let buttons = CardService.newButtonSet();
 
     // If we already have access to it
     if (currentFile.addonHasFileScopePermission) {
-      buttons = CardService.newButtonSet()
+      buttons
         .addButton(CardService.newTextButton()
           .setText("DOWNLOAD")
-          .setOnClickAction(CardService.newAction().setFunctionName("processDriveSidebarForm"))
+          .setOnClickAction(CardService.newAction()
+            .setFunctionName("processDriveSidebarForm"))
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
-          .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")))
+          .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")));
 
       // Otherwise we'll need to request access
     } else {
-      buttons = CardService.newButtonSet()
+      buttons
         .addButton(CardService.newTextButton()
           .setText("AUTHORISE ACCESS")
-          .setOnClickAction(CardService.newAction().setFunctionName("onRequestFileScopeButtonClicked").setParameters({id: currentFile.id}))
+          .setOnClickAction(CardService.newAction()
+            .setFunctionName("onRequestFileScopeButtonClicked")
+            .setParameters({ id: currentFile.id }))
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
@@ -123,17 +126,18 @@ function buildDriveHomePage(e) {
     const saveMethod = CardService.newSelectionInput()
       .setType(CardService.SelectionInputType.RADIO_BUTTON)
       .setFieldName("saveMethod")
-      .addItem("Replace this existing PDF", "replace", getUserProperties().saveMethodReplace === "true")
-      .addItem("Add a new revision to this existing PDF", "update", getUserProperties().saveMethodUpdate === "true");
+      .addItem("Rename this existing PDF", "rename", getUserProperties().saveMethod === "rename")
+      .addItem("Keep the current filename", "keep", getUserProperties().saveMethod === "keep");
 
-    let buttons;
+    let buttons = CardService.newButtonSet()
 
     // If we already have access to it
     if (currentFile.addonHasFileScopePermission) {
-      buttons = CardService.newButtonSet()
+      buttons
         .addButton(CardService.newTextButton()
           .setText("DOWNLOAD")
-          .setOnClickAction(CardService.newAction().setFunctionName("processDriveSidebarForm"))
+          .setOnClickAction(CardService.newAction()
+            .setFunctionName("processDriveSidebarForm"))
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
@@ -141,10 +145,12 @@ function buildDriveHomePage(e) {
 
       // Otherwise we'll need to request access
     } else {
-      buttons = CardService.newButtonSet()
+      buttons
         .addButton(CardService.newTextButton()
           .setText("AUTHORISE ACCESS")
-          .setOnClickAction(CardService.newAction().setFunctionName("onRequestFileScopeButtonClicked").setParameters({id: currentFile.id}))
+          .setOnClickAction(CardService.newAction()
+            .setFunctionName("onRequestFileScopeButtonClicked")
+            .setParameters({ id: currentFile.id }))
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
