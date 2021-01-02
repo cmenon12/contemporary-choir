@@ -1,0 +1,40 @@
+{
+  "timeZone": "Europe/London",
+  "dependencies": {
+    "enabledAdvancedServices": [{
+      "userSymbol": "Drive",
+      "serviceId": "drive",
+      "version": "v2"
+    }]
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive.addons.metadata.readonly",
+    "https://www.googleapis.com/auth/script.external_request"
+  ],
+  "runtimeVersion": "V8",
+  "addOns": {
+    "common": {
+      "name": "Society Ledger",
+      "logoUrl": "https://github.com/cmenon12/contemporary-choir/blob/main/assets/icon.png",
+      "layoutProperties": {
+        "primaryColor": "#4AABC4",
+        "secondaryColor": "#E62073"
+      },
+      "openLinkUrlPrefixes": [
+        "https://drive.google.com/"
+      ]
+    },
+    "drive": {
+      "homepageTrigger": {
+        "runFunction": "buildDriveHomePage",
+        "enabled": true
+      },
+      "onItemsSelectedTrigger": {
+        "runFunction": "buildDriveHomePage"
+      }
+    }
+  },
+  "urlFetchWhitelist": ["https://service.expense365.com/"]
+}

@@ -1,5 +1,6 @@
 /**
  * Build the homepage common to all non-Drive add-ons.
+ * This has been disabled in the manifest.
  */
 function buildCommonHomePage(e) {
 
