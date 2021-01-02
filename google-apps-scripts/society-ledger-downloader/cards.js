@@ -22,10 +22,6 @@ function buildCommonHomePage(e) {
     .setImageUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png");
   const card = CardService.newCardBuilder()
     .setHeader(header);
-  const disclaimerText = '<font color="#bdbdbd">Icon made by <a href="https://www.flaticon.com/authors/photo3idea-studio">photo3idea_studio</a> from <a href="https://www.flaticon.com/">www.flaticon.com</a>.</font>';
-  const disclaimer = CardService.newCardSection()
-    .addWidget(CardService.newTextParagraph()
-      .setText(disclaimerText));
 
   const saveMethod = CardService.newSelectionInput()
     .setType(CardService.SelectionInputType.RADIO_BUTTON)
@@ -46,10 +42,7 @@ function buildCommonHomePage(e) {
       .setOnClickAction(CardService.newAction()
         .setFunctionName("processSidebarForm"))
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
-    .addButton(CardService.newTextButton()
-      .setText("Clear saved data")
-      .setOnClickAction(CardService.newAction()
-        .setFunctionName("clearSavedData")));
+    .addButton(createClearSavedDataButton());
 
   const form = CardService.newCardSection()
     .addWidget(saveMethod)
@@ -58,7 +51,7 @@ function buildCommonHomePage(e) {
 
   card.addSection(getLoginSection())
     .addSection(form)
-    .addSection(disclaimer);
+    .addSection(createDisclaimerSection());
 
   return card.build();
 
@@ -82,10 +75,6 @@ function buildDriveHomePage(e) {
     .setImageUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png");
   const card = CardService.newCardBuilder()
     .setHeader(header);
-  const disclaimerText = '<font color="#bdbdbd">Icon made by <a href="https://www.flaticon.com/authors/photo3idea-studio">photo3idea_studio</a> from <a href="https://www.flaticon.com/">www.flaticon.com</a>.</font>';
-  const disclaimer = CardService.newCardSection()
-    .addWidget(CardService.newTextParagraph()
-      .setText(disclaimerText));
 
   // If they haven't selected anything yet
   // Or they've selected something that isn't a PDF nor a folder
@@ -98,13 +87,37 @@ function buildDriveHomePage(e) {
       .setText("Please select a folder to save the ledger to, or a PDF file to update.");
     card.addSection(CardService.newCardSection()
       .addWidget(instructions))
-      .addSection(disclaimer);
+      .addSection(createDisclaimerSection());
 
     return card.build();
 
   }
 
   const currentFile = e.drive.activeCursorItem;
+
+  let buttons = CardService.newButtonSet();
+
+  // If we already have access to it
+  if (currentFile.addonHasFileScopePermission) {
+    buttons
+      .addButton(CardService.newTextButton()
+        .setText("DOWNLOAD")
+        .setOnClickAction(CardService.newAction()
+          .setFunctionName("processDriveSidebarForm"))
+        .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
+      .addButton(createClearSavedDataButton());
+
+    // Otherwise we'll need to request access
+  } else {
+    buttons
+      .addButton(CardService.newTextButton()
+        .setText("AUTHORISE ACCESS")
+        .setOnClickAction(CardService.newAction()
+          .setFunctionName("onRequestFileScopeButtonClicked")
+          .setParameters({id: currentFile.id}))
+        .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
+      .addButton(createClearSavedDataButton());
+  }
 
   // If they've selected a folder
   if (currentFile.mimeType === "application/vnd.google-apps.folder") {
@@ -115,39 +128,14 @@ function buildDriveHomePage(e) {
       .setIconUrl(currentFile.iconUrl)
       .setTopLabel("The ledger will be saved to this folder.");
 
-    let buttons = CardService.newButtonSet();
-
-    // If we already have access to it
-    if (currentFile.addonHasFileScopePermission) {
-      buttons
-        .addButton(CardService.newTextButton()
-          .setText("DOWNLOAD")
-          .setOnClickAction(CardService.newAction()
-            .setFunctionName("processDriveSidebarForm"))
-          .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
-        .addButton(CardService.newTextButton()
-          .setText("Clear saved data")
-          .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")));
-
-      // Otherwise we'll need to request access
-    } else {
-      buttons
-        .addButton(CardService.newTextButton()
-          .setText("AUTHORISE ACCESS")
-          .setOnClickAction(CardService.newAction()
-            .setFunctionName("onRequestFileScopeButtonClicked")
-            .setParameters({id: currentFile.id}))
-          .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
-        .addButton(CardService.newTextButton()
-          .setText("Clear saved data")
-          .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")));
-    }
-
     // Finish creating the form
     const form = CardService.newCardSection()
       .addWidget(folder)
       .addWidget(buttons);
-    card.addSection(getLoginSection()).addSection(form).addSection(disclaimer);
+
+    card.addSection(getLoginSection())
+      .addSection(form)
+      .addSection(createDisclaimerSection());
 
   } else if (currentFile.mimeType === "application/pdf") {
 
@@ -163,41 +151,15 @@ function buildDriveHomePage(e) {
       .addItem("Rename this existing PDF", "rename", getUserProperties().saveMethod === "rename")
       .addItem("Keep the current filename", "keep", getUserProperties().saveMethod === "keep");
 
-    let buttons = CardService.newButtonSet()
-
-    // If we already have access to it
-    if (currentFile.addonHasFileScopePermission) {
-      buttons
-        .addButton(CardService.newTextButton()
-          .setText("DOWNLOAD")
-          .setOnClickAction(CardService.newAction()
-            .setFunctionName("processDriveSidebarForm"))
-          .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
-        .addButton(CardService.newTextButton()
-          .setText("Clear saved data")
-          .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")));
-
-      // Otherwise we'll need to request access
-    } else {
-      buttons
-        .addButton(CardService.newTextButton()
-          .setText("AUTHORISE ACCESS")
-          .setOnClickAction(CardService.newAction()
-            .setFunctionName("onRequestFileScopeButtonClicked")
-            .setParameters({id: currentFile.id}))
-          .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
-        .addButton(CardService.newTextButton()
-          .setText("Clear saved data")
-          .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")));
-    }
-
     // Finish creating the form
     const form = CardService.newCardSection()
       .addWidget(file)
       .addWidget(saveMethod)
       .addWidget(buttons);
 
-    card.addSection(getLoginSection()).addSection(form).addSection(disclaimer);
+    card.addSection(getLoginSection())
+      .addSection(form)
+      .addSection(createDisclaimerSection());
 
   }
 
@@ -248,13 +210,11 @@ function getLoginSection() {
   const saveDetails = CardService.newTextParagraph()
     .setText("Your details will be saved for you, and for your use only.");
 
-  const section = CardService.newCardSection()
+  return CardService.newCardSection()
     .addWidget(groupId)
     .addWidget(email)
     .addWidget(password)
     .addWidget(saveDetails);
-
-  return section
 
 }
 
@@ -269,4 +229,28 @@ function buildNotification(message) {
     .setNotification(CardService.newNotification()
       .setText(message))
     .build();
+}
+
+
+/**
+ * Creates a text button for Cards that clears the saved data.
+ * @returns {TextButton} The button.
+ */
+function createClearSavedDataButton() {
+  return CardService.newTextButton()
+    .setText("Clear saved data")
+    .setOnClickAction(CardService.newAction()
+      .setFunctionName("clearSavedData"))
+}
+
+
+/**
+ * Creates the section with the standard disclaimer & attribution.
+ * @returns {CardSection} The disclaimer.
+ */
+function createDisclaimerSection() {
+  const disclaimerText = '<font color="#bdbdbd">Icon made by <a href="https://www.flaticon.com/authors/photo3idea-studio">photo3idea_studio</a> from <a href="https://www.flaticon.com/">www.flaticon.com</a>.</font>';
+  return CardService.newCardSection()
+    .addWidget(CardService.newTextParagraph()
+      .setText(disclaimerText));
 }
