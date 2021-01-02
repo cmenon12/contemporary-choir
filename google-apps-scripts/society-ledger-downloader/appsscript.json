@@ -17,7 +17,7 @@
   "addOns": {
     "common": {
       "name": "Society Ledger",
-      "logoUrl": "https://github.com/cmenon12/contemporary-choir/blob/main/assets/icon.png",
+      "logoUrl": "https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png",
       "layoutProperties": {
         "primaryColor": "#4AABC4",
         "secondaryColor": "#E62073"
