@@ -109,6 +109,7 @@ function saveToDrive(blob, id, folder = false, rename = false) {
 
     // Just return the error
   } catch (err) {
+    Logger.log(`There was an error saving the PDF to Drive: ${err}`)
     return [false, err];
   }
 

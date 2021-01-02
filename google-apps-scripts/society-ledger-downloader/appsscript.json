@@ -23,7 +23,8 @@
         "secondaryColor": "#E62073"
       },
       "openLinkUrlPrefixes": [
-        "https://drive.google.com/"
+        "https://drive.google.com/",
+        "https://www.flaticon.com/"
       ]
     },
     "drive": {

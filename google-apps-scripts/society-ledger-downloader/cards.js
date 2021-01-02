@@ -1,13 +1,28 @@
+/*
+  =============================================================================
+  Project Page: https://github.com/cmenon12/contemporary-choir
+  Copyright:    (c) 2020 by Christopher Menon
+  License:      GNU General Public License, version 3 (GPL-3.0)
+                http://www.opensource.org/licenses/gpl-3.0.html
+  =============================================================================
+ */
+
+
 /**
  * Build the homepage common to all non-Drive add-ons.
  * This has been disabled in the manifest.
  */
 function buildCommonHomePage(e) {
 
-  Logger.log(e)
-
-  const header = CardService.newCardHeader().setTitle("Download your Society Ledger");
-  const card = CardService.newCardBuilder().setHeader(header)
+  const header = CardService.newCardHeader()
+    .setTitle("Download your Society Ledger")
+    .setImageUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png");
+  const card = CardService.newCardBuilder()
+    .setHeader(header);
+  const disclaimerText = '<font color="#bdbdbd">Icon made by <a href="https://www.flaticon.com/authors/photo3idea-studio">photo3idea_studio</a> from <a href="https://www.flaticon.com/">www.flaticon.com</a>.</font>';
+  const disclaimer = CardService.newCardSection()
+    .addWidget(CardService.newTextParagraph()
+      .setText(disclaimerText));
 
   const saveMethod = CardService.newSelectionInput()
     .setType(CardService.SelectionInputType.RADIO_BUTTON)
@@ -25,18 +40,22 @@ function buildCommonHomePage(e) {
   const buttons = CardService.newButtonSet()
     .addButton(CardService.newTextButton()
       .setText("DOWNLOAD")
-      .setOnClickAction(CardService.newAction().setFunctionName("processSidebarForm"))
+      .setOnClickAction(CardService.newAction()
+        .setFunctionName("processSidebarForm"))
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
     .addButton(CardService.newTextButton()
       .setText("Clear saved data")
-      .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")))
+      .setOnClickAction(CardService.newAction()
+        .setFunctionName("clearSavedData")));
 
   const form = CardService.newCardSection()
     .addWidget(saveMethod)
     .addWidget(url)
-    .addWidget(buttons)
+    .addWidget(buttons);
 
-  card.addSection(getLoginSection()).addSection(form);
+  card.addSection(getLoginSection())
+    .addSection(form)
+    .addSection(disclaimer);
 
   return card.build();
 
@@ -48,11 +67,16 @@ function buildCommonHomePage(e) {
  */
 function buildDriveHomePage(e) {
 
-  Logger.log(e)
-
   // Start to create the Card
-  const header = CardService.newCardHeader().setTitle("Download your Society Ledger");
-  const card = CardService.newCardBuilder().setHeader(header)
+  const header = CardService.newCardHeader()
+    .setTitle("Download your Society Ledger")
+    .setImageUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png");
+  const card = CardService.newCardBuilder()
+    .setHeader(header);
+  const disclaimerText = '<font color="#bdbdbd">Icon made by <a href="https://www.flaticon.com/authors/photo3idea-studio">photo3idea_studio</a> from <a href="https://www.flaticon.com/">www.flaticon.com</a>.</font>';
+  const disclaimer = CardService.newCardSection()
+    .addWidget(CardService.newTextParagraph()
+      .setText(disclaimerText));
 
   // If they haven't selected anything yet
   // Or they've selected something that isn't a PDF nor a folder
@@ -64,7 +88,9 @@ function buildDriveHomePage(e) {
     const instructions = CardService.newTextParagraph()
       .setText("Please select a folder to save the ledger to, or a PDF file to update.");
     card.addSection(CardService.newCardSection()
-      .addWidget(instructions));
+      .addWidget(instructions))
+      .addSection(disclaimer);
+
     return card.build();
 
   }
@@ -101,23 +127,22 @@ function buildDriveHomePage(e) {
           .setText("AUTHORISE ACCESS")
           .setOnClickAction(CardService.newAction()
             .setFunctionName("onRequestFileScopeButtonClicked")
-            .setParameters({ id: currentFile.id }))
+            .setParameters({id: currentFile.id}))
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
-          .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")))
+          .setOnClickAction(CardService.newAction().setFunctionName("clearSavedData")));
     }
 
     // Finish creating the form
     const form = CardService.newCardSection()
       .addWidget(folder)
-      .addWidget(buttons)
-
-    card.addSection(getLoginSection()).addSection(form);
+      .addWidget(buttons);
+    card.addSection(getLoginSection()).addSection(form).addSection(disclaimer);
 
   } else if (currentFile.mimeType === "application/pdf") {
 
-    // Tell the user that it'll be saved to the folder
+    // Tell the user that it'll be saved to the file
     const file = CardService.newKeyValue()
       .setContent(currentFile.title)
       .setIconUrl(currentFile.iconUrl)
@@ -150,7 +175,7 @@ function buildDriveHomePage(e) {
           .setText("AUTHORISE ACCESS")
           .setOnClickAction(CardService.newAction()
             .setFunctionName("onRequestFileScopeButtonClicked")
-            .setParameters({ id: currentFile.id }))
+            .setParameters({id: currentFile.id}))
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
         .addButton(CardService.newTextButton()
           .setText("Clear saved data")
@@ -161,9 +186,9 @@ function buildDriveHomePage(e) {
     const form = CardService.newCardSection()
       .addWidget(file)
       .addWidget(saveMethod)
-      .addWidget(buttons)
+      .addWidget(buttons);
 
-    card.addSection(getLoginSection()).addSection(form);
+    card.addSection(getLoginSection()).addSection(form).addSection(disclaimer);
 
   }
 
@@ -173,7 +198,7 @@ function buildDriveHomePage(e) {
 
 
 /**
- * Build and returnthe section with the login details.
+ * Build and return the section with the login details.
  */
 function getLoginSection() {
 
@@ -208,7 +233,8 @@ function getLoginSection() {
     password = password.setValue(getUserProperties().password);
   }
 
-  const saveDetails = CardService.newTextParagraph().setText("Your details will be saved for you, and for your use only.");
+  const saveDetails = CardService.newTextParagraph()
+    .setText("Your details will be saved for you, and for your use only.");
 
   const section = CardService.newCardSection()
     .addWidget(groupId)

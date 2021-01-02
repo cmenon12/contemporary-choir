@@ -4,6 +4,8 @@ As the Treasurer of [Contemporary Choir](https://exetercontemporarychoir.com/) (
 <br><br>In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. This repository currently contains some custom HTML that's used on the website, as well as a plugin that I've tweaked myself especially for our website.
 <br><br>*Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
+*Icon made by [photo3idea_studio](https://www.flaticon.com/authors/photo3idea-studio) from [www.flaticon.com](https://www.flaticon.com/).*
+
 [![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
 [![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
 
@@ -54,7 +56,7 @@ can be used  to download the society ledger from eXpense365 to your computer (in
 **[`google-apps-scripts/yd-fundraising.gs`](google-apps-scripts/yd-fundraising.gs)** updates how much has been fundraised for Young Devon. It currently fetches the totals from multiple Enthuse pages, and updates several named ranges in the sheet with the totals.
 
 ### Society Ledger Downloader Apps Script Add-On
-**[`google-apps-scripts/society-ledger-downloader/`](google-apps-scripts/society-ledger-downloader)** is a Google Workspace Add-On that allows you to download your society ledger and save it straight to Drive.
+**[`google-apps-scripts/society-ledger-downloader/`](google-apps-scripts/society-ledger-downloader)** is a Google Workspace Add-On that allows you to download your society ledger and save it straight to Drive. *Note that all of these files should have a `.gs` file extension instead of `.js` but [`clasp`](https://developers.google.com/apps-script/guides/clasp) changes this for me.*
 
 ## Website Custom HTML
 **[`website-custom-html/`](website-custom-html)** contains various snippets of HTML (including CSS and JavaScript) that are used on Contemporary Choir's websites. These are all incorporated using the custom HTML block in Wordpress.

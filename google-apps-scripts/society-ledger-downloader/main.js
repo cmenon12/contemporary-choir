@@ -1,3 +1,13 @@
+/*
+  =============================================================================
+  Project Page: https://github.com/cmenon12/contemporary-choir
+  Copyright:    (c) 2020 by Christopher Menon
+  License:      GNU General Public License, version 3 (GPL-3.0)
+                http://www.opensource.org/licenses/gpl-3.0.html
+  =============================================================================
+ */
+
+
 /**
  * Deletes all the saved user data.
  */
@@ -20,7 +30,7 @@ function getUserProperties() {
 function saveUserProperties(data) {
 
   // Get the current saved properties
-  const userProperties = PropertiesService.getUserProperties()
+  const userProperties = PropertiesService.getUserProperties();
 
   // Save them
   for (let prop in data) {
@@ -90,8 +100,10 @@ function processDriveSidebarForm(e) {
     const openLink = CardService.newOpenLink()
       .setUrl(result[1])
       .setOpenAs(CardService.OpenAs.FULL_SIZE)
-      .setOnClose(CardService.OnClose.NOTHING)
-    return CardService.newActionResponseBuilder().setOpenLink(openLink).build();
+      .setOnClose(CardService.OnClose.NOTHING);
+    return CardService.newActionResponseBuilder()
+      .setOpenLink(openLink)
+      .build();
 
   } else {
     // Otherwise just notify of the error
