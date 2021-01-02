@@ -36,7 +36,8 @@ function downloadLedger(expense365Config) {
     "headers": headers,
     "method": "post",
     "payload": data,
-    "validateHttpsCertificates": false
+    "validateHttpsCertificates": false,
+    "muteHttpExceptions": true
   };
 
   // Make the POST request
@@ -46,65 +47,71 @@ function downloadLedger(expense365Config) {
 
   // If successful then return the content (the PDF)
   if (status === 200) {
-
     const fileName = `Ledger at ${response.getHeaders().Date}.pdf`;
-
-    return response.getBlob().setName(fileName);
+    return [true, response.getBlob().setName(fileName)];
 
     // 401 means that they failed to authenticate
   } else if (status === 401) {
-
     Logger.log("401: User entered incorrect email and/or password");
-    throw new Error("Oops! Looks like you entered the wrong email address and/or password.");
+    return [false, "Oops! Looks like you entered the wrong email address and/or password."];
 
-    // Otherwise log the error and stop
+    // Some other error occurred
   } else {
     Logger.log(`There was a ${status} error fetching ${url}.`);
     Logger.log(responseText);
-    throw new Error(`There was a ${status} error fetching ${url}. The server returned: ${responseText}`);
+    return [false, `There was a ${status} error fetching the ledger. The server returned: ${responseText}`];
   }
 
 }
 
 
 /**
- * Saves the blob to the file or folder ID.
- * Will ensure that if it's a file, that it matches the MIME type specified.
- * Returns the outcome as HTML-formatted user friendly text.
+ * Saves the PDF blob to the file or folder ID.
  */
-function saveToDrive(blob, id, mimeType) {
+function saveToDrive(blob, id, folder = false, rename = false) {
 
-  // Save it to the folder with that ID
   try {
-    const folder = DriveApp.getFolderById(id);
-    const newFile = folder.createFile(blob);
-    Logger.log(`Ledger saved to a new file named ${newFile.getName()} in ${folder.getName()}.`);
-    return `Ledger saved to a new file named <a href="${newFile.getUrl()}" target="_blank">${newFile.getName()}<\/a> in <a href="${folder.getUrl()}" target="_blank">${folder.getName()}<\/a>.<br>`;
 
-    // Try updating the existing file with that ID instead
-  } catch (err1) {
-    try {
+    // Save it to the folder with that ID
+    if (folder === true) {
 
-      // Check that the file has the correct MIME type
+      // Upload the file
+      const fileId = Drive.Files.generateIds().ids[0];
+      let file = Drive.newFile();
+      file.id = fileId;
+      file.mimeType = "application/pdf";
+      file.title = blob.getName();
+      file = Drive.Files.insert(file, blob);
+
+      // Set the parent folder
+      Drive.Files.patch(file, fileId, {"addParents": id});
+
+      return [true, file.alternateLink];
+
+      // Save it to the existing PDF file
+    } else {
+
+      // Update the PDF
       const file = Drive.Files.get(id);
-      if (file.mimeType !== mimeType) {
-        Logger.log(`The file MIME type is ${file.mimeType} which does not match ${mimeType}.`)
-        return `Error: The file MIME type is ${file.mimeType} which does not match ${mimeType}.<br>`;
+      file.originalFilename = blob.getName();
+      const params = {"newRevision": true, "pinned": true};
+      let newFile = Drive.Files.update(file, id, blob, params);
 
-      } else {
-        // Upload the new revision
-        const params = {"newRevision": true, "pinned": true};
-        const newFile = Drive.Files.update(file, id, blob, params);
-        Logger.log(`Ledger saved to an existing file named ${newFile.title}.`);
-        return `Ledger saved to an existing file named <a href="${newFile.alternateLink}" target="_blank">${newFile.title}<\/a>.<br>`;
+      // Rename it if asked
+      if (rename === true) {
+        newFile.title = blob.getName();
+        Drive.Files.patch(newFile, newFile.id);
       }
 
-      // The ID doesn't match any folder nor file
-    } catch (err2) {
-      Logger.log(`No folder nor file exists with the ID ${id}.`);
-      return `Error: No folder nor file exists with the ID ${id}.<br>`;
+      return [true, newFile.alternateLink];
+
     }
+
+    // Just return the error
+  } catch (err) {
+    return [false, err];
   }
+
 }
 
 
