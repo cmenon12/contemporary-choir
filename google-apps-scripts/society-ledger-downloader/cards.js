@@ -9,8 +9,11 @@
 
 
 /**
- * Build the homepage common to all non-Drive add-ons.
- * This has been disabled in the manifest.
+ * Builds the homepage Card common to all non-Drive add-ons.
+ * This has been disabled in the manifest and isn't used.
+ *
+ * @param {eventObject} e The event object.
+ * @returns {Card} The homepage Card.
  */
 function buildCommonHomePage(e) {
 
@@ -63,7 +66,13 @@ function buildCommonHomePage(e) {
 
 
 /**
- * Build the homepage for Drive.
+ * Builds the homepage Card specifically for Drive.
+ * If the user has selected a folder they'll be prompted to save the
+ * ledger to it. If they'vd selected a PDF they'll be prompted to update
+ * it. Otherwise they'll be asked to select a folder or PDF.
+ *
+ * @param {eventObject} e The event object
+ * @returns {Card} The homepage Card
  */
 function buildDriveHomePage(e) {
 
@@ -198,7 +207,10 @@ function buildDriveHomePage(e) {
 
 
 /**
- * Build and return the section with the login details.
+ * Build and return the section with the login form.
+ * This will ensure that any undefined (or unsaved) form inputs are replaced with empty strings.
+ *
+ * @returns {CardSection} A section with the login form.
  */
 function getLoginSection() {
 
@@ -246,8 +258,13 @@ function getLoginSection() {
 
 }
 
-
-function buildErrorNotification(message) {
+/**
+ * Produces and displays a notification.
+ *
+ * @param {String} message The message to notify.
+ * @returns {ActionResponse} The notification to display.
+ */
+function buildNotification(message) {
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification()
       .setText(message))

@@ -1,11 +1,13 @@
 {
   "timeZone": "Europe/London",
   "dependencies": {
-    "enabledAdvancedServices": [{
-      "userSymbol": "Drive",
-      "serviceId": "drive",
-      "version": "v2"
-    }]
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Drive",
+        "serviceId": "drive",
+        "version": "v2"
+      }
+    ]
   },
   "exceptionLogging": "STACKDRIVER",
   "oauthScopes": [
@@ -37,5 +39,7 @@
       }
     }
   },
-  "urlFetchWhitelist": ["https://service.expense365.com/"]
+  "urlFetchWhitelist": [
+    "https://service.expense365.com/"
+  ]
 }

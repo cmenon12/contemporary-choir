@@ -9,16 +9,24 @@
 
 
 /**
- * Downloads the ledger from eXpense365 and returns it as a blob.
+ * Downloads the ledger from eXpense365.
+ * This is via a simple POST request with the email and password in the
+ * headers (no OAuth unfortunately). The PDF ledger is returned as a
+ * Blob.
+ *
+ * @param {eventObject.formInput} formData The details from the form.
+ * @returns {(boolean|Blob)[]|(boolean|String)[]} [success, result]
+ * where success is true if successful, and result is either the Blob
+ * or a String with an error message.
  */
-function downloadLedger(expense365Config) {
+function downloadLedger(formData) {
 
   const SUBGROUP_ID = 0;
   const REPORT_ID = 30;
 
   // Prepare the URL, headers, and body
   const url = "https://service.expense365.com/ws/rest/eXpense365/RequestDocument";
-  const auth = "Basic " + Utilities.base64Encode(expense365Config.email + ":" + expense365Config.password);
+  const auth = "Basic " + Utilities.base64Encode(formData.email + ":" + formData.password);
   const headers = {
     "User-Agent": "eXpense365|1.6.1|Google Pixel XL|Android|10|en_GB",
     "Authorization": auth,
@@ -27,7 +35,7 @@ function downloadLedger(expense365Config) {
     "Content-Type": "text/plain;charset=UTF-8"
   };
   const data = ("{\"ReportID\": " + REPORT_ID +
-    ",\"UserGroupID\": " + expense365Config.groupId +
+    ",\"UserGroupID\": " + formData.groupId +
     ",\"SubGroupID\": " + SUBGROUP_ID + "}");
 
   // Condense the above into a single object
@@ -66,9 +74,18 @@ function downloadLedger(expense365Config) {
 
 
 /**
- * Saves the PDF blob to the file or folder ID.
+ * Saves the PDF blob to either a folder as a new file, or to an
+ * existing PDF file. This existing file can optionally be renamed.
+ *
+ * @param {Blob} pdfBlob The PDF Blob of the ledger.
+ * @param {String} id The ID of either the target folder or PDF.
+ * @param {Boolean} folder true if the ID is a folder.
+ * @param {Boolean} rename true if the PDF should be renamed.
+ * @returns {(boolean|String)[]|(boolean|Exception)[]} [success, result]
+ * where success is true if successful, and result is either the String
+ * URL to the file or the Exception.
  */
-function saveToDrive(blob, id, folder = false, rename = false) {
+function saveToDrive(pdfBlob, id, folder = false, rename = false) {
 
   try {
 
@@ -80,8 +97,8 @@ function saveToDrive(blob, id, folder = false, rename = false) {
       let file = Drive.newFile();
       file.id = fileId;
       file.mimeType = "application/pdf";
-      file.title = blob.getName();
-      file = Drive.Files.insert(file, blob);
+      file.title = pdfBlob.getName();
+      file = Drive.Files.insert(file, pdfBlob);
 
       // Set the parent folder
       Drive.Files.patch(file, fileId, {"addParents": id});
@@ -93,13 +110,13 @@ function saveToDrive(blob, id, folder = false, rename = false) {
 
       // Update the PDF
       const file = Drive.Files.get(id);
-      file.originalFilename = blob.getName();
+      file.originalFilename = pdfBlob.getName();
       const params = {"newRevision": true, "pinned": true};
-      let newFile = Drive.Files.update(file, id, blob, params);
+      let newFile = Drive.Files.update(file, id, pdfBlob, params);
 
       // Rename it if asked
       if (rename === true) {
-        newFile.title = blob.getName();
+        newFile.title = pdfBlob.getName();
         Drive.Files.patch(newFile, newFile.id);
       }
 
@@ -117,7 +134,12 @@ function saveToDrive(blob, id, folder = false, rename = false) {
 
 
 /**
- * Converts the PDF blob to XLSX using an online convertor.
+ * Incomplete. Converts the PDF blob to XLSX using an online convertor.
+ * This is not used because pdftoexcel.com recognises that the script is
+ * a bot from it's user agent, and therefore rejects it.
+ *
+ * @param {Blob} pdfBlob The PDF Blob of the ledger.
+ * @returns {String|*}
  */
 function convertToXLSX(pdfBlob) {
 

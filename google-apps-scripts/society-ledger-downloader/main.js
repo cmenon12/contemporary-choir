@@ -25,7 +25,11 @@ function getUserProperties() {
 
 
 /**
- * Saves the user properties specified as key-value pairs.
+ * Saves the user data specified as key-value pairs. These are saved to
+ * the user's properties, so they're unique to them.
+ *
+ * @param {eventObject.formInput} data The data to be saved as key-value
+ * pairs.
  */
 function saveUserProperties(data) {
 
@@ -42,8 +46,12 @@ function saveUserProperties(data) {
 
 
 /**
- * Gets the file ID from the URL.
+ *
+ * Gets the Drive file ID from the URL.
  * Taken from https://stackoverflow.com/a/40324645.
+ *
+ * @param {String} url The URL to get the file ID from.
+ * @returns {String} The file ID.
  */
 function getIdFrom(url) {
   let id;
@@ -55,7 +63,7 @@ function getIdFrom(url) {
 
   } else {
     id = parts[5].split("/");
-    //Using sort to get the id as it is the longest element.
+    // Using sort to get the id as it is the longest element.
     let sortArr = id.sort(function (a, b) {
       return b.length - a.length
     });
@@ -68,6 +76,12 @@ function getIdFrom(url) {
 
 /**
  * Processes the form submission from the Drive sidebar.
+ * This will download the ledger, save it as requested, and then open
+ * it in a new tab.
+ *
+ * @param {eventObject} e The event object.
+ * @returns {ActionResponse} The response, either a link that opens in
+ * a new tab or an error notification.
  */
 function processDriveSidebarForm(e) {
 
@@ -82,7 +96,7 @@ function processDriveSidebarForm(e) {
     pdfBlob = result[1];
   } else {
     // If there was an error then stop here
-    return buildErrorNotification(result[1]);
+    return buildNotification(result[1]);
   }
 
   // Upload it to Drive
@@ -107,7 +121,7 @@ function processDriveSidebarForm(e) {
 
   } else {
     // Otherwise just notify of the error
-    return buildErrorNotification(result[1]);
+    return buildNotification(result[1]);
   }
 
 }
