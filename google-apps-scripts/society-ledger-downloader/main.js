@@ -9,10 +9,30 @@
 
 
 /**
- * Deletes all the saved user data.
+ * Deletes all the saved user data and clears the form.
+ *
+ * @param {eventObject} e The event object.
+ * @returns {ActionResponse} The ActionResponse that reloads the
+ * current Card.
  */
-function clearSavedData() {
+function clearSavedData(e) {
+
   PropertiesService.getUserProperties().deleteAllProperties();
+
+  // Determine if they're looking at Drive or any other app
+  let navigation;
+  if (e.commonEventObject.hostApp === "DRIVE") {
+    navigation = CardService.newNavigation()
+      .updateCard(buildDriveHomePage(e));
+  } else {
+    navigation = CardService.newNavigation()
+      .updateCard(buildCommonHomePage(e));
+  }
+
+  // Build and return an ActionResponse
+  return CardService.newActionResponseBuilder()
+    .setNavigation(navigation)
+    .build();
 }
 
 
