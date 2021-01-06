@@ -22,7 +22,6 @@ import pickle
 import re
 import smtplib
 import socket
-import time
 import traceback
 from datetime import datetime
 from email import encoders
@@ -36,6 +35,7 @@ from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
 
+# noinspection PyCompatibility
 from exceptions import AppsScriptApiException
 # noinspection PyUnresolvedReferences
 from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
@@ -45,17 +45,13 @@ __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
-# This is the time in seconds between each check. Note that the actual
-# time between checks may be sightly longer.
-# 1800 is 30 minutes
-INTERVAL = 1800
-
 # This is the number of consecutive failed attempts that the program
 # can make before it stops trying to run the checks.
 ATTEMPTS = 3
 
 
 class LedgerCheckerSaveFile:
+    """Represents the save file used to maintain persistence."""
 
     def __init__(self, save_data_filepath: str):
         self.save_data()
@@ -68,34 +64,61 @@ class LedgerCheckerSaveFile:
             with open(save_data_filepath, "rb") as f:
                 inst = pickle.load(f)
             if not isinstance(inst, cls):
-                raise TypeError("The save data file is invalid. Please delete it.")
+                raise FileNotFoundError("The save data file is invalid.")
         except FileNotFoundError:
 
             # Otherwise create a fresh instance
             inst = super(LedgerCheckerSaveFile, cls).__new__(cls, *args, **kwargs)
             inst.save_data_filepath = save_data_filepath
             inst.stack_traces = []
+            inst.changes = None
+            inst.sheet_id = None
+            inst.timestamp = None
 
         return inst
 
     def save_data(self):
+        """Save to the actual file."""
+
         with open(self.save_data_filepath, "wb") as save_file:
             pickle.dump(self, save_file)
             save_file.close()
 
     def new_check_success(self, changes: list, sheet_id: int,
                           timestamp: datetime):
+        """Runs when a check was successful.
+
+        :param changes: the changes made to the ledger
+        :type changes: list
+        :param sheet_id: the ID of the new sheet
+        :type sheet_id: int
+        :param timestamp: when the last check was run
+        :type timestamp: datetime
+        """
+
         self.changes = changes
         self.sheet_id = sheet_id
         self.timestamp = timestamp
+        self.save_data()
 
     def new_check_fail(self, stack_trace: str):
-        self.stack_traces.append(stack_trace)
+        """Runs when a check failed.
 
-    def get_data(self):
+        :param stack_trace: the stack trace
+        :type stack_trace: str
+        """
+
+        self.stack_traces.append(stack_trace)
+        self.save_data()
+
+    def get_data(self) -> tuple:
+        """Gets and returns the saved data."""
+
         return self.changes, self.sheet_id, self.timestamp
 
     def get_stack_traces(self) -> list:
+        """Gets and returns the list of stack traces"""
+
         return self.stack_traces
 
 
@@ -295,10 +318,8 @@ def send_error_email(config: configparser.SectionProxy,
 
     :param config: the configuration for the email
     :type config: configparser.SectionProxy
-    :param error_stacks: the stack traces of the exceptions
-    :type error_stacks: str
-    :param fails: the number of consecutive exceptions/failures
-    :type fails: int
+    :param save_data: the save data object
+    :type save_data: LedgerCheckerSaveFile
     """
 
     # Get the count of errors and stack traces
@@ -340,19 +361,11 @@ def send_error_email(config: configparser.SectionProxy,
 def check_ledger(save_data: LedgerCheckerSaveFile):
     """Runs a check of the ledger.
 
-    :param save_data: the save file
+    :param save_data: the save data object
     :type save_data: LedgerCheckerSaveFile
+    :raises: AppsScriptApiException
     """
 
-    # Only run between 07:00 and 23:00
-    if 7 <= time.localtime().tm_hour < 23:
-        # Make a note of the start time
-        print("\nIt's %s and we're doing a check." %
-              time.strftime("%d %b %Y at %H:%M:%S"))
-    else:
-        print("\nIt's %s so we're not doing a check." %
-              time.strftime("%d %b %Y at %H:%M:%S"))
-        return
     LOGGER.info("\n")
 
     # Fetch info from the config
@@ -476,10 +489,6 @@ def check_ledger(save_data: LedgerCheckerSaveFile):
         save_data.new_check_success(changes=changes,
                                     sheet_id=sheet_id,
                                     timestamp=timestamp)
-
-    # Note the end time and that we're now finished
-    print("It's %s and the check is complete.\n" %
-          time.strftime("%d %b %Y at %H:%M:%S"))
 
 
 def main():
