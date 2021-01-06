@@ -99,8 +99,6 @@ class LedgerCheckerSaveFile:
         return self.stack_traces
 
 
-
-
 def prepare_email_body(config: configparser.SectionProxy,
                        changes: list, sheet_url: str, pdf_url: str):
     """Prepares an email detailing the changes to the ledger.
@@ -291,8 +289,8 @@ def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
         LOGGER.info("sheet_id was None, so there was nothing to delete.")
 
 
-def send_error_email(config: configparser.SectionProxy, error_stacks: str,
-                     fails: int):
+def send_error_email(config: configparser.SectionProxy,
+                     save_data: LedgerCheckerSaveFile):
     """Used to email the user about a fatal exception.
 
     :param config: the configuration for the email
@@ -302,6 +300,13 @@ def send_error_email(config: configparser.SectionProxy, error_stacks: str,
     :param fails: the number of consecutive exceptions/failures
     :type fails: int
     """
+
+    # Get the count of errors and stack traces
+    error_count = len(save_data.get_stack_traces())
+    stack_traces = ""
+    for e in save_data.get_stack_traces()[-ATTEMPTS:]:
+        stack_traces += e
+        stack_traces += "\n\n"
 
     # Connect to the server
     LOGGER.info("Connecting to the email server...")
@@ -316,12 +321,12 @@ def send_error_email(config: configparser.SectionProxy, error_stacks: str,
 
         # Prepare the email
         text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
-                "Please see the stack trace below and check the logs.\n\n %s "
+                "Please see the stack traces below and check the logs.\n\n %s "
                 "———\nThis email was sent automatically by a "
-                "computer program (cmenon12/contemporary-choir). "
+                "computer program (https://github.com/cmenon12/contemporary-choir). "
                 "If you want to leave some feedback "
-                "then please reply directly to it." % (fails,
-                                                       error_stacks))
+                "then please reply directly to it." % (error_count,
+                                                       stack_traces))
         message.attach(MIMEText(text, "plain"))
 
         # Send the email
@@ -332,11 +337,11 @@ def send_error_email(config: configparser.SectionProxy, error_stacks: str,
     LOGGER.info("The email about the exception was sent successfully!")
 
 
-def check_ledger(save_file: LedgerCheckerSaveFile):
+def check_ledger(save_data: LedgerCheckerSaveFile):
     """Runs a check of the ledger.
 
-    :param save_file: the save file
-    :type save_file: LedgerCheckerSaveFile
+    :param save_data: the save file
+    :type save_data: LedgerCheckerSaveFile
     """
 
     # Only run between 07:00 and 23:00
@@ -409,7 +414,7 @@ def check_ledger(save_file: LedgerCheckerSaveFile):
     LOGGER.info("The Apps Script function executed successfully.")
 
     # Get the old values of changes
-    old_changes, old_sheet_id, previous_check = save_file.get_data()
+    old_changes, old_sheet_id, previous_check = save_data.get_data()
 
     # Get the datetime that the request was made for the save file
     head, filename = os.path.split(pdf_filepath)
@@ -425,7 +430,9 @@ def check_ledger(save_file: LedgerCheckerSaveFile):
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
         LOGGER.info("The local PDF and XLSX have been deleted successfully.")
-        save_file.new_check_success(old_changes, old_sheet_id, timestamp)
+        save_data.new_check_success(changes=old_changes,
+                                    sheet_id=old_sheet_id,
+                                    timestamp=timestamp)
 
     # If the returned changes aren't actually new to us then
     # just delete the new sheet we just made
@@ -442,7 +449,9 @@ def check_ledger(save_file: LedgerCheckerSaveFile):
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
         LOGGER.info("The local PDF and XLSX have been deleted successfully!")
-        save_file.new_check_success(old_changes, old_sheet_id, timestamp)
+        save_data.new_check_success(changes=old_changes,
+                                    sheet_id=old_sheet_id,
+                                    timestamp=timestamp)
 
     # Otherwise these changes are new
     # Update the PDF ledger in the user's Google Drive
@@ -464,7 +473,9 @@ def check_ledger(save_file: LedgerCheckerSaveFile):
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=old_sheet_id)
-        save_file.new_check_success(changes, sheet_id, timestamp)
+        save_data.new_check_success(changes=changes,
+                                    sheet_id=sheet_id,
+                                    timestamp=timestamp)
 
     # Note the end time and that we're now finished
     print("It's %s and the check is complete.\n" %
@@ -481,66 +492,22 @@ def main():
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read("config.ini")
-    save_data_filepath = parser["ledger_checker"]["save_data_filepath"]
 
-    # If the save file doesn't exist then create it
-    if not os.path.exists(save_data_filepath):
-        LOGGER.warning("The save file doesn't exist, creating a blank one...")
-        with open(save_data_filepath, "wb") as save_file:
-            pickle.dump([[[[0, 0, 0]]], None], save_file)
+    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"])
 
-    # Run the checker
-    # fails counts the number of consecutive failed attempts
-    # error_stacks contains the stack traces of the failures
-    fails = 0
-    error_stacks = ""
-    while fails < ATTEMPTS:
-        try:
-            check_ledger()
+    try:
+        check_ledger(save_data=save_data)
+    except Exception:
+        save_data.new_check_fail(stack_trace=traceback.format_exc())
+        traceback.print_exc()
+        LOGGER.exception("That check went wrong!")
+        LOGGER.error("This is consecutive failed attempt no. %d.",
+                     len(save_data.get_stack_traces()))
+        print("This is consecutive error number %d"
+              % len(save_data.get_stack_traces()))
 
-            # If no exception occurred then reset fails and error_stacks
-            fails = 0
-            error_stacks = ""
-
-        # Catch any exception that occurs
-        except Exception:
-            fails += 1
-            error_stacks += traceback.format_exc()
-            error_stacks += "\n\n"
-            LOGGER.exception("We had a problem and had to stop the checks!")
-            LOGGER.error("This is error no. %d.", fails)
-            print("It's %s and we've hit a fatal error! "
-                  "Go check the log to find out more." %
-                  time.strftime("%d %b %Y at %H:%M:%S"))
-
-            # If this is the last consecutive failure
-            if fails == ATTEMPTS:
-                fails_text = "This is consecutive failed attempt no. " \
-                             "%d so we won't try to " \
-                             "make any further checks. " % fails
-
-                # Attempt to email the user about the exceptions
-                try:
-                    print("Sending an email about the exceptions...")
-                    send_error_email(config=parser["email"],
-                                     error_stacks=error_stacks,
-                                     fails=fails)
-                    print("Email sent successfully!\n")
-                except Exception:
-                    print("The email was not sent successfully!")
-                    print(traceback.format_exc())
-                    LOGGER.exception("We couldn't send the email about the exceptions!")
-
-            else:
-                fails_text = "This is consecutive failed attempt no. " \
-                             "%d so we will try again " \
-                             "in %d seconds. " % (fails, INTERVAL)
-            print(fails_text)
-            print(traceback.format_exc())
-
-        # Always wait before the next one
-        finally:
-            time.sleep(INTERVAL)
+        if len(save_data.get_stack_traces()) == ATTEMPTS:
+            send_error_email(config=parser["email"], save_data=save_data)
 
 
 if __name__ == "__main__":
