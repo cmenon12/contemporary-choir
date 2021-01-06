@@ -36,6 +36,7 @@ from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
 
+from exceptions import AppsScriptApiException
 # noinspection PyUnresolvedReferences
 from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
     authorize, update_pdf_ledger
@@ -91,7 +92,7 @@ class LedgerCheckerSaveFile:
     def new_check_fail(self, stack_trace: str):
         self.stack_traces.append(stack_trace)
 
-    def get_old_config(self):
+    def get_data(self):
         return self.changes, self.sheet_id, self.timestamp
 
     def get_stack_traces(self) -> list:
@@ -268,8 +269,74 @@ def send_email(config: configparser.SectionProxy, changes: list,
     LOGGER.info("Email sent successfully!")
 
 
-def check_ledger():
+def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
+                 spreadsheet_id: str, sheet_id: id):
+    """Deletes the named Google Sheet in the specified spreadsheet.
+
+    :param sheets_service: the authenticated service for Google Sheets
+    :type sheets_service: googleapiclient.discovery.Resource
+    :param spreadsheet_id: the ID of the spreadsheet to use
+    :type spreadsheet_id: str
+    :param sheet_id: the id of the sheet to delete
+    :type sheet_id: int
+    """
+
+    if sheet_id is not None:
+        LOGGER.info("Deleting the sheet with ID %d", sheet_id)
+        body = {"requests": {"deleteSheet": {"sheetId": sheet_id}}}
+        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id,
+                                                  body=body).execute()
+        LOGGER.info("Sheet %d has been deleted successfully.", sheet_id)
+    else:
+        LOGGER.info("sheet_id was None, so there was nothing to delete.")
+
+
+def send_error_email(config: configparser.SectionProxy, error_stacks: str,
+                     fails: int):
+    """Used to email the user about a fatal exception.
+
+    :param config: the configuration for the email
+    :type config: configparser.SectionProxy
+    :param error_stacks: the stack traces of the exceptions
+    :type error_stacks: str
+    :param fails: the number of consecutive exceptions/failures
+    :type fails: int
+    """
+
+    # Connect to the server
+    LOGGER.info("Connecting to the email server...")
+    with smtplib.SMTP(config["host"], int(config["port"])) as server:
+        server.starttls()
+        server.login(config["username"], config["password"])
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "ERROR with ledger_checker.py!"
+        message["To"] = config["to"]
+        message["From"] = config["from"]
+        message["X-Priority"] = "1"
+
+        # Prepare the email
+        text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
+                "Please see the stack trace below and check the logs.\n\n %s "
+                "———\nThis email was sent automatically by a "
+                "computer program (cmenon12/contemporary-choir). "
+                "If you want to leave some feedback "
+                "then please reply directly to it." % (fails,
+                                                       error_stacks))
+        message.attach(MIMEText(text, "plain"))
+
+        # Send the email
+        LOGGER.info("Sending the exception email...")
+        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
+                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
+                        message.as_string())
+    LOGGER.info("The email about the exception was sent successfully!")
+
+
+def check_ledger(save_file: LedgerCheckerSaveFile):
     """Runs a check of the ledger.
+
+    :param save_file: the save file
+    :type save_file: LedgerCheckerSaveFile
     """
 
     # Only run between 07:00 and 23:00
@@ -333,7 +400,7 @@ def check_ledger():
             for trace in error["scriptStackTraceElements"]:
                 print("\t{0}: {1}".format(trace["function"],
                                           trace["lineNumber"]))
-        raise Exception(response["error"])
+        raise AppsScriptApiException(response["error"])
 
     # Otherwise save the data that the Apps Script returns
     changes = response["response"].get("result")
@@ -342,8 +409,13 @@ def check_ledger():
     LOGGER.info("The Apps Script function executed successfully.")
 
     # Get the old values of changes
-    with open(config["save_data_filepath"], "rb") as save_file:
-        old_changes, old_sheet_id = pickle.load(save_file)
+    old_changes, old_sheet_id, previous_check = save_file.get_data()
+
+    # Get the datetime that the request was made for the save file
+    head, filename = os.path.split(pdf_filepath)
+    timestamp = datetime.strptime(filename,
+                                  parser["ledger_checker"]["filename_prefix"] +
+                                  " %d-%m-%Y at %H.%M.%S.pdf")
 
     # If there were no changes then do nothing
     # The sheet will have been deleted by the Apps Script
@@ -353,31 +425,33 @@ def check_ledger():
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
         LOGGER.info("The local PDF and XLSX have been deleted successfully.")
+        save_file.new_check_success(old_changes, old_sheet_id, timestamp)
 
     # If the returned changes aren't actually new to us then
     # just delete the new sheet we just made
     # This compares the total income & expenditure
     elif changes[-1][-1][1] == old_changes[-1][-1][1] and \
             changes[-1][-1][2] == old_changes[-1][-1][2]:
+        sheet_id = changes.pop(0)
         print("The new changes is the same as the old.")
         LOGGER.info("The new changes is the same as the old.")
         LOGGER.info("Deleting the new sheet (that's the same as the old one)...")
-        sheet_id = changes.pop(0)
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=sheet_id)
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
         LOGGER.info("The local PDF and XLSX have been deleted successfully!")
+        save_file.new_check_success(old_changes, old_sheet_id, timestamp)
 
     # Otherwise these changes are new
     # Update the PDF ledger in the user's Google Drive
     # Notify the user (via email) and delete the old sheet
     # Save the new data to the save file
     else:
+        sheet_id = changes.pop(0)
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
-        sheet_id = changes.pop(0)
         pdf_url = update_pdf_ledger(dir_name=config["dir_name"],
                                     pdf_ledger_id=config["pdf_ledger_id"],
                                     pdf_ledger_name=config["pdf_ledger_name"],
@@ -390,77 +464,11 @@ def check_ledger():
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=old_sheet_id)
-        LOGGER.info("Saving the new changes and sheet_id...")
-        with open(config["save_data_filepath"], "wb") as save_file:
-            pickle.dump([changes, sheet_id], save_file)
-        LOGGER.info("Save data updated successfully!\n")
+        save_file.new_check_success(changes, sheet_id, timestamp)
 
     # Note the end time and that we're now finished
     print("It's %s and the check is complete.\n" %
           time.strftime("%d %b %Y at %H:%M:%S"))
-
-
-def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
-                 spreadsheet_id: str, sheet_id: id):
-    """Deletes the named Google Sheet in the specified spreadsheet.
-
-    :param sheets_service: the authenticated service for Google Sheets
-    :type sheets_service: googleapiclient.discovery.Resource
-    :param spreadsheet_id: the ID of the spreadsheet to use
-    :type spreadsheet_id: str
-    :param sheet_id: the id of the sheet to delete
-    :type sheet_id: int
-    """
-
-    if sheet_id is not None:
-        LOGGER.info("Deleting the sheet with ID %d", sheet_id)
-        body = {"requests": {"deleteSheet": {"sheetId": sheet_id}}}
-        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id,
-                                                  body=body).execute()
-        LOGGER.info("Sheet %d has been deleted successfully.", sheet_id)
-    else:
-        LOGGER.info("sheet_id was None, so there was nothing to delete.")
-
-
-def send_error_email(config: configparser.SectionProxy, error_stacks: str,
-                     fails: int):
-    """Used to email the user about a fatal exception.
-
-    :param config: the configuration for the email
-    :type config: configparser.SectionProxy
-    :param error_stacks: the stack traces of the exceptions
-    :type error_stacks: str
-    :param fails: the number of consecutive exceptions/failures
-    :type fails: int
-    """
-
-    # Connect to the server
-    LOGGER.info("Connecting to the email server...")
-    with smtplib.SMTP(config["host"], int(config["port"])) as server:
-        server.starttls()
-        server.login(config["username"], config["password"])
-        message = MIMEMultipart("alternative")
-        message["Subject"] = "ERROR with ledger_checker.py!"
-        message["To"] = config["to"]
-        message["From"] = config["from"]
-        message["X-Priority"] = "1"
-
-        # Prepare the email
-        text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
-                "Please see the stack trace below and check the logs.\n\n %s "
-                "———\nThis email was sent automatically by a "
-                "computer program (cmenon12/contemporary-choir). "
-                "If you want to leave some feedback "
-                "then please reply directly to it." % (fails,
-                                                       error_stacks))
-        message.attach(MIMEText(text, "plain"))
-
-        # Send the email
-        LOGGER.info("Sending the exception email...")
-        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
-                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
-                        message.as_string())
-    LOGGER.info("The email about the exception was sent successfully!")
 
 
 def main():
