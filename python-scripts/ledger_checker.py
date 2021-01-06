@@ -24,6 +24,7 @@ import smtplib
 import socket
 import time
 import traceback
+from datetime import datetime
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -34,6 +35,7 @@ import html2text
 from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
+
 # noinspection PyUnresolvedReferences
 from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
     authorize, update_pdf_ledger
@@ -500,3 +502,41 @@ if __name__ == "__main__":
 
 else:
     LOGGER = logging.getLogger(__name__)
+
+
+class LedgerCheckerSaveFile:
+
+    def __init__(self, save_data_filepath: str):
+        self.save_data()
+
+    @staticmethod
+    def __new__(cls, save_data_filepath, *args, **kwargs):
+
+        # Try to open the save file if it exists
+        try:
+            with open(save_data_filepath, "rb") as f:
+                inst = pickle.load(f)
+            if not isinstance(inst, cls):
+                raise TypeError("The save data file is invalid. Please delete it.")
+        except FileNotFoundError:
+
+            # Otherwise create a fresh instance
+            inst = super(LedgerCheckerSaveFile, cls).__new__(cls, *args, **kwargs)
+            inst.save_data_filepath = save_data_filepath
+            inst.exceptions = []
+
+        return inst
+
+    def save_data(self):
+        with open(self.save_data_filepath, "wb") as save_file:
+            pickle.dump(self, save_file)
+            save_file.close()
+
+    def new_check_success(self, changes: list, sheet_id: int, timestamp: datetime):
+        self.changes = changes
+        self.sheet_id = sheet_id
+        self.timestamp = timestamp
+
+    def new_check_fail(self, exception: Exception):
+        self.exceptions.append(exception)
+
