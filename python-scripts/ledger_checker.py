@@ -31,6 +31,7 @@ from email.mime.text import MIMEText
 
 import googleapiclient
 import html2text
+import timeago
 from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
@@ -121,9 +122,15 @@ class LedgerCheckerSaveFile:
 
         return self.stack_traces
 
+    def get_timestamp(self) -> datetime:
+        """Gets and returns the timestamp."""
+
+        return self.timestamp
+
 
 def prepare_email_body(config: configparser.SectionProxy,
-                       changes: list, sheet_url: str, pdf_url: str):
+                       changes: list, sheet_url: str, pdf_url: str,
+                       old_timestamp: datetime):
     """Prepares an email detailing the changes to the ledger.
 
     :param config: the configuration for the email
@@ -134,6 +141,8 @@ def prepare_email_body(config: configparser.SectionProxy,
     :type sheet_url: str
     :param pdf_url: the URL of the PDF to link to
     :type pdf_url: str
+    :param old_timestamp: when the previous check was made
+    :type old_timestamp: datetime.datetime
     :return: the plain-text and html
     :rtype: tuple
     """
@@ -210,6 +219,13 @@ def prepare_email_body(config: configparser.SectionProxy,
     # {"cost code name": ["£change", "£balance"],
     #  "grand_total": ["£total change", "£total balance", "balance brought forward info"]}
 
+    # Prepare when the last check was made
+    if old_timestamp is not None:
+        last_check = "since the last check %s at %s" % (timeago.format(old_timestamp),
+                                                        old_timestamp.strftime("%H:%M:%S on %A %d %B %Y"))
+    else:
+        last_check = ""
+
     # Render the template
     root = os.path.dirname(os.path.abspath(__file__))
     env = Environment(loader=FileSystemLoader(root))
@@ -218,7 +234,8 @@ def prepare_email_body(config: configparser.SectionProxy,
                            cost_codes=cost_codes,
                            cost_code_totals=cost_code_totals,
                            sheet_url=sheet_url,
-                           pdf_url=pdf_url)
+                           pdf_url=pdf_url,
+                           last_check=last_check)
 
     # Create the plain-text version of the message
     text_maker = html2text.HTML2Text()
@@ -231,7 +248,8 @@ def prepare_email_body(config: configparser.SectionProxy,
 
 
 def send_email(config: configparser.SectionProxy, changes: list,
-               pdf_filepath: str, sheet_url: str, pdf_url: str):
+               pdf_filepath: str, sheet_url: str, pdf_url: str,
+               old_timestamp: datetime):
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
@@ -244,6 +262,8 @@ def send_email(config: configparser.SectionProxy, changes: list,
     :type sheet_url: str
     :param pdf_url: the URL of the PDF to link to
     :type pdf_url: str
+    :param old_timestamp: when the previous check was made
+    :type old_timestamp: datetime.datetime
     """
 
     # Create the SMTP connection
@@ -260,7 +280,8 @@ def send_email(config: configparser.SectionProxy, changes: list,
         text, html = prepare_email_body(config=config,
                                         changes=changes,
                                         sheet_url=sheet_url,
-                                        pdf_url=pdf_url)
+                                        pdf_url=pdf_url,
+                                        old_timestamp=old_timestamp)
 
         # Turn these into plain/html MIMEText objects
         # Add HTML/plain-text parts to MIMEMultipart message
@@ -478,9 +499,11 @@ def check_ledger(save_data: LedgerCheckerSaveFile):
                                     pdf_ledger_id=config["pdf_ledger_id"],
                                     pdf_ledger_name=config["pdf_ledger_name"],
                                     pdf_filepath=pdf_filepath)
+        old_timestamp = save_data.get_timestamp()
         send_email(config=parser["email"], changes=changes,
                    pdf_filepath=pdf_filepath,
-                   sheet_url=sheet_url, pdf_url=pdf_url)
+                   sheet_url=sheet_url, pdf_url=pdf_url,
+                   old_timestamp=old_timestamp)
         print("Email sent successfully!")
         LOGGER.info("Deleting the old sheet...")
         delete_sheet(sheets_service=sheets,
