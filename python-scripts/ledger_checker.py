@@ -100,6 +100,7 @@ class LedgerCheckerSaveFile:
         self.changes = changes
         self.sheet_id = sheet_id
         self.timestamp = timestamp
+        self.stack_traces.clear()
         self.save_data()
 
     def new_check_fail(self, stack_trace: str):
@@ -118,7 +119,7 @@ class LedgerCheckerSaveFile:
         return self.changes, self.sheet_id, self.timestamp
 
     def get_stack_traces(self) -> list:
-        """Gets and returns the list of stack traces"""
+        """Gets and returns the list of stack traces."""
 
         return self.stack_traces
 
