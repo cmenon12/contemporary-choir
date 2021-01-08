@@ -59,28 +59,30 @@ class LedgerCheckerSaveFile:
     """Represents the save file used to maintain persistence."""
 
     def __init__(self, save_data_filepath: str):
-        self.save_data()
-
-    @staticmethod
-    def __new__(cls, save_data_filepath, *args, **kwargs):
 
         # Try to open the save file if it exists
         try:
             with open(save_data_filepath, "rb") as f:
+
+                # Load it and set the attributes for self from it
                 inst = pickle.load(f)
-            if not isinstance(inst, cls):
+                for k in inst.__dict__.keys():
+                    setattr(self, k, getattr(inst, k))
+
+            if not isinstance(inst, LedgerCheckerSaveFile):
                 raise FileNotFoundError("The save data file is invalid.")
+            pass
+
+        # If it fails then just initialise with blank values
         except FileNotFoundError:
 
-            # Otherwise create a fresh instance
-            inst = super(LedgerCheckerSaveFile, cls).__new__(cls, *args, **kwargs)
-            inst.save_data_filepath = save_data_filepath
-            inst.stack_traces = []
-            inst.changes = None
-            inst.sheet_id = None
-            inst.timestamp = None
+            self.save_data_filepath = save_data_filepath
+            self.stack_traces = []
+            self.changes = None
+            self.sheet_id = None
+            self.timestamp = None
 
-        return inst
+        self.save_data()
 
     def save_data(self):
         """Save to the actual file."""
