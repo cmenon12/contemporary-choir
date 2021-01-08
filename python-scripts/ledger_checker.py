@@ -16,14 +16,18 @@ uploaded to.
 
 import base64
 import configparser
+import email.utils
+import imaplib
 import logging
 import os
 import pickle
 import re
 import smtplib
 import socket
+import ssl
 import time
 import traceback
+from datetime import datetime
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -31,9 +35,13 @@ from email.mime.text import MIMEText
 
 import googleapiclient
 import html2text
+import timeago
 from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
+
+# noinspection PyCompatibility
+from exceptions import AppsScriptApiException
 # noinspection PyUnresolvedReferences
 from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
     authorize, update_pdf_ledger
@@ -42,18 +50,94 @@ __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
-# This is the time in seconds between each check. Note that the actual
-# time between checks may be sightly longer.
-# 1800 is 30 minutes
-INTERVAL = 1800
-
 # This is the number of consecutive failed attempts that the program
 # can make before it stops trying to run the checks.
 ATTEMPTS = 3
 
 
+class LedgerCheckerSaveFile:
+    """Represents the save file used to maintain persistence."""
+
+    def __init__(self, save_data_filepath: str):
+
+        # Try to open the save file if it exists
+        try:
+            with open(save_data_filepath, "rb") as f:
+
+                # Load it and set the attributes for self from it
+                inst = pickle.load(f)
+                for k in inst.__dict__.keys():
+                    setattr(self, k, getattr(inst, k))
+
+            if not isinstance(inst, LedgerCheckerSaveFile):
+                raise FileNotFoundError("The save data file is invalid.")
+            pass
+
+        # If it fails then just initialise with blank values
+        except FileNotFoundError:
+
+            self.save_data_filepath = save_data_filepath
+            self.stack_traces = []
+            self.changes = None
+            self.sheet_id = None
+            self.timestamp = None
+
+        self.save_data()
+
+    def save_data(self):
+        """Save to the actual file."""
+
+        with open(self.save_data_filepath, "wb") as save_file:
+            pickle.dump(self, save_file)
+            save_file.close()
+
+    def new_check_success(self, changes: list, sheet_id: int,
+                          timestamp: datetime):
+        """Runs when a check was successful.
+
+        :param changes: the changes made to the ledger
+        :type changes: list
+        :param sheet_id: the ID of the new sheet
+        :type sheet_id: int
+        :param timestamp: when the last check was run
+        :type timestamp: datetime
+        """
+
+        self.changes = changes
+        self.sheet_id = sheet_id
+        self.timestamp = timestamp
+        self.stack_traces.clear()
+        self.save_data()
+
+    def new_check_fail(self, stack_trace: str):
+        """Runs when a check failed.
+
+        :param stack_trace: the stack trace
+        :type stack_trace: str
+        """
+
+        self.stack_traces.append(stack_trace)
+        self.save_data()
+
+    def get_data(self) -> tuple:
+        """Gets and returns the saved data."""
+
+        return self.changes, self.sheet_id, self.timestamp
+
+    def get_stack_traces(self) -> list:
+        """Gets and returns the list of stack traces."""
+
+        return self.stack_traces
+
+    def get_timestamp(self) -> datetime:
+        """Gets and returns the timestamp."""
+
+        return self.timestamp
+
+
 def prepare_email_body(config: configparser.SectionProxy,
-                       changes: list, sheet_url: str, pdf_url: str):
+                       changes: list, sheet_url: str, pdf_url: str,
+                       old_timestamp: datetime):
     """Prepares an email detailing the changes to the ledger.
 
     :param config: the configuration for the email
@@ -64,6 +148,8 @@ def prepare_email_body(config: configparser.SectionProxy,
     :type sheet_url: str
     :param pdf_url: the URL of the PDF to link to
     :type pdf_url: str
+    :param old_timestamp: when the previous check was made
+    :type old_timestamp: datetime.datetime
     :return: the plain-text and html
     :rtype: tuple
     """
@@ -140,6 +226,13 @@ def prepare_email_body(config: configparser.SectionProxy,
     # {"cost code name": ["£change", "£balance"],
     #  "grand_total": ["£total change", "£total balance", "balance brought forward info"]}
 
+    # Prepare when the last check was made
+    if old_timestamp is not None:
+        last_check = "since the last check %s at %s" % (timeago.format(old_timestamp),
+                                                        old_timestamp.strftime("%H:%M:%S on %A %d %B %Y"))
+    else:
+        last_check = ""
+
     # Render the template
     root = os.path.dirname(os.path.abspath(__file__))
     env = Environment(loader=FileSystemLoader(root))
@@ -148,7 +241,8 @@ def prepare_email_body(config: configparser.SectionProxy,
                            cost_codes=cost_codes,
                            cost_code_totals=cost_code_totals,
                            sheet_url=sheet_url,
-                           pdf_url=pdf_url)
+                           pdf_url=pdf_url,
+                           last_check=last_check)
 
     # Create the plain-text version of the message
     text_maker = html2text.HTML2Text()
@@ -160,8 +254,9 @@ def prepare_email_body(config: configparser.SectionProxy,
     return text, html
 
 
-def send_email(config: configparser.SectionProxy, changes: list,
-               pdf_filepath: str, sheet_url: str, pdf_url: str):
+def send_success_email(config: configparser.SectionProxy, changes: list,
+                       pdf_filepath: str, sheet_url: str, pdf_url: str,
+                       old_timestamp: datetime):
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
@@ -174,65 +269,150 @@ def send_email(config: configparser.SectionProxy, changes: list,
     :type sheet_url: str
     :param pdf_url: the URL of the PDF to link to
     :type pdf_url: str
+    :param old_timestamp: when the previous check was made
+    :type old_timestamp: datetime.datetime
     """
 
-    # Create the SMTP connection
-    LOGGER.info("Connecting to the email server...")
-    with smtplib.SMTP(config["host"], int(config["port"])) as server:
-        server.starttls()
+    message = MIMEMultipart("alternative")
+    message["Subject"] = config["society_name"] + " Ledger Update"
+    message["To"] = config["to"]
+    message["From"] = config["from"]
+
+    # Prepare the email
+    text, html = prepare_email_body(config=config,
+                                    changes=changes,
+                                    sheet_url=sheet_url,
+                                    pdf_url=pdf_url,
+                                    old_timestamp=old_timestamp)
+
+    # Turn these into plain/html MIMEText objects
+    # Add HTML/plain-text parts to MIMEMultipart message
+    # The email client will try to render the last part first
+    message.attach(MIMEText(text, "plain"))
+    message.attach(MIMEText(html, "html"))
+
+    # Attach the ledger
+    with open(pdf_filepath, "rb") as attachment:
+        # Add file as application/octet-stream
+        # Email client can usually download this automatically as attachment
+        part = MIMEBase("application", "pdf")
+        part.set_payload(attachment.read())
+    encoders.encode_base64(part)
+    # Add header as key/value pair to attachment part
+    head, filename = os.path.split(pdf_filepath)
+    part.add_header("Content-Disposition",
+                    "attachment; filename=\"%s\"" % filename)
+    message.attach(part)
+
+    # Send the email
+    send_email(config=config, message=message)
+
+
+def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
+                 spreadsheet_id: str, sheet_id: id):
+    """Deletes the named Google Sheet in the specified spreadsheet.
+
+    :param sheets_service: the authenticated service for Google Sheets
+    :type sheets_service: googleapiclient.discovery.Resource
+    :param spreadsheet_id: the ID of the spreadsheet to use
+    :type spreadsheet_id: str
+    :param sheet_id: the id of the sheet to delete
+    :type sheet_id: int
+    """
+
+    if sheet_id is not None:
+        LOGGER.info("Deleting the sheet with ID %d", sheet_id)
+        body = {"requests": {"deleteSheet": {"sheetId": sheet_id}}}
+        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id,
+                                                  body=body).execute()
+        LOGGER.info("Sheet %d has been deleted successfully.", sheet_id)
+    else:
+        LOGGER.info("sheet_id was None, so there was nothing to delete.")
+
+
+def send_error_email(config: configparser.SectionProxy,
+                     save_data: LedgerCheckerSaveFile):
+    """Used to email the user about a fatal exception.
+
+    :param config: the configuration for the email
+    :type config: configparser.SectionProxy
+    :param save_data: the save data object
+    :type save_data: LedgerCheckerSaveFile
+    """
+
+    # Get the count of errors and stack traces
+    error_count = len(save_data.get_stack_traces())
+    stack_traces = ""
+    for e in save_data.get_stack_traces()[-ATTEMPTS:]:
+        stack_traces += e
+        stack_traces += "\n\n"
+
+    # Create the message
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "ERROR with ledger_checker.py!"
+    message["To"] = config["to"]
+    message["From"] = config["from"]
+    message["X-Priority"] = "1"
+
+    # Prepare the email
+    text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
+            "Please see the stack traces below and check the logs.\n\n %s "
+            "———\nThis email was sent automatically by a "
+            "computer program (https://github.com/cmenon12/contemporary-choir). "
+            "If you want to leave some feedback "
+            "then please reply directly to it." % (error_count,
+                                                   stack_traces))
+    message.attach(MIMEText(text, "plain"))
+
+    # Send the email
+    send_email(config=config, message=message)
+
+
+def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
+    """Sends the message using the config with SSL.
+
+    :param config: the configuration for the email
+    :type config: configparser.SectionProxy
+    :param message: the message to send
+    :type message: MIMEMultipart
+    """
+
+    # Add a few headers to the message
+    message["Date"] = email.utils.formatdate()
+    message["Message-ID"] = email.utils.make_msgid(domain=config["smtp_host"])
+
+    # Create the SMTP connection and send the email
+    LOGGER.info("Connecting to the SMTP server to send the email...")
+    with smtplib.SMTP_SSL(config["smtp_host"],
+                          int(config["smtp_port"]),
+                          context=ssl.create_default_context()) as server:
         server.login(config["username"], config["password"])
-        message = MIMEMultipart("alternative")
-        message["Subject"] = config["society_name"] + " Ledger Update"
-        message["To"] = config["to"]
-        message["From"] = config["from"]
-
-        # Prepare the email
-        text, html = prepare_email_body(config=config,
-                                        changes=changes,
-                                        sheet_url=sheet_url,
-                                        pdf_url=pdf_url)
-
-        # Turn these into plain/html MIMEText objects
-        # Add HTML/plain-text parts to MIMEMultipart message
-        # The email client will try to render the last part first
-        message.attach(MIMEText(text, "plain"))
-        message.attach(MIMEText(html, "html"))
-
-        # Attach the ledger
-        LOGGER.info("Attaching the PDF ledger...")
-        with open(pdf_filepath, "rb") as attachment:
-            # Add file as application/octet-stream
-            # Email client can usually download this automatically as attachment
-            part = MIMEBase("application", "pdf")
-            part.set_payload(attachment.read())
-        encoders.encode_base64(part)
-        # Add header as key/value pair to attachment part
-        head, filename = os.path.split(pdf_filepath)
-        part.add_header("Content-Disposition",
-                        "attachment; filename=\"%s\"" % filename)
-
-        # Add the attachment to message and send the message
-        message.attach(part)
         LOGGER.info("Sending the email...")
         server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
                         re.findall("(?<=<)\\S+(?=>)", config["to"]),
                         message.as_string())
     LOGGER.info("Email sent successfully!")
 
+    # If asked then manually save it to the Sent folder
+    if config["save_to_sent"] == "True":
+        LOGGER.info("Connecting to the IMAP server to save the email...")
+        with imaplib.IMAP4_SSL(config["imap_host"],
+                               int(config["imap_port"])) as server:
+            server.login(config["username"], config["password"])
+            server.append('INBOX.Sent', '\\Seen',
+                          imaplib.Time2Internaldate(time.time()),
+                          message.as_string().encode('utf8'))
+        LOGGER.info("Email saved successfully!")
 
-def check_ledger():
+
+def check_ledger(save_data: LedgerCheckerSaveFile):
     """Runs a check of the ledger.
+
+    :param save_data: the save data object
+    :type save_data: LedgerCheckerSaveFile
+    :raises: AppsScriptApiException
     """
 
-    # Only run between 07:00 and 23:00
-    if 7 <= time.localtime().tm_hour < 23:
-        # Make a note of the start time
-        print("\nIt's %s and we're doing a check." %
-              time.strftime("%d %b %Y at %H:%M:%S"))
-    else:
-        print("\nIt's %s so we're not doing a check." %
-              time.strftime("%d %b %Y at %H:%M:%S"))
-        return
     LOGGER.info("\n")
 
     # Fetch info from the config
@@ -285,7 +465,7 @@ def check_ledger():
             for trace in error["scriptStackTraceElements"]:
                 print("\t{0}: {1}".format(trace["function"],
                                           trace["lineNumber"]))
-        raise Exception(response["error"])
+        raise AppsScriptApiException(response["error"])
 
     # Otherwise save the data that the Apps Script returns
     changes = response["response"].get("result")
@@ -294,8 +474,13 @@ def check_ledger():
     LOGGER.info("The Apps Script function executed successfully.")
 
     # Get the old values of changes
-    with open(config["save_data_filepath"], "rb") as save_file:
-        old_changes, old_sheet_id = pickle.load(save_file)
+    old_changes, old_sheet_id, previous_check = save_data.get_data()
+
+    # Get the datetime that the request was made for the save file
+    head, filename = os.path.split(pdf_filepath)
+    timestamp = datetime.strptime(filename,
+                                  parser["ledger_checker"]["filename_prefix"] +
+                                  " %d-%m-%Y at %H.%M.%S.pdf")
 
     # If there were no changes then do nothing
     # The sheet will have been deleted by the Apps Script
@@ -305,114 +490,54 @@ def check_ledger():
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
         LOGGER.info("The local PDF and XLSX have been deleted successfully.")
+        save_data.new_check_success(changes=old_changes,
+                                    sheet_id=old_sheet_id,
+                                    timestamp=timestamp)
 
     # If the returned changes aren't actually new to us then
     # just delete the new sheet we just made
     # This compares the total income & expenditure
     elif changes[-1][-1][1] == old_changes[-1][-1][1] and \
             changes[-1][-1][2] == old_changes[-1][-1][2]:
+        sheet_id = changes.pop(0)
         print("The new changes is the same as the old.")
         LOGGER.info("The new changes is the same as the old.")
         LOGGER.info("Deleting the new sheet (that's the same as the old one)...")
-        sheet_id = changes.pop(0)
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=sheet_id)
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
         LOGGER.info("The local PDF and XLSX have been deleted successfully!")
+        save_data.new_check_success(changes=old_changes,
+                                    sheet_id=old_sheet_id,
+                                    timestamp=timestamp)
 
     # Otherwise these changes are new
     # Update the PDF ledger in the user's Google Drive
     # Notify the user (via email) and delete the old sheet
     # Save the new data to the save file
     else:
+        sheet_id = changes.pop(0)
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
-        sheet_id = changes.pop(0)
         pdf_url = update_pdf_ledger(dir_name=config["dir_name"],
                                     pdf_ledger_id=config["pdf_ledger_id"],
                                     pdf_ledger_name=config["pdf_ledger_name"],
                                     pdf_filepath=pdf_filepath)
-        send_email(config=parser["email"], changes=changes,
-                   pdf_filepath=pdf_filepath,
-                   sheet_url=sheet_url, pdf_url=pdf_url)
+        old_timestamp = save_data.get_timestamp()
+        send_success_email(config=parser["email"], changes=changes,
+                           pdf_filepath=pdf_filepath,
+                           sheet_url=sheet_url, pdf_url=pdf_url,
+                           old_timestamp=old_timestamp)
         print("Email sent successfully!")
         LOGGER.info("Deleting the old sheet...")
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=old_sheet_id)
-        LOGGER.info("Saving the new changes and sheet_id...")
-        with open(config["save_data_filepath"], "wb") as save_file:
-            pickle.dump([changes, sheet_id], save_file)
-        LOGGER.info("Save data updated successfully!\n")
-
-    # Note the end time and that we're now finished
-    print("It's %s and the check is complete.\n" %
-          time.strftime("%d %b %Y at %H:%M:%S"))
-
-
-def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
-                 spreadsheet_id: str, sheet_id: id):
-    """Deletes the named Google Sheet in the specified spreadsheet.
-
-    :param sheets_service: the authenticated service for Google Sheets
-    :type sheets_service: googleapiclient.discovery.Resource
-    :param spreadsheet_id: the ID of the spreadsheet to use
-    :type spreadsheet_id: str
-    :param sheet_id: the id of the sheet to delete
-    :type sheet_id: int
-    """
-
-    if sheet_id is not None:
-        LOGGER.info("Deleting the sheet with ID %d", sheet_id)
-        body = {"requests": {"deleteSheet": {"sheetId": sheet_id}}}
-        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id,
-                                                  body=body).execute()
-        LOGGER.info("Sheet %d has been deleted successfully.", sheet_id)
-    else:
-        LOGGER.info("sheet_id was None, so there was nothing to delete.")
-
-
-def send_error_email(config: configparser.SectionProxy, error_stacks: str,
-                     fails: int):
-    """Used to email the user about a fatal exception.
-
-    :param config: the configuration for the email
-    :type config: configparser.SectionProxy
-    :param error_stacks: the stack traces of the exceptions
-    :type error_stacks: str
-    :param fails: the number of consecutive exceptions/failures
-    :type fails: int
-    """
-
-    # Connect to the server
-    LOGGER.info("Connecting to the email server...")
-    with smtplib.SMTP(config["host"], int(config["port"])) as server:
-        server.starttls()
-        server.login(config["username"], config["password"])
-        message = MIMEMultipart("alternative")
-        message["Subject"] = "ERROR with ledger_checker.py!"
-        message["To"] = config["to"]
-        message["From"] = config["from"]
-        message["X-Priority"] = "1"
-
-        # Prepare the email
-        text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
-                "Please see the stack trace below and check the logs.\n\n %s "
-                "———\nThis email was sent automatically by a "
-                "computer program (cmenon12/contemporary-choir). "
-                "If you want to leave some feedback "
-                "then please reply directly to it." % (fails,
-                                                       error_stacks))
-        message.attach(MIMEText(text, "plain"))
-
-        # Send the email
-        LOGGER.info("Sending the exception email...")
-        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
-                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
-                        message.as_string())
-    LOGGER.info("The email about the exception was sent successfully!")
+        save_data.new_check_success(changes=changes,
+                                    sheet_id=sheet_id,
+                                    timestamp=timestamp)
 
 
 def main():
@@ -425,66 +550,22 @@ def main():
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read("config.ini")
-    save_data_filepath = parser["ledger_checker"]["save_data_filepath"]
 
-    # If the save file doesn't exist then create it
-    if not os.path.exists(save_data_filepath):
-        LOGGER.warning("The save file doesn't exist, creating a blank one...")
-        with open(save_data_filepath, "wb") as save_file:
-            pickle.dump([[[[0, 0, 0]]], None], save_file)
+    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"])
 
-    # Run the checker
-    # fails counts the number of consecutive failed attempts
-    # error_stacks contains the stack traces of the failures
-    fails = 0
-    error_stacks = ""
-    while fails < ATTEMPTS:
-        try:
-            check_ledger()
+    try:
+        check_ledger(save_data=save_data)
+    except Exception:
+        save_data.new_check_fail(stack_trace=traceback.format_exc())
+        traceback.print_exc()
+        LOGGER.exception("That check went wrong!")
+        LOGGER.error("This is consecutive failed attempt no. %d.",
+                     len(save_data.get_stack_traces()))
+        print("This is consecutive error number %d"
+              % len(save_data.get_stack_traces()))
 
-            # If no exception occurred then reset fails and error_stacks
-            fails = 0
-            error_stacks = ""
-
-        # Catch any exception that occurs
-        except Exception:
-            fails += 1
-            error_stacks += traceback.format_exc()
-            error_stacks += "\n\n"
-            LOGGER.exception("We had a problem and had to stop the checks!")
-            LOGGER.error("This is error no. %d.", fails)
-            print("It's %s and we've hit a fatal error! "
-                  "Go check the log to find out more." %
-                  time.strftime("%d %b %Y at %H:%M:%S"))
-
-            # If this is the last consecutive failure
-            if fails == ATTEMPTS:
-                fails_text = "This is consecutive failed attempt no. " \
-                             "%d so we won't try to " \
-                             "make any further checks. " % fails
-
-                # Attempt to email the user about the exceptions
-                try:
-                    print("Sending an email about the exceptions...")
-                    send_error_email(config=parser["email"],
-                                     error_stacks=error_stacks,
-                                     fails=fails)
-                    print("Email sent successfully!\n")
-                except Exception:
-                    print("The email was not sent successfully!")
-                    print(traceback.format_exc())
-                    LOGGER.exception("We couldn't send the email about the exceptions!")
-
-            else:
-                fails_text = "This is consecutive failed attempt no. " \
-                             "%d so we will try again " \
-                             "in %d seconds. " % (fails, INTERVAL)
-            print(fails_text)
-            print(traceback.format_exc())
-
-        # Always wait before the next one
-        finally:
-            time.sleep(INTERVAL)
+        if len(save_data.get_stack_traces()) == ATTEMPTS:
+            send_error_email(config=parser["email"], save_data=save_data)
 
 
 if __name__ == "__main__":
