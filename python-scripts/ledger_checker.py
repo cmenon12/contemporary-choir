@@ -16,12 +16,16 @@ uploaded to.
 
 import base64
 import configparser
+import email.utils
+import imaplib
 import logging
 import os
 import pickle
 import re
 import smtplib
 import socket
+import ssl
+import time
 import traceback
 from datetime import datetime
 from email import encoders
@@ -371,16 +375,32 @@ def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
     :type message: MIMEMultipart
     """
 
-    # Create the SMTP connection
-    LOGGER.info("Connecting to the email server...")
-    with smtplib.SMTP(config["host"], int(config["port"])) as server:
-        server.starttls()
+    # Add a few headers to the message
+    message["Date"] = email.utils.formatdate()
+    message["Message-ID"] = email.utils.make_msgid(domain=config["smtp_host"])
+
+    # Create the SMTP connection and send the email
+    LOGGER.info("Connecting to the SMTP server to send the email...")
+    with smtplib.SMTP_SSL(config["smtp_host"],
+                          int(config["smtp_port"]),
+                          context=ssl.create_default_context()) as server:
         server.login(config["username"], config["password"])
         LOGGER.info("Sending the email...")
         server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
                         re.findall("(?<=<)\\S+(?=>)", config["to"]),
                         message.as_string())
     LOGGER.info("Email sent successfully!")
+
+    # If asked then manually save it to the Sent folder
+    if config["save_to_sent"] == "True":
+        LOGGER.info("Connecting to the IMAP server to save the email...")
+        with imaplib.IMAP4_SSL(config["imap_host"],
+                               int(config["imap_port"])) as server:
+            server.login(config["username"], config["password"])
+            server.append('INBOX.Sent', '\\Seen',
+                          imaplib.Time2Internaldate(time.time()),
+                          message.as_string().encode('utf8'))
+        LOGGER.info("Email saved successfully!")
 
 
 def check_ledger(save_data: LedgerCheckerSaveFile):
