@@ -31,12 +31,13 @@ can be used  to download the society ledger from eXpense365 to your computer (in
 *Please note that I'm not affiliated with any PDF to XLSX converters and that use of their service is bound by their terms & privacy policy.*
 
 
-**[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger on a regular basis and notify the user via email of any changes. 
+**[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger and notify the user via email of any changes. 
 * It relies on [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) to download the ledger, convert it, and upload it to Google Sheets. 
 * It will then run an Apps Script function (namely `checkForNewTotals(sheetName)` in [`ledger_checker.gs`](google-apps-scripts/ledger-checker.gs)) to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself (check [here](https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/Example%20email%20from%20ledger_checker.py.jpg) for an example). 
 * The pre-existing PDF ledger in Drive is also updated to this latest version (whilst still preserving the old versions in the [version history](https://support.google.com/drive/answer/2409045?co=GENIE.Platform%3DDesktop&hl=en#7177508:~:text=Save%20and%20restore%20recent%20versions)). 
 * The user is only ever notified of each change once by serialising them to a file that maintains persistence.
-* The user will also be notified via email if the program fails three times consecutively, at which point it stops trying to make any further checks.
+* The user will also be notified via email if the program fails three times consecutively.
+* The program is designed to be run multiple times via `cron` or a similar tool. It can also be run once to make an ad-hoc check.
 
 ## Google Apps Scripts (for Google Sheets)
 **[`google-apps-scripts/ledger-comparison.gs`](google-apps-scripts/ledger-comparison.gs)** can be used to process the ledger that has been uploaded by [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py). 
