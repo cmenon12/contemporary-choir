@@ -248,9 +248,9 @@ def prepare_email_body(config: configparser.SectionProxy,
     return text, html
 
 
-def send_email(config: configparser.SectionProxy, changes: list,
-               pdf_filepath: str, sheet_url: str, pdf_url: str,
-               old_timestamp: datetime):
+def send_success_email(config: configparser.SectionProxy, changes: list,
+                       pdf_filepath: str, sheet_url: str, pdf_url: str,
+                       old_timestamp: datetime):
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
@@ -267,49 +267,39 @@ def send_email(config: configparser.SectionProxy, changes: list,
     :type old_timestamp: datetime.datetime
     """
 
-    # Create the SMTP connection
-    LOGGER.info("Connecting to the email server...")
-    with smtplib.SMTP(config["host"], int(config["port"])) as server:
-        server.starttls()
-        server.login(config["username"], config["password"])
-        message = MIMEMultipart("alternative")
-        message["Subject"] = config["society_name"] + " Ledger Update"
-        message["To"] = config["to"]
-        message["From"] = config["from"]
+    message = MIMEMultipart("alternative")
+    message["Subject"] = config["society_name"] + " Ledger Update"
+    message["To"] = config["to"]
+    message["From"] = config["from"]
 
-        # Prepare the email
-        text, html = prepare_email_body(config=config,
-                                        changes=changes,
-                                        sheet_url=sheet_url,
-                                        pdf_url=pdf_url,
-                                        old_timestamp=old_timestamp)
+    # Prepare the email
+    text, html = prepare_email_body(config=config,
+                                    changes=changes,
+                                    sheet_url=sheet_url,
+                                    pdf_url=pdf_url,
+                                    old_timestamp=old_timestamp)
 
-        # Turn these into plain/html MIMEText objects
-        # Add HTML/plain-text parts to MIMEMultipart message
-        # The email client will try to render the last part first
-        message.attach(MIMEText(text, "plain"))
-        message.attach(MIMEText(html, "html"))
+    # Turn these into plain/html MIMEText objects
+    # Add HTML/plain-text parts to MIMEMultipart message
+    # The email client will try to render the last part first
+    message.attach(MIMEText(text, "plain"))
+    message.attach(MIMEText(html, "html"))
 
-        # Attach the ledger
-        LOGGER.info("Attaching the PDF ledger...")
-        with open(pdf_filepath, "rb") as attachment:
-            # Add file as application/octet-stream
-            # Email client can usually download this automatically as attachment
-            part = MIMEBase("application", "pdf")
-            part.set_payload(attachment.read())
-        encoders.encode_base64(part)
-        # Add header as key/value pair to attachment part
-        head, filename = os.path.split(pdf_filepath)
-        part.add_header("Content-Disposition",
-                        "attachment; filename=\"%s\"" % filename)
+    # Attach the ledger
+    with open(pdf_filepath, "rb") as attachment:
+        # Add file as application/octet-stream
+        # Email client can usually download this automatically as attachment
+        part = MIMEBase("application", "pdf")
+        part.set_payload(attachment.read())
+    encoders.encode_base64(part)
+    # Add header as key/value pair to attachment part
+    head, filename = os.path.split(pdf_filepath)
+    part.add_header("Content-Disposition",
+                    "attachment; filename=\"%s\"" % filename)
+    message.attach(part)
 
-        # Add the attachment to message and send the message
-        message.attach(part)
-        LOGGER.info("Sending the email...")
-        server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
-                        re.findall("(?<=<)\\S+(?=>)", config["to"]),
-                        message.as_string())
-    LOGGER.info("Email sent successfully!")
+    # Send the email
+    send_email(config=config, message=message)
 
 
 def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
@@ -351,33 +341,46 @@ def send_error_email(config: configparser.SectionProxy,
         stack_traces += e
         stack_traces += "\n\n"
 
-    # Connect to the server
+    # Create the message
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "ERROR with ledger_checker.py!"
+    message["To"] = config["to"]
+    message["From"] = config["from"]
+    message["X-Priority"] = "1"
+
+    # Prepare the email
+    text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
+            "Please see the stack traces below and check the logs.\n\n %s "
+            "———\nThis email was sent automatically by a "
+            "computer program (https://github.com/cmenon12/contemporary-choir). "
+            "If you want to leave some feedback "
+            "then please reply directly to it." % (error_count,
+                                                   stack_traces))
+    message.attach(MIMEText(text, "plain"))
+
+    # Send the email
+    send_email(config=config, message=message)
+
+
+def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
+    """Sends the message using the config with SSL.
+
+    :param config: the configuration for the email
+    :type config: configparser.SectionProxy
+    :param message: the message to send
+    :type message: MIMEMultipart
+    """
+
+    # Create the SMTP connection
     LOGGER.info("Connecting to the email server...")
     with smtplib.SMTP(config["host"], int(config["port"])) as server:
         server.starttls()
         server.login(config["username"], config["password"])
-        message = MIMEMultipart("alternative")
-        message["Subject"] = "ERROR with ledger_checker.py!"
-        message["To"] = config["to"]
-        message["From"] = config["from"]
-        message["X-Priority"] = "1"
-
-        # Prepare the email
-        text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
-                "Please see the stack traces below and check the logs.\n\n %s "
-                "———\nThis email was sent automatically by a "
-                "computer program (https://github.com/cmenon12/contemporary-choir). "
-                "If you want to leave some feedback "
-                "then please reply directly to it." % (error_count,
-                                                       stack_traces))
-        message.attach(MIMEText(text, "plain"))
-
-        # Send the email
-        LOGGER.info("Sending the exception email...")
+        LOGGER.info("Sending the email...")
         server.sendmail(re.findall("(?<=<)\\S+(?=>)", config["from"])[0],
                         re.findall("(?<=<)\\S+(?=>)", config["to"]),
                         message.as_string())
-    LOGGER.info("The email about the exception was sent successfully!")
+    LOGGER.info("Email sent successfully!")
 
 
 def check_ledger(save_data: LedgerCheckerSaveFile):
@@ -501,10 +504,10 @@ def check_ledger(save_data: LedgerCheckerSaveFile):
                                     pdf_ledger_name=config["pdf_ledger_name"],
                                     pdf_filepath=pdf_filepath)
         old_timestamp = save_data.get_timestamp()
-        send_email(config=parser["email"], changes=changes,
-                   pdf_filepath=pdf_filepath,
-                   sheet_url=sheet_url, pdf_url=pdf_url,
-                   old_timestamp=old_timestamp)
+        send_success_email(config=parser["email"], changes=changes,
+                           pdf_filepath=pdf_filepath,
+                           sheet_url=sheet_url, pdf_url=pdf_url,
+                           old_timestamp=old_timestamp)
         print("Email sent successfully!")
         LOGGER.info("Deleting the old sheet...")
         delete_sheet(sheets_service=sheets,
