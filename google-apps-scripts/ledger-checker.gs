@@ -103,16 +103,16 @@ class Changes {
  */
 function checkForNewTotals(sheetName) {
 
-  const changesOb = new Changes(12345678);
-  return changesOb;
-
   // Get the spreadsheet & sheet
   const spreadsheet = SpreadsheetApp.getActive();
   const newSheet = spreadsheet.getSheetByName(sheetName);
   Logger.log(`Looking at the sheet called ${newSheet.getName()}`);
 
+  // Create changes
+  let changes = new Changes(newSheet.getSheetId());
+
   // Find the income & expenditure for each cost code
-  const newCostCodeTotals = getCostCodeTotals(newSheet);
+  changes = getCostCodeTotals(newSheet, changes);
 
   // Format the sheet neatly, and rename it to reflect that this is automated
   formatNeatlyWithSheet(newSheet);
@@ -143,11 +143,11 @@ function checkForNewTotals(sheetName) {
 
   // If there is a difference then make comparisons and return the changes
   Logger.log("There is a difference in the total income and/or expenditure!");
-  const changes = compareLedgersWithCostCodes(newSheet, oldSheet, newCostCodeTotals);
-  changes.unshift(newSheet.getSheetId());
-  changes.push(newCostCodeTotals);
-  Logger.log(`changes is: ${changes}`);
-  return changes;
+  const changeso = compareLedgersWithCostCodes(newSheet, oldSheet, newCostCodeTotals);
+  changeso.unshift(newSheet.getSheetId());
+  changeso.push(newCostCodeTotals);
+  Logger.log(`changes is: ${changeso}`);
+  return changeso;
 
 }
 
@@ -224,34 +224,35 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
  *  [Cost code 3, £in, £out, £balance, lastRowNumber],
  *  [Society name, £totalIn, £totalOut, £totalBalance, lastRowNumber, balanceBroughtForward]]
  */
-function getCostCodeTotals(sheet) {
+function getCostCodeTotals(sheet, changes) {
 
   const costCodeTotals = [];
   let costCode;
 
-  // Search for the total for each cost code (and the grand total)
+  // Search for the total for each cost code (but not the grand total)
   const finder = sheet.createTextFinder("Totals for ").matchEntireCell(false);
   const foundRanges = finder.findAll();
-  for (let i = 0; i < foundRanges.length; i++) {
+  for (let i = 0; i < foundRanges.length-1; i++) {
 
     // Get the name of the cost code
     costCode = String(foundRanges[i].getValue()).replace("Totals for ", "");
 
-    // Append the name, total income, total expenditure, balance, and row number
-    costCodeTotals.push([costCode, foundRanges[i].offset(0, 1).getValue(),
+    // Add this to changes
+    changes.addCostCode(costCode,
+      foundRanges[i].offset(0, 1).getValue(),
       foundRanges[i].offset(0, 2).getValue(),
       foundRanges[i].offset(1, 2).getValue(),
-      foundRanges[i].getRow()]);
+      foundRanges[i].getRow())
   }
 
-  // Get the Balance Brought Forward and add it to the grand total cost code
-  const balanceBroughtForward = foundRanges[foundRanges.length - 1].offset(2, 2).getValue();
-  costCodeTotals[costCodeTotals.length - 1].push(balanceBroughtForward);
+  // Save the grand total
+  changes.setGrandTotal(foundRanges.slice(-1).offset(0, 1).getValue(),
+    foundRanges.slice(-1).offset(0, 2).getValue(),
+    foundRanges.slice(-1).offset(2, 2).getValue(),
+    foundRanges.slice(-1).offset(3, 2).getValue(),
+    foundRanges.slice(-1).getRow())
 
-  // Replace the grand total with the closing balance (which includes the Balance Brought Forward)
-  costCodeTotals[costCodeTotals.length - 1][3] = foundRanges[foundRanges.length - 1].offset(3, 2).getValue();
-
-  Logger.log(`costCodeTotals is: ${costCodeTotals}`);
-  return costCodeTotals;
+  changes.log();
+  return changes;
 
 }
