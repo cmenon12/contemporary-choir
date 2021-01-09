@@ -7,6 +7,60 @@
   =============================================================================
  */
 
+
+class Entry {
+
+  constructor(costCodeName, date, description, money) {
+    Object.assign(this, {costCodeName, date, description, money});
+  }
+
+}
+
+
+class CostCode {
+
+  constructor(name, moneyIn, moneyOut, balance, lastRowNumber) {
+    if (balance !== moneyIn - moneyOut) {
+      throw new Error("The balance is invalid (balance!==moneyIn-moneyOut).")
+    }
+    Object.assign(this, {name, moneyIn, moneyOut, balance, lastRowNumber})
+  }
+
+}
+
+
+class Changes {
+
+  constructor(sheetId) {
+    this.sheetId = sheetId;
+    this.entries = [];
+    this.costCodes = [];
+  }
+
+  static calculateMoney(moneyIn, moneyOut) {
+
+    if (moneyIn !== undefined && moneyOut !== undefined) {
+      throw new Error("Only moneyIn or moneyOut can be defined, not both.")
+    } else if (moneyOut !== undefined) {
+      return -moneyOut;
+    } else {
+      return moneyIn;
+    }
+
+  }
+
+  addEntry(costCodeName, date, description, moneyIn = undefined, moneyOut = undefined) {
+    const money = Changes.calculateMoney(moneyIn, moneyOut);
+    this.entries.push(new Entry(costCodeName, date, description, money))
+  }
+
+  addCostCode(name, moneyIn, moneyOut, balance, lastRowNumber) {
+    this.costCodes.push(new CostCode(name, moneyIn, moneyOut, balance, lastRowNumber))
+  }
+
+}
+
+
 /**
  * This function checks if there are any new entries in the sheet,
  * and if so returns a list of them all, tagged with their cost code.
@@ -24,6 +78,9 @@
  */
 function checkForNewTotals(sheetName) {
 
+  const changesOb = new Changes(12345678);
+  return changesOb;
+
   // Get the spreadsheet & sheet
   const spreadsheet = SpreadsheetApp.getActive();
   const newSheet = spreadsheet.getSheetByName(sheetName);
@@ -39,7 +96,7 @@ function checkForNewTotals(sheetName) {
   // Locate the named range with the URL to the old sheet
   const namedRanges = spreadsheet.getNamedRanges();
   let url;
-  for (let i=0; i<namedRanges.length; i++) {
+  for (let i = 0; i < namedRanges.length; i++) {
     if (namedRanges[i].getName() == "DefaultUrl") {
       url = namedRanges[i].getRange().getValue();
     }
@@ -53,7 +110,7 @@ function checkForNewTotals(sheetName) {
 
   // If there's no difference then stop and delete the sheet
   if (newCostCodeTotals[newCostCodeTotals.length - 1][1] == oldCostCodeTotals[oldCostCodeTotals.length - 1][1] &&
-      newCostCodeTotals[newCostCodeTotals.length - 1][2] == oldCostCodeTotals[oldCostCodeTotals.length - 1][2]) {
+    newCostCodeTotals[newCostCodeTotals.length - 1][2] == oldCostCodeTotals[oldCostCodeTotals.length - 1][2]) {
     Logger.log("There is no difference in the total income or expenditure.");
     spreadsheet.deleteSheet(newSheet);
     return "False";
@@ -90,7 +147,7 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
   let cell;
   let cellValue;
   const changes = [];
-  for (let row = 1; row<=newSheet.getLastRow(); row+=1) {
+  for (let row = 1; row <= newSheet.getLastRow(); row += 1) {
     cell = newSheet.getRange(row, 1);
     cellValue = String(cell.getValue());
 
@@ -101,8 +158,8 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
       }
 
 
-    // Compare it with the original/old sheet
-    // Comparing all rows allows us to identify changes in the totals too
+      // Compare it with the original/old sheet
+      // Comparing all rows allows us to identify changes in the totals too
     } else {
       const isNew = compareWithOld(row, oldSheetValues, newSheet);
 
@@ -150,7 +207,7 @@ function getCostCodeTotals(sheet) {
   // Search for the total for each cost code (and the grand total)
   const finder = sheet.createTextFinder("Totals for ").matchEntireCell(false);
   const foundRanges = finder.findAll();
-  for (let i=0; i< foundRanges.length; i++) {
+  for (let i = 0; i < foundRanges.length; i++) {
 
     // Get the name of the cost code
     costCode = String(foundRanges[i].getValue()).replace("Totals for ", "");
