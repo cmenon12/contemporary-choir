@@ -7,9 +7,19 @@
   =============================================================================
  */
 
-
+/**
+ * Represents a single entry on a ledger.
+ */
 class Entry {
 
+  /**
+   * Constructor, sets everything needed.
+   *
+   * @param {String} costCodeName
+   * @param {String} date
+   * @param {String} description
+   * @param {Number} money
+   */
   constructor(costCodeName, date, description, money) {
     Object.assign(this, {costCodeName, date, description, money});
   }
@@ -17,8 +27,21 @@ class Entry {
 }
 
 
+/**
+ * Represents a cost code on a ledger (but doesn't contain its entries).
+ */
 class CostCode {
 
+  /**
+   * Constructor, sets everything needed.
+   * Checks that balance===moneyIn-moneyOut.
+   *
+   * @param {String} name
+   * @param {Number} moneyIn
+   * @param {Number} moneyOut
+   * @param {Number} balance
+   * @param {Number} lastRowNumber
+   */
   constructor(name, moneyIn, moneyOut, balance, lastRowNumber) {
     if (balance !== moneyIn - moneyOut) {
       throw new Error("The balance is invalid (balance!==moneyIn-moneyOut).");
@@ -29,8 +52,21 @@ class CostCode {
 }
 
 
+/**
+ * Represents the grand total for a cost code.
+ */
 class GrandTotal {
 
+  /**
+   * Constructor, sets everything needed.
+   * Checks that balance===balanceBroughtForward+totalIn-totalOut.
+   *
+   * @param {Number} totalIn
+   * @param {Number} totalOut
+   * @param {Number} balanceBroughtForward
+   * @param {Number} totalBalance
+   * @param {Number} lastRowNumber
+   */
   constructor(totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber) {
     if (totalBalance !== balanceBroughtForward + totalIn - totalOut) {
       throw new Error("The total balance is invalid (totalBalance!==balanceBroughtForward+totalIn-totalOut).");
@@ -41,8 +77,19 @@ class GrandTotal {
 }
 
 
-class Changes {
+/**
+ * Represents a ledger.
+ * It contains the sheet ID, society name, an array of entries, an
+ * array of cost codes, and the grand total.
+ */
+class Ledger {
 
+  /**
+   * Constructor, sets the sheetID, creates empty arrays for entries
+   * and costCodes, and sets grandTotal as undefined.
+   *
+   * @param {Number} sheetId the sheet ID that this represents
+   */
   constructor(sheetId) {
     this.sheetId = sheetId;
     this.entries = [];
@@ -50,7 +97,16 @@ class Changes {
     this.grandTotal = undefined;
   }
 
-  static calculateMoney(moneyIn, moneyOut) {
+  /**
+   * Calculates a single value for the money based on the money in
+   * or money out (which is how the ledger represents it).
+   *
+   * @param {undefined|Number} moneyIn the money in
+   * @param {undefined|Number} moneyOut the money out
+   * @return {Number} the actual change
+   */
+  static calculateMoney(moneyIn = undefined,
+                        moneyOut = undefined) {
 
     if (moneyIn !== undefined && moneyOut !== undefined) {
       throw new Error("Only moneyIn or moneyOut can be defined, not both.")
@@ -62,33 +118,77 @@ class Changes {
 
   }
 
+  /**
+   * Compares the two ledgers.
+   * Returns true if their grand totals have the same totalIn,
+   * totalOut, and balanceBroughtForward.
+   *
+   * @param {Ledger} ledgerA one ledger.
+   * @param {Ledger} ledgerB another ledger.
+   * @return {boolean} true if the same, otherwise false.
+   */
+  static compareLedgers(ledgerA, ledgerB) {
+
+    return ledgerA.grandTotal.totalIn === ledgerB.grandTotal.totalIn &&
+      ledgerA.grandTotal.totalOut === ledgerB.grandTotal.totalOut &&
+      ledgerA.grandTotal.balanceBroughtForward === ledgerB.grandTotal.balanceBroughtForward;
+
+  }
+
+  /**
+   * Adds a new entry on this ledger.
+   *
+   * @param {String} costCodeName
+   * @param {String} date
+   * @param {String} description
+   * @param {Number} moneyIn
+   * @param {Number} moneyOut
+   */
   addEntry(costCodeName, date, description, moneyIn = undefined, moneyOut = undefined) {
-    const money = Changes.calculateMoney(moneyIn, moneyOut);
+    const money = Ledger.calculateMoney(moneyIn, moneyOut);
     this.entries.push(new Entry(costCodeName, date, description, money));
   }
 
+  /**
+   * Adds a new cost code.
+   *
+   * @param {String} name
+   * @param {Number} moneyIn
+   * @param {Number} moneyOut
+   * @param {Number} balance
+   * @param {Number} lastRowNumber
+   */
   addCostCode(name, moneyIn, moneyOut, balance, lastRowNumber) {
     this.costCodes.push(new CostCode(name, moneyIn, moneyOut, balance, lastRowNumber));
   }
 
+  /**
+   * Sets the name of the society.
+   *
+   * @param {String} name
+   */
   setSocietyName(name) {
     this.societyName = name;
   }
 
+  /**
+   * Sets the grand total. There can only be one grand total.
+   *
+   * @param {Number} totalIn
+   * @param {Number} totalOut
+   * @param {Number} balanceBroughtForward
+   * @param {Number} totalBalance
+   * @param {Number} lastRowNumber
+   */
   setGrandTotal(totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber) {
     this.grandTotal = new GrandTotal(totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber);
   }
 
+  /**
+   * Saves the whole thing to the log.
+   */
   log() {
-    Logger.log(`The Changes object is: ${this}`);
-  }
-
-  static compareChanges(changes, oldChanges) {
-
-    return changes.grandTotal.totalIn === oldChanges.grandTotal.totalIn &&
-      changes.grandTotal.totalOut === oldChanges.grandTotal.totalOut &&
-      changes.grandTotal.balanceBroughtForward === oldChanges.grandTotal.balanceBroughtForward;
-
+    Logger.log(`The Ledger object is: ${this}`);
   }
 }
 
@@ -115,11 +215,11 @@ function checkForNewTotals(sheetName) {
   const newSheet = spreadsheet.getSheetByName(sheetName);
   Logger.log(`Looking at the sheet called ${newSheet.getName()}`);
 
-  // Create changes
-  let changes = new Changes(newSheet.getSheetId());
+  // Create the ledger
+  let ledger = new Ledger(newSheet.getSheetId());
 
   // Find the income & expenditure for each cost code
-  changes = getCostCodeTotals(newSheet, changes);
+  ledger = getCostCodeTotals(newSheet, ledger);
 
   // Format the sheet neatly, and rename it to reflect that this is automated
   formatNeatlyWithSheet(newSheet);
@@ -129,7 +229,7 @@ function checkForNewTotals(sheetName) {
   const namedRanges = spreadsheet.getNamedRanges();
   let url;
   for (let i = 0; i < namedRanges.length; i++) {
-    if (namedRanges[i].getName() == "DefaultUrl") {
+    if (namedRanges[i].getName() === "DefaultUrl") {
       url = namedRanges[i].getRange().getValue();
     }
   }
@@ -138,11 +238,11 @@ function checkForNewTotals(sheetName) {
   const oldSpreadsheet = SpreadsheetApp.openByUrl(url);
   Logger.log(`Script has opened spreadsheet ${url}`);
   const oldSheet = oldSpreadsheet.getSheetByName("Original");
-  let oldChanges = new Changes(oldSheet.getSheetId());
-  oldChanges = getCostCodeTotals(oldSheet, oldChanges);
+  let oldLedger = new Ledger(oldSheet.getSheetId());
+  oldLedger = getCostCodeTotals(oldSheet, oldLedger);
 
   // If they're equal then stop and delete the sheet
-  if (Changes.compareChanges(changes, oldChanges) === true) {
+  if (Ledger.compareLedgers(ledger, oldLedger) === true) {
     Logger.log("There is no difference in the total income, expenditure, or balance brought forward.");
     spreadsheet.deleteSheet(newSheet);
     return "False";
@@ -223,43 +323,44 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
 
 /**
  * This function retrieves the total income, expenditure, and balance for
- * each cost code, as well as the grand total for the entire ledger.
+ * each cost code, as well as the grand totals for the entire ledger.
+ * It saves these to the Ledger object, which it then returns.
+ * It also sets the society name.
  *
- * The returned array (costCodeTotals) has the structure:
- * [[Cost code 1, £in, £out, £balance, lastRowNumber],
- *  [Cost code 2, £in, £out, £balance, lastRowNumber],
- *  [Cost code 3, £in, £out, £balance, lastRowNumber],
- *  [Society name, £totalIn, £totalOut, £totalBalance, lastRowNumber, balanceBroughtForward]]
+ * @param {Sheet} sheet the sheet to search.
+ * @param {Ledger} ledger the Ledger object to update.
+ * @returns {Ledger} the updated Ledger.
  */
-function getCostCodeTotals(sheet, changes) {
-
-  const costCodeTotals = [];
-  let costCode;
+function getCostCodeTotals(sheet, ledger) {
 
   // Search for the total for each cost code (but not the grand total)
+  let costCode;
   const finder = sheet.createTextFinder("Totals for ").matchEntireCell(false);
   const foundRanges = finder.findAll();
-  for (let i = 0; i < foundRanges.length-1; i++) {
+  for (let i = 0; i < foundRanges.length - 1; i++) {
 
     // Get the name of the cost code
     costCode = String(foundRanges[i].getValue()).replace("Totals for ", "");
 
-    // Add this to changes
-    changes.addCostCode(costCode,
-      foundRanges[i].offset(0, 1).getValue(),
-      foundRanges[i].offset(0, 2).getValue(),
-      foundRanges[i].offset(1, 2).getValue(),
+    // Add this to the Ledger object
+    ledger.addCostCode(costCode,
+      Number(foundRanges[i].offset(0, 1).getValue()),
+      Number(foundRanges[i].offset(0, 2).getValue()),
+      Number(foundRanges[i].offset(1, 2).getValue()),
       foundRanges[i].getRow())
   }
 
   // Save the grand total
-  changes.setGrandTotal(foundRanges.slice(-1).offset(0, 1).getValue(),
-    foundRanges.slice(-1).offset(0, 2).getValue(),
-    foundRanges.slice(-1).offset(2, 2).getValue(),
-    foundRanges.slice(-1).offset(3, 2).getValue(),
+  ledger.setGrandTotal(Number(foundRanges.slice(-1).offset(0, 1).getValue()),
+    Number(foundRanges.slice(-1).offset(0, 2).getValue()),
+    Number(foundRanges.slice(-1).offset(2, 2).getValue()),
+    Number(foundRanges.slice(-1).offset(3, 2).getValue()),
     foundRanges.slice(-1).getRow())
 
-  changes.log();
-  return changes;
+  // Save the society name
+  ledger.setSocietyName(String(foundRanges.slice(-1).getValue()).replace("Totals for ", ""));
+
+  ledger.log();
+  return ledger;
 
 }
