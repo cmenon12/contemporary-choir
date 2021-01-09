@@ -185,6 +185,25 @@ class Ledger {
   }
 
   /**
+   * Returns each cost code with its last row number.
+   * It's returned as an array of cost codes, with each element as
+   * [name, lastRowNumber].
+   *
+   * @return {[{String}|{Number}]} the array of cost codes.
+   */
+  getCostCodeRows() {
+
+    const costCodeRows = [];
+    for (let i = 0; i < this.costCodes.length; i++) {
+      costCodeRows.push([this.costCodes[i].name,
+        this.costCodes[i].lastRowNumber])
+    }
+
+    return costCodeRows;
+
+  }
+
+  /**
    * Saves the whole thing to the log.
    */
   log() {
@@ -260,16 +279,17 @@ function checkForNewTotals(sheetName) {
 
 
 /**
- * This function is used to search for changes in the newSheet compared
- * with the oldSheet (not vice-versa). It will categorise them by cost
- * code and return them.
+ * Finds any entries in newSheet that aren't in oldSheet, and saves
+ * them to newLedger.
+ * These entries will be highlighted in orange on the spreadsheet
+ * newLedger must have the cost codes saved to it.
  *
- * The returned array (changes) has the structure:
- * [[Entry cost code, Entry date, Entry description, £in, £out],
- *  [Entry cost code, Entry date, Entry description, £in, £out],
- *  [Entry cost code, Entry date, Entry description, £in, £out]]
+ * @param {Sheet} newSheet the newer sheet.
+ * @param {Sheet} oldSheet the older sheet.
+ * @param {Ledger} newLedger the Ledger object to save the entries to.
+ * @return {Ledger} newLedger with the new entries added.
  */
-function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
+function findNewEntries(newSheet, oldSheet, newLedger) {
 
   // Fetch the old sheet and it's values
   // This saves making multiple requests, which is slow
@@ -278,21 +298,20 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
   let passedHeader = false;
   let cell;
   let cellValue;
-  const changes = [];
+  const costCodeRows = newLedger.getCostCodeRows();
   for (let row = 1; row <= newSheet.getLastRow(); row += 1) {
     cell = newSheet.getRange(row, 1);
     cellValue = String(cell.getValue());
 
     // If we still haven't passed the first header row then skip it
-    if (passedHeader == false) {
-      if (cellValue == "Date") {
+    if (passedHeader === false) {
+      if (cellValue === "Date") {
         passedHeader = true;
       }
 
-
+    } else {
       // Compare it with the original/old sheet
       // Comparing all rows allows us to identify changes in the totals too
-    } else {
       const isNew = compareWithOld(row, oldSheetValues, newSheet);
 
       // If it is a new row and has a date then save it with its cost code
@@ -301,22 +320,23 @@ function compareLedgersWithCostCodes(newSheet, oldSheet, costCodes) {
         newSheet.getRange(row, 1, 1, 4).setBackground("#FFA500");
 
         // Identify the relevant cost code and save it
-        for (let i = 0; i < costCodes.length; i++) {
-          if (row < costCodes[i][4]) {
-            changes.push([costCodes[i][0],
+        for (let i = 0; i < costCodeRows.length; i++) {
+          if (row < costCodeRows[i][2]) {
+            newLedger.addEntry(costCodeRows[i][0],
               newSheet.getRange(row, 1).getValue(),
               newSheet.getRange(row, 2).getValue(),
-              newSheet.getRange(row, 3).getValue(),
-              newSheet.getRange(row, 4).getValue()]);
+              Number(newSheet.getRange(row, 3).getValue()),
+              Number(newSheet.getRange(row, 4).getValue()));
             break;
           }
         }
       }
     }
   }
+
   Logger.log("Finished comparing sheets!");
-  Logger.log(`changes is: ${changes}`);
-  return changes;
+  newLedger.log();
+  return newLedger;
 
 }
 
