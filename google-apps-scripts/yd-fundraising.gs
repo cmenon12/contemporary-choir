@@ -9,8 +9,13 @@
 
 /**
  * Fetch the fundraising total from the Enthuse page at url.
+ *
+ * @param {String} url the URL of the fundraising page.
+ * @param {Number} index the index of the matches to use, because for
+ * some pages the first match is the target, not the total.
+ * @returns {Number} the amount extracted.
  */
-function getEnthuseAmount(url) {
+function getEnthuseAmount(url, index = 0) {
 
   let amount;
 
@@ -21,18 +26,18 @@ function getEnthuseAmount(url) {
 
   // If successful then extract the amount
   if (status == 200) {
-    let regex = /£\d+/;
-    let match = html.match(regex)[0];
+    let regex = /£\d+/g;
+    let match = html.match(regex)[index];
     regex = /\d+/;
     amount = Number(match.match(regex)[0]);
 
-  // Otherwise log the error and stop
+    // Otherwise log the error and stop
   } else {
     Logger.log(`There was an error fetching ${URL}.`);
     SpreadsheetApp
-        .getActiveSpreadsheet()
-        .toast(`There was an error (status ${status}) fetching ${URL}.`,
-            "ERROR", -1);
+      .getActiveSpreadsheet()
+      .toast(`There was an error (status ${status}) fetching ${URL}.`,
+        "ERROR", -1);
     Logger.log(status);
     Logger.log(html);
     throw new Error(`There was an error (status ${status}) fetching ${URL}.`);
@@ -45,6 +50,10 @@ function getEnthuseAmount(url) {
 /**
  * Get the range with the name from the spreadsheet.
  * Returns the range if found, otherwise undefined.
+ *
+ * @param {String} name the name of the range.
+ * @param {Spreadsheet} spreadsheet the spreadsheet to search.
+ * @returns {Range|undefined} the named range.
  */
 function getNamedRange(name, spreadsheet) {
 
@@ -62,6 +71,8 @@ function getNamedRange(name, spreadsheet) {
 
 /**
  * Update the named range with the name to the value (if it exists).
+ *
+ * @returns {String} the newly-updated toast message.
  */
 function updateRange(name, value, toastMsg) {
 
@@ -73,16 +84,16 @@ function updateRange(name, value, toastMsg) {
     // If the value has changed then update it and update the toast
     const oldValue = range.getValue();
     if (value != oldValue) {
-      toastMsg = toastMsg.concat(`${name} has increased by £${value-oldValue}. `);
+      toastMsg = toastMsg.concat(`${name} has increased by £${value - oldValue}. `);
       range.setValue(value);
       Logger.log(`Updated the named range ${name} to ${value} successfully.`);
 
-    // If it hasn't changed then just log it
+      // If it hasn't changed then just log it
     } else {
       Logger.log(`Range ${name} already had a value of ${value}.`);
     }
 
-  // If the range could not be found
+    // If the range could not be found
   } else {
     Logger.log(`Could not find the named range called ${name}.`);
     toastMsg = toastMsg.concat(`Could not find the named range called ${name}. `);
@@ -113,14 +124,21 @@ function updateAll() {
   const adventCalendarTotal = getEnthuseAmount("https://exeterguild.enthuse.com/cf/contemporary-choir-s-advent-calendar");
   const virtualChoirTotal = getEnthuseAmount("https://exeterguild.enthuse.com/cf/virtual-choir-performances");
 
+  // Get the Santa Run totals
+  let santaRunTotal = getEnthuseAmount("https://exeterguild.enthuse.com/pf/jamie-harvey", 1);
+  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/rebekah-lydia", 1);
+  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/ellie-doherr", 1);
+  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/bethany-piper-edd11", 1);
+  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/tom-joshi-cale", 1);
+  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/chris-menon-santa-run-2020-9558f", 1);
+
   // Run the update functions
   let toastMsg = "";
-  toastMsg = updateRange("SantaRun",
-      enthuseTotal-adventCalendarTotal-virtualChoirTotal, toastMsg);
-  toastMsg = updateRange("AdventCalendar",
-      adventCalendarTotal, toastMsg);
-  toastMsg = updateRange("VirtualChoir",
-      virtualChoirTotal, toastMsg);
+  toastMsg = updateRange("SantaRun", santaRunTotal, toastMsg);
+  toastMsg = updateRange("AdventCalendar", adventCalendarTotal, toastMsg);
+  toastMsg = updateRange("VirtualChoir", virtualChoirTotal, toastMsg);
+  toastMsg = updateRange("OtherEnthuse",
+    enthuseTotal - santaRunTotal - adventCalendarTotal - virtualChoirTotal, toastMsg);
 
   // Produce the toast to notify the user
   if (toastMsg == "") {
