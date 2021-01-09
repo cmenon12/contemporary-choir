@@ -21,9 +21,21 @@ class CostCode {
 
   constructor(name, moneyIn, moneyOut, balance, lastRowNumber) {
     if (balance !== moneyIn - moneyOut) {
-      throw new Error("The balance is invalid (balance!==moneyIn-moneyOut).")
+      throw new Error("The balance is invalid (balance!==moneyIn-moneyOut).");
     }
-    Object.assign(this, {name, moneyIn, moneyOut, balance, lastRowNumber})
+    Object.assign(this, {name, moneyIn, moneyOut, balance, lastRowNumber});
+  }
+
+}
+
+
+class GrandTotal {
+
+  constructor(totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber) {
+    if (totalBalance !== balanceBroughtForward + totalIn - totalOut) {
+      throw new Error("The total balance is invalid (totalBalance!==balanceBroughtForward+totalIn-totalOut).");
+    }
+    Object.assign(this, {totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber});
   }
 
 }
@@ -35,6 +47,7 @@ class Changes {
     this.sheetId = sheetId;
     this.entries = [];
     this.costCodes = [];
+    this.grandTotal = undefined;
   }
 
   static calculateMoney(moneyIn, moneyOut) {
@@ -51,11 +64,23 @@ class Changes {
 
   addEntry(costCodeName, date, description, moneyIn = undefined, moneyOut = undefined) {
     const money = Changes.calculateMoney(moneyIn, moneyOut);
-    this.entries.push(new Entry(costCodeName, date, description, money))
+    this.entries.push(new Entry(costCodeName, date, description, money));
   }
 
   addCostCode(name, moneyIn, moneyOut, balance, lastRowNumber) {
-    this.costCodes.push(new CostCode(name, moneyIn, moneyOut, balance, lastRowNumber))
+    this.costCodes.push(new CostCode(name, moneyIn, moneyOut, balance, lastRowNumber));
+  }
+
+  setSocietyName(name) {
+    this.societyName = name;
+  }
+
+  setGrandTotal(totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber) {
+    this.grandTotal = new GrandTotal(totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber);
+  }
+
+  log() {
+    Logger.log(`The Changes object is: ${this}`);
   }
 
 }
