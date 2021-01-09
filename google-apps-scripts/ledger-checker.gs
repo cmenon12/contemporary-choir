@@ -83,6 +83,13 @@ class Changes {
     Logger.log(`The Changes object is: ${this}`);
   }
 
+  static compareChanges(changes, oldChanges) {
+
+    return changes.grandTotal.totalIn === oldChanges.grandTotal.totalIn &&
+      changes.grandTotal.totalOut === oldChanges.grandTotal.totalOut &&
+      changes.grandTotal.balanceBroughtForward === oldChanges.grandTotal.balanceBroughtForward;
+
+  }
 }
 
 
@@ -127,16 +134,16 @@ function checkForNewTotals(sheetName) {
     }
   }
 
-  // Find the total income and expense in the Original (the one that we are comparing against)
+  // Find the totals in the Original (the one that we are comparing against)
   const oldSpreadsheet = SpreadsheetApp.openByUrl(url);
   Logger.log(`Script has opened spreadsheet ${url}`);
   const oldSheet = oldSpreadsheet.getSheetByName("Original");
-  const oldCostCodeTotals = getCostCodeTotals(oldSheet);
+  let oldChanges = new Changes(oldSheet.getSheetId());
+  oldChanges = getCostCodeTotals(oldSheet, oldChanges);
 
-  // If there's no difference then stop and delete the sheet
-  if (newCostCodeTotals[newCostCodeTotals.length - 1][1] == oldCostCodeTotals[oldCostCodeTotals.length - 1][1] &&
-    newCostCodeTotals[newCostCodeTotals.length - 1][2] == oldCostCodeTotals[oldCostCodeTotals.length - 1][2]) {
-    Logger.log("There is no difference in the total income or expenditure.");
+  // If they're equal then stop and delete the sheet
+  if (Changes.compareChanges(changes, oldChanges) === true) {
+    Logger.log("There is no difference in the total income, expenditure, or balance brought forward.");
     spreadsheet.deleteSheet(newSheet);
     return "False";
   }
