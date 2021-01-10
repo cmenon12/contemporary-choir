@@ -14,6 +14,9 @@ const sheet = spreadsheet.getActiveSheet();
 /**
  * Just tests if the String value is a date in the form (DD/MM/YYYY).
  * Note that D M and Y could be any digit, not necessarily valid ones.
+ *
+ * @param {String} value the string to check.
+ * @return {boolean} true if it's a date, otherwise false.
  */
 function isADate(value) {
   return (String(value).match("\\d\\d/\\d\\d/\\d\\d\\d\\d") != null);
@@ -22,14 +25,17 @@ function isADate(value) {
 
 /**
  * Get the range with the name from the spreadsheet.
- * Returns the range if found, otherwise undefined.
+ *
+ * @param {String} name the name of the range.
+ * @param {Spreadsheet} spreadsheet the spreadsheet to search.
+ * @return {Range|undefined} the named range if found, otherwise undefined.
  */
 function getNamedRange(name, spreadsheet) {
 
   const namedRanges = spreadsheet.getNamedRanges();
   let range;
   for (let i = 0; i < namedRanges.length; i++) {
-    if (namedRanges[i].getName() == name) {
+    if (namedRanges[i].getName() === name) {
       range = namedRanges[i].getRange();
       break;
     }
@@ -40,6 +46,8 @@ function getNamedRange(name, spreadsheet) {
 
 /**
  * Open a URL in a new tab using the openUrl.html HTML template.
+ *
+ * @param {String} url the URL to open.
  */
 function openUrl(url) {
 
@@ -58,27 +66,28 @@ function openUrl(url) {
  * Prompts the user to enter the URL of the Google Sheet with the Original
  * sheet to compare with.
  * They can choose not to enter a URL and use the default one.
- * This will return the URL or false.
+ *
+ * @return {String|Boolean} the entered URL or false.
  */
 function showPrompt() {
 
   // Create the prompt and save the result
   const ui = SpreadsheetApp.getUi();
   const result = ui.prompt(
-      "Do you want to use the default URL?",
-      "If No then enter a new one, otherwise the default will be used. " +
-      "Click Cancel to abort.", ui.ButtonSet.YES_NO_CANCEL);
+    "Do you want to use the default URL?",
+    "If No then enter a new one, otherwise the default will be used. " +
+    "Click Cancel to abort.", ui.ButtonSet.YES_NO_CANCEL);
 
   // Process the user's response
   const button = result.getSelectedButton();
   let url = result.getResponseText();
 
   // If the user wants to use a different URL
-  if (button == ui.Button.NO) {
+  if (button === ui.Button.NO) {
     return url;
 
-  // If the user wants to use the default URL
-  } else if (button == ui.Button.YES) {
+    // If the user wants to use the default URL
+  } else if (button === ui.Button.YES) {
     url = spreadsheet.getNamedRanges()[0].getRange().getValue();  // There's only one named range.
     return url;
   } else {
@@ -89,9 +98,10 @@ function showPrompt() {
 
 /**
  * Formats the ledger neatly.
- * This can be used with any sheet (not necessarily the active one)
  * This function renames the sheet, resizes the columns,
  * removes unnecessary headers, and removes excess columns & rows.
+ *
+ * @param {Sheet} thisSheet the sheet to format.
  */
 function formatNeatlyWithSheet(thisSheet) {
 
@@ -104,7 +114,7 @@ function formatNeatlyWithSheet(thisSheet) {
   // Rename the sheet
   const dateString = "\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d \\d\\d:\\d\\d:\\d\\d";
   let finder = thisSheet.createTextFinder(dateString)
-      .matchEntireCell(true).useRegularExpression(true);
+    .matchEntireCell(true).useRegularExpression(true);
   let foundRange = finder.findNext();
   foundRange.setNumberFormat("@");
   const datetime = foundRange.getValue();
@@ -127,7 +137,7 @@ function formatNeatlyWithSheet(thisSheet) {
   // then we should delete one less row
   for (let i = 0; i < matches.length; i += 1) {
     let row = matches[i].getRow() - 2;
-    if (matches[i].offset(3, 0).getValue() != "") {
+    if (matches[i].offset(3, 0).getValue() !== "") {
       thisSheet.deleteRows(row, 5);
       Logger.log(`Deleted five rows starting at row ${row}`);
     } else {
@@ -136,37 +146,39 @@ function formatNeatlyWithSheet(thisSheet) {
     }
   }
 
-  // Remove all the excess rows & columns.
+  // Remove all the excess rows & columns
   try {
-    thisSheet.deleteRows(thisSheet.getLastRow()+5,
-        thisSheet.getMaxRows()-thisSheet.getLastRow()-5);
-    thisSheet.deleteColumns(thisSheet.getLastColumn()+1,
-        thisSheet.getMaxColumns()-thisSheet.getLastColumn()-1);
-  } catch (error){
+    thisSheet.deleteRows(thisSheet.getLastRow() + 5,
+      thisSheet.getMaxRows() - thisSheet.getLastRow() - 5);
+    thisSheet.deleteColumns(thisSheet.getLastColumn() + 1,
+      thisSheet.getMaxColumns() - thisSheet.getLastColumn() - 1);
+  } catch (error) {
     Logger.log(`There was an error removing the excess rows & columns: ${error.message}`);
   }
-
-  return true;
 }
 
 
 /**
  * Determines whether or not the row number in the current sheet
  * appears in the oldSheet.
- * Returns true if it's new, or false if it's old.
+ *
+ * @param {Number} row the row number in the new sheet.
+ * @param {[][]} oldSheetValues the sheet to search, from getSheetValues().
+ * @param {Sheet} newSheet the sheet with the numbered row.
+ * @return {Boolean} true if present, otherwise false.
  */
-function compareWithOld(row, oldSheetValues, newSheet = undefined) {
+function compareWithOld(row, oldSheetValues, newSheet) {
 
   // If newSheet has been supplied then use it, otherwise use the default
   let rowValues;
-  if (newSheet == undefined) {
+  if (newSheet === undefined) {
     rowValues = sheet.getSheetValues(row, 1, 1, 4)[0];
   } else {
     rowValues = newSheet.getSheetValues(row, 1, 1, 4)[0];
   }
   let newRow = true;
   for (let i = 0; i < oldSheetValues.length; i += 1) {
-    if (rowValues.toString() == oldSheetValues[i].toString()) {
+    if (rowValues.toString() === oldSheetValues[i].toString()) {
       newRow = false;
       break;
     }
@@ -184,6 +196,8 @@ function compareWithOld(row, oldSheetValues, newSheet = undefined) {
  * This will highlight all the rows, and un-highlight them as it progresses.
  * Changed rows will be highlighted in red.
  * Note that any differences in whitespace will be recognised as a difference.
+ *
+ * @param {String} url the URL of the spreadsheet with a sheet named Original.
  */
 function compareLedgers(url) {
 
@@ -202,24 +216,24 @@ function compareLedgers(url) {
     cellValue = String(cell.getValue());
 
     // If we still haven't passed the first header row then skip it
-    if (passedHeader == false) {
-      if (cellValue == "Date") {
+    if (passedHeader === false) {
+      if (cellValue === "Date") {
         passedHeader = true;
         sheet.getRange(row + 1, 1, sheet.getLastRow() - row - 1).setBackground("green");
       }
 
 
-    // Compare it with the original/old sheet
-    // Comparing all rows allows us to identify changes in the totals too
+      // Compare it with the original/old sheet
+      // Comparing all rows allows us to identify changes in the totals too
     } else {
-      const isNew = compareWithOld(row, originalSheetValues);
+      const isNew = compareWithOld(row, originalSheetValues, sheet);
 
       // If it is a new row then colour it
       if (isNew) {
         sheet.getRange(row, 1, 1, 4).setBackground("red");
         Logger.log(`Row ${row} is a new row!`);
 
-      // Otherwise just reset it
+        // Otherwise just reset it
       } else {
         sheet.getRange(row, 1).setBackground("white");
       }
@@ -232,8 +246,10 @@ function compareLedgers(url) {
 /**
  * Copies the sheet to another spreadsheet file.
  * This is normally the one with the ledger in it.
- * The script then deletes the old Original,
- * and renames the new Original and sets protections on it.
+ * The script then deletes the old Original, and renames the new
+ * Original and sets protections on it.
+ *
+ * @param url the URL of the spreadsheet with the sheet to replace.
  */
 function copyToLedger(url) {
 
@@ -258,12 +274,12 @@ function copyToLedger(url) {
   // Ask the user if they want to open the new sheet
   const ui = SpreadsheetApp.getUi();
   const result = ui.alert(
-      "Do you want to open the ledger?",
-      "This will open the ledger in a new tab.",
-      ui.ButtonSet.YES_NO);
+    "Do you want to open the ledger?",
+    "This will open the ledger in a new tab.",
+    ui.ButtonSet.YES_NO);
 
   // Open it if the user want to
-  if (result == ui.Button.YES) {
+  if (result === ui.Button.YES) {
     const sheetUrl = `${url}#gid=${newSheet.getSheetId()}`;
     openUrl(sheetUrl);
   }
@@ -275,7 +291,7 @@ function copyToLedger(url) {
  */
 function compareLedgersGetUrl() {
   const url = showPrompt();
-  if (url == false) {
+  if (url === false) {
     return;
   }
   compareLedgers(url);
@@ -295,7 +311,7 @@ function formatNeatly() {
  */
 function copyToLedgerGetUrl() {
   const url = showPrompt();
-  if (url == false) {
+  if (url === false) {
     return;
   }
   copyToLedger(url);
@@ -312,15 +328,15 @@ function processWithDefaultUrl() {
 
   formatNeatly();
   const url = getNamedRange("DefaultUrl",
-      SpreadsheetApp.getActiveSpreadsheet()).getValue()
+    SpreadsheetApp.getActiveSpreadsheet()).getValue()
 
   compareLedgers(url);
   copyToLedger(url);
   const ui = SpreadsheetApp.getUi();
   ui.alert("Complete!",
-      "The process completed successfully. You can view the logs here: " +
-      "https://script.google.com/home/projects/1ycYC3ziL1kmxVl-RlqJhO-4UXZXjHw0Nljnal1IIfkWNDG-MPooyufqr/executions",
-      ui.ButtonSet.OK);
+    "The process completed successfully. You can view the logs here: " +
+    "https://script.google.com/home/projects/1ycYC3ziL1kmxVl-RlqJhO-4UXZXjHw0Nljnal1IIfkWNDG-MPooyufqr/executions",
+    ui.ButtonSet.OK);
 }
 
 
@@ -329,9 +345,9 @@ function processWithDefaultUrl() {
  */
 function onOpen() {
   SpreadsheetApp.getUi().createMenu("Scripts")
-      .addItem("Format neatly", "formatNeatly")
-      .addItem("Highlight new entries", "compareLedgersGetUrl")
-      .addItem("Copy to the ledger", "copyToLedgerGetUrl")
-      .addItem("Process entirely with the default URL", "processWithDefaultUrl")
-      .addToUi();
+    .addItem("Format neatly", "formatNeatly")
+    .addItem("Highlight new entries", "compareLedgersGetUrl")
+    .addItem("Copy to the ledger", "copyToLedgerGetUrl")
+    .addItem("Process entirely with the default URL", "processWithDefaultUrl")
+    .addToUi();
 }

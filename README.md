@@ -45,12 +45,13 @@ can be used  to download the society ledger from eXpense365 to your computer (in
   * `formatNeatly()` is the same as this, except it will use the active sheet in the active spreadsheet.
 * `compareLedgersGetUrl()` and `compareLedgers(url)` will compare the ledger with that in the Google Sheet at a given URL. The sheet at the URL must be an older version named `Original`. Any new or differing entries in the newer version will be highlighted in red. 
 * `copyToLedgerGetUrl()` and `copyToLedger(url)` will copy the ledger to the Google Sheet at the given URL. The function will replace the sheet called `Original` at this URL.
-* `processWithDefaultUrl()` will do all of the above at once using the URL in the named range named `DefaultUrl`.
+* `processWithDefaultUrl()` will do all the above at once using the URL in the named range named `DefaultUrl`.
 
 **[`google-apps-scripts/ledger-checker.gs`](google-apps-scripts/ledger-checker.gs)** is used by [`ledger_checker.py`](python-scripts/ledger_checker.py) to identify any changes in the uploaded ledger. It's designed to be executed by the API and is therefore not reliant on determining the active sheet.
-* `checkForNewTotals(sheetName)` will check the named sheet in the linked spreadsheet for any new changes compared with the Google Sheet at the default URL called `Original`. If any are found then it will return them along with the current total for each cost code, otherwise it will return `"False"`.
-* `compareLedgersWithCostCodes(newSheet, oldSheet, costCodes)` will search for changes in the `newSheet` compared with the `oldSheet` (not vice-versa). It will categorise them by cost code and return them.
-* `getCostCodeTotals(sheet)` will retrieve the total income, expenditure, and balance for each cost code, as well as the grand total for the entire ledger.
+* `Ledger`, `CostCode`, `Entry`, and `GrandTotal` are classes used to represent the ledger, each cost code, each entry within each cost code, and the grand total. Using these classes makes it much easier to handle and process this data, both by the Apps Script and by the Python Script.
+* `checkForNewTotals(sheetName)` will check the named sheet in the linked spreadsheet for any new changes compared with the Google Sheet at the default URL called `Original`. If any are found then it will return them along with the current total for each cost code and the grand total, otherwise it will return `"False"`.
+* `findNewEntries(newSheet, oldSheet, newLedger)` will search for changes in the `newSheet` compared with the `oldSheet` (not vice-versa). It saves these changes to `newLedger` and return it.
+* `getCostCodeTotals(sheet, ledger)` will retrieve the total income, expenditure, and balance for each cost code, as well as the grand total for the entire ledger. It'll add these to `ledger` and return it.
 
 **[`google-apps-scripts/macmillan-fundraising.gs`](google-apps-scripts/macmillan-fundraising.gs)** updates how much has been fundraised for Macmillan from a GoFundMe page. It fetches the page, extracts the total fundraised and the total number of donors, applies a reduction due to payment processor fees & postage, and then updates a pre-defined named range in the sheet with the total.
 

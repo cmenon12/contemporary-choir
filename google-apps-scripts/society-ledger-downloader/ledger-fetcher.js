@@ -15,9 +15,9 @@
  * Blob.
  *
  * @param {eventObject.formInput} formData The details from the form.
- * @returns {(boolean|Blob)[]|(boolean|String)[]} [success, result]
+ * @returns {(Boolean|Blob)[]|(Boolean|String)[]} [success, result]
  * where success is true if successful, and result is either the Blob
- * or a String with an error message.
+ * or a string with an error message.
  */
 function downloadLedger(formData) {
 
@@ -81,8 +81,8 @@ function downloadLedger(formData) {
  * @param {String} id The ID of either the target folder or PDF.
  * @param {Boolean} folder true if the ID is a folder.
  * @param {Boolean} rename true if the PDF should be renamed.
- * @returns {(boolean|String)[]|(boolean|Exception)[]} [success, result]
- * where success is true if successful, and result is either the String
+ * @returns {(Boolean|String)[]|(Boolean|Exception)[]} [success, result]
+ * where success is true if successful, and result is either the string
  * URL to the file or the Exception.
  */
 function saveToDrive(pdfBlob, id, folder = false, rename = false) {
