@@ -54,11 +54,14 @@ __license__ = "gpl-3.0"
 # can make before it stops trying to run the checks.
 ATTEMPTS = 3
 
+# The name of the config file
+CONFIG_FILENAME = "config.ini"
+
 
 class LedgerCheckerSaveFile:
     """Represents the save file used to maintain persistence."""
 
-    def __init__(self, save_data_filepath: str):
+    def __init__(self, save_data_filepath: str, log: logging):
 
         # Try to open the save file if it exists
         try:
@@ -82,6 +85,7 @@ class LedgerCheckerSaveFile:
             self.sheet_id = None
             self.timestamp = None
 
+        self.log = log
         self.save_data()
 
     def save_data(self):
@@ -108,6 +112,8 @@ class LedgerCheckerSaveFile:
         self.timestamp = timestamp
         self.stack_traces.clear()
         self.save_data()
+        self.log.debug("Successful check saved to %s",
+                       self.save_data_filepath)
 
     def new_check_fail(self, stack_trace: str):
         """Runs when a check failed.
@@ -118,6 +124,8 @@ class LedgerCheckerSaveFile:
 
         self.stack_traces.append(stack_trace)
         self.save_data()
+        self.log.debug("Failed check saved to %s",
+                       self.save_data_filepath)
 
     def get_data(self) -> tuple:
         """Gets and returns the saved data."""
@@ -405,19 +413,20 @@ def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
         LOGGER.info("Email saved successfully!")
 
 
-def check_ledger(save_data: LedgerCheckerSaveFile):
+def check_ledger(save_data: LedgerCheckerSaveFile,
+                 parser: configparser.ConfigParser):
     """Runs a check of the ledger.
 
     :param save_data: the save data object
     :type save_data: LedgerCheckerSaveFile
+    :param parser: the whole config
+    :type parser: configparser.ConfigParser
     :raises: AppsScriptApiException
     """
 
     LOGGER.info("\n")
 
     # Fetch info from the config
-    parser = configparser.ConfigParser()
-    parser.read("config.ini")
     config = parser["ledger_checker"]
     expense365 = parser["eXpense365"]
 
@@ -497,7 +506,8 @@ def check_ledger(save_data: LedgerCheckerSaveFile):
     # If the returned changes aren't actually new to us then
     # just delete the new sheet we just made
     # This compares the total income & expenditure
-    elif changes[-1][-1][1] == old_changes[-1][-1][1] and \
+    elif old_changes is not None and \
+            changes[-1][-1][1] == old_changes[-1][-1][1] and \
             changes[-1][-1][2] == old_changes[-1][-1][2]:
         sheet_id = changes.pop(0)
         print("The new changes is the same as the old.")
@@ -549,12 +559,12 @@ def main():
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
-    parser.read("config.ini")
+    parser.read(CONFIG_FILENAME)
 
-    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"])
+    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"], LOGGER)
 
     try:
-        check_ledger(save_data=save_data)
+        check_ledger(save_data=save_data, parser=parser)
     except Exception:
         save_data.new_check_fail(stack_trace=traceback.format_exc())
         traceback.print_exc()
@@ -566,6 +576,7 @@ def main():
 
         if len(save_data.get_stack_traces()) == ATTEMPTS:
             send_error_email(config=parser["email"], save_data=save_data)
+            print("Email sent successfully!")
 
 
 if __name__ == "__main__":
