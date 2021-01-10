@@ -47,15 +47,19 @@ class CostCode {
     }
     const entries = [];
     Object.assign(this, {moneyIn, moneyOut, balance, lastRowNumber, entries});
+    this.changeInBalance = 0;
   }
 
   /**
-   * Adds an entry to the cost code.
+   * Adds an entry to the cost code, and increments the change in
+   * the balance for the cost code.
    *
-   * @param {Array} entry the entry to add.
+   * @param {Entry} entry the entry to add.
    */
   addEntry(entry) {
-    this.entries.push(entry)
+    this.entries.push(entry);
+    this.changeInBalance = this.changeInBalance+entry.money;
+
   }
 
 }
@@ -157,7 +161,7 @@ class Ledger {
     if (!this.costCodes.hasOwnProperty(costCodeName)) {
       throw new Error(`The cost code ${costCodeName} doesn't exist.`);
     } else {
-      this.costCodes[costCodeName].entries.push(new Entry(date, description, money));
+      this.costCodes[costCodeName].addEntry(new Entry(date, description, money));
     }
 
   }
