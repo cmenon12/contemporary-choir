@@ -44,7 +44,8 @@ class CostCode {
    */
   constructor(name, moneyIn, moneyOut, balance, lastRowNumber) {
     if (balance !== moneyIn - moneyOut) {
-      throw new Error("The balance is invalid (balance!==moneyIn-moneyOut).");
+      Logger.log(`balance=${balance}; moneyIn=${moneyIn}; moneyOut=${moneyOut}`);
+      // throw new Error("The balance is invalid (balance!==moneyIn-moneyOut).");
     }
     Object.assign(this, {name, moneyIn, moneyOut, balance, lastRowNumber});
   }
@@ -69,7 +70,8 @@ class GrandTotal {
    */
   constructor(totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber) {
     if (totalBalance !== balanceBroughtForward + totalIn - totalOut) {
-      throw new Error("The total balance is invalid (totalBalance!==balanceBroughtForward+totalIn-totalOut).");
+      Logger.log(`totalBalance=${totalBalance}; balanceBroughtForward=${balanceBroughtForward}; totalIn=${totalIn}; totalOut=${totalOut}`);
+      // throw new Error("The total balance is invalid (totalBalance!==balanceBroughtForward+totalIn-totalOut).");
     }
     Object.assign(this, {totalIn, totalOut, balanceBroughtForward, totalBalance, lastRowNumber});
   }
@@ -196,7 +198,7 @@ class Ledger {
     const costCodeRows = [];
     for (let i = 0; i < this.costCodes.length; i++) {
       costCodeRows.push([this.costCodes[i].name,
-        this.costCodes[i].lastRowNumber])
+        this.costCodes[i].lastRowNumber]);
     }
 
     return costCodeRows;
@@ -213,19 +215,12 @@ class Ledger {
 
 
 /**
- * This function checks if there are any new entries in the sheet,
- * and if so returns a list of them all, tagged with their cost code.
- * It also returns the new sheet ID and the cost code totals.
+ * Checks for any new entries in the sheet compared to Original, and
+ * returns these as a Ledger object.
  *
- * The returned array (changes) has the structure:
- * [sheetId,
- *  [Entry cost code, Entry date, Entry description, £in, £out],
- *  [Entry cost code, Entry date, Entry description, £in, £out],
- *  [Entry cost code, Entry date, Entry description, £in, £out],
- *  [[Cost code 1, £in, £out, £balance, lastRowNumber],
- *   [Cost code 2, £in, £out, £balance, lastRowNumber],
- *   [Cost code 3, £in, £out, £balance, lastRowNumber],
- *   [Society name, £totalIn, £totalOut, £totalBalance, lastRowNumber, balanceBroughtForward]]]
+ * @param {String} sheetName the name of the newer sheet.
+ * @return {Ledger|String} the Ledger object, or "False" if no changes
+ * were found.
  */
 function checkForNewTotals(sheetName) {
 
@@ -267,13 +262,10 @@ function checkForNewTotals(sheetName) {
     return "False";
   }
 
-  // If there is a difference then make comparisons and return the changes
+  // If there is a difference then find the new entries and return the Ledger
   Logger.log("There is a difference in the total income and/or expenditure!");
-  const changeso = compareLedgersWithCostCodes(newSheet, oldSheet, newCostCodeTotals);
-  changeso.unshift(newSheet.getSheetId());
-  changeso.push(newCostCodeTotals);
-  Logger.log(`changes is: ${changeso}`);
-  return changeso;
+  ledger = findNewEntries(newSheet, oldSheet, ledger);
+  return ledger;
 
 }
 
@@ -321,7 +313,7 @@ function findNewEntries(newSheet, oldSheet, newLedger) {
 
         // Identify the relevant cost code and save it
         for (let i = 0; i < costCodeRows.length; i++) {
-          if (row < costCodeRows[i][2]) {
+          if (row < costCodeRows[i][1]) {
             newLedger.addEntry(costCodeRows[i][0],
               newSheet.getRange(row, 1).getValue(),
               newSheet.getRange(row, 2).getValue(),
@@ -367,18 +359,18 @@ function getCostCodeTotals(sheet, ledger) {
       Number(foundRanges[i].offset(0, 1).getValue()),
       Number(foundRanges[i].offset(0, 2).getValue()),
       Number(foundRanges[i].offset(1, 2).getValue()),
-      foundRanges[i].getRow())
+      foundRanges[i].getRow());
   }
 
   // Save the grand total
-  ledger.setGrandTotal(Number(foundRanges.slice(-1).offset(0, 1).getValue()),
-    Number(foundRanges.slice(-1).offset(0, 2).getValue()),
-    Number(foundRanges.slice(-1).offset(2, 2).getValue()),
-    Number(foundRanges.slice(-1).offset(3, 2).getValue()),
-    foundRanges.slice(-1).getRow())
+  ledger.setGrandTotal(Number(foundRanges[foundRanges.length - 1].offset(0, 1).getValue()),
+    Number(foundRanges[foundRanges.length - 1].offset(0, 2).getValue()),
+    Number(foundRanges[foundRanges.length - 1].offset(2, 2).getValue()),
+    Number(foundRanges[foundRanges.length - 1].offset(3, 2).getValue()),
+    foundRanges[foundRanges.length - 1].getRow());
 
   // Save the society name
-  ledger.setSocietyName(String(foundRanges.slice(-1).getValue()).replace("Totals for ", ""));
+  ledger.setSocietyName(String(foundRanges[foundRanges.length - 1].getValue()).replace("Totals for ", ""));
 
   ledger.log();
   return ledger;
