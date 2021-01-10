@@ -130,6 +130,7 @@ dmypy.json
 
 # Other excluded files
 config.ini
+config-development.ini
 *.ps1
 *.lnk
 /.idea

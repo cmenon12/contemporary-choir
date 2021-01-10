@@ -54,11 +54,14 @@ __license__ = "gpl-3.0"
 # can make before it stops trying to run the checks.
 ATTEMPTS = 3
 
+# The name of the config file
+CONFIG_FILENAME = "config.ini"
+
 
 class LedgerCheckerSaveFile:
     """Represents the save file used to maintain persistence."""
 
-    def __init__(self, save_data_filepath: str):
+    def __init__(self, save_data_filepath: str, log: logging):
 
         # Try to open the save file if it exists
         try:
@@ -82,6 +85,7 @@ class LedgerCheckerSaveFile:
             self.sheet_id = None
             self.timestamp = None
 
+        self.log = log
         self.save_data()
 
     def save_data(self):
@@ -91,12 +95,12 @@ class LedgerCheckerSaveFile:
             pickle.dump(self, save_file)
             save_file.close()
 
-    def new_check_success(self, changes: list, sheet_id: int,
+    def new_check_success(self, changes: dict, sheet_id: int,
                           timestamp: datetime):
         """Runs when a check was successful.
 
         :param changes: the changes made to the ledger
-        :type changes: list
+        :type changes: dict
         :param sheet_id: the ID of the new sheet
         :type sheet_id: int
         :param timestamp: when the last check was run
@@ -108,6 +112,8 @@ class LedgerCheckerSaveFile:
         self.timestamp = timestamp
         self.stack_traces.clear()
         self.save_data()
+        self.log.debug("Successful check saved to %s",
+                       self.save_data_filepath)
 
     def new_check_fail(self, stack_trace: str):
         """Runs when a check failed.
@@ -118,6 +124,8 @@ class LedgerCheckerSaveFile:
 
         self.stack_traces.append(stack_trace)
         self.save_data()
+        self.log.debug("Failed check saved to %s",
+                       self.save_data_filepath)
 
     def get_data(self) -> tuple:
         """Gets and returns the saved data."""
@@ -135,15 +143,12 @@ class LedgerCheckerSaveFile:
         return self.timestamp
 
 
-def prepare_email_body(config: configparser.SectionProxy,
-                       changes: list, sheet_url: str, pdf_url: str,
+def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
                        old_timestamp: datetime):
     """Prepares an email detailing the changes to the ledger.
 
-    :param config: the configuration for the email
-    :type config: configparser.SectionProxy
     :param changes: the changes made to the ledger
-    :type changes: list
+    :type changes: dict
     :param sheet_url: the URL of the Google Sheet to link to
     :type sheet_url: str
     :param pdf_url: the URL of the PDF to link to
@@ -154,77 +159,38 @@ def prepare_email_body(config: configparser.SectionProxy,
     :rtype: tuple
     """
 
-    # Calculate the total change for each cost code
+    # Remove the cost codes with no change
     LOGGER.info("Creating the email...")
-    cost_code_totals = {}
-    for item in changes:
-        # If the item is the totals for each cost code then skip it
-        if isinstance(item[0], list):
-            continue
-        # Add new cost code (key)
-        if item[0] not in cost_code_totals.keys():
-            cost_code_totals[item[0]] = 0
-        # Save the income and +ve and expenditure as -ve
-        if item[3] != "":
-            cost_code_totals[item[0]] += item[3]
-        else:
-            cost_code_totals[item[0]] -= item[4]
+    for name, value in changes["costCodes"].copy().items():
+        if value["changeInBalance"] == 0:
+            changes["costCodes"].pop(name)
 
     # Calculate a grand total change
-    grand_total = 0
-    for key, value in cost_code_totals.items():
-        grand_total += value
-        value = format_currency(float(value), "GBP", locale="en_GB")
-        cost_code_totals[key] = value
+    changes["grandTotal"]["changeInTotalBalance"] = 0
+    for name, value in changes["costCodes"].items():
+        changes["grandTotal"]["changeInTotalBalance"] += value["changeInBalance"]
 
-    # Process each entry for each cost code
-    cost_codes = {}
-    for item in changes:
-        # If the item is the totals for each cost code then skip it
-        if isinstance(item[0], list):
-            continue
-        # Save the income and +ve and expenditure as -ve
-        if item[3] == "":
-            item[3] = -float(item[4])
-        item[3] = format_currency(float(item[3]), "GBP", locale="en_GB")
-        # Add new cost code (key)
-        if item[0] not in cost_codes.keys():
-            cost_codes[item[0]] = []
-        # Add the formatted entry to its cost code
-        cost_codes[item[0]].append(item[1:4])
+    # Format all of the money values in each cost code
+    cost_code_items = ["balance", "changeInBalance", "moneyIn", "moneyOut"]
+    for name, value in changes["costCodes"].items():
 
-    # cost_codes is structured as
-    # {"cost code name": [["date", "description", "£amount"],
-    #                     ["date", "description", "£amount"],
-    #                     ["date", "description", "£amount"]]}
+        # For the cost code totals
+        for item in cost_code_items:
+            changes["costCodes"][name][item] = \
+                format_currency(value[item], "GBP", locale="en_GB")
 
-    # Add the current balance for each cost code to cost_code_totals
-    for key, value in cost_code_totals.items():
-        total = [value]
-        for item in changes[-1]:
-            if item[0] == key:
-                total.append(format_currency(float(item[3]),
-                                             "GBP", locale="en_GB"))
-        cost_code_totals[key] = total
+        # For each entry in the cost code
+        for i in range(0, len(value["entries"])):
+            changes["costCodes"][name]["entries"][i]["money"] = \
+                format_currency(changes["costCodes"][name]["entries"][i]["money"],
+                                "GBP", locale="en_GB")
 
-    # Add the total changes and total balance
-    cost_code_totals["grand_total"] = [format_currency(float(grand_total),
-                                                       "GBP", locale="en_GB"),
-                                       format_currency(float(changes[-1][-1][3]),
-                                                       "GBP", locale="en_GB")]
-
-    # Include the balance brought forward if it's not £0.
-    if changes[-1][-1][5] != 0:
-        balance_brought_forward = format_currency(float(changes[-1][-1][5]),
-                                                  "GBP", locale="en_GB")
-        cost_code_totals["grand_total"].append(" including %s that was brought forward." %
-                                               balance_brought_forward)
-    else:
-        cost_code_totals["grand_total"].append(".")
-
-    # cost_code_totals is structured as
-    # {"cost code name": ["£change", "£balance"],
-    #  "grand_total": ["£total change", "£total balance", "balance brought forward info"]}
+    # Format the grand total values
+    grand_total_items = ["balanceBroughtForward", "totalIn", "totalBalance",
+                         "totalOut", "changeInTotalBalance"]
+    for item in grand_total_items:
+        changes["grandTotal"][item] = \
+            format_currency(changes["grandTotal"][item], "GBP", locale="en_GB")
 
     # Prepare when the last check was made
     if old_timestamp is not None:
@@ -237,9 +203,7 @@ def prepare_email_body(config: configparser.SectionProxy,
     root = os.path.dirname(os.path.abspath(__file__))
     env = Environment(loader=FileSystemLoader(root))
     template = env.get_template("email-template.html")
-    html = template.render(society_name=config["society_name"],
-                           cost_codes=cost_codes,
-                           cost_code_totals=cost_code_totals,
+    html = template.render(changes=changes,
                            sheet_url=sheet_url,
                            pdf_url=pdf_url,
                            last_check=last_check)
@@ -254,7 +218,7 @@ def prepare_email_body(config: configparser.SectionProxy,
     return text, html
 
 
-def send_success_email(config: configparser.SectionProxy, changes: list,
+def send_success_email(config: configparser.SectionProxy, changes: dict,
                        pdf_filepath: str, sheet_url: str, pdf_url: str,
                        old_timestamp: datetime):
     """Sends an email detailing the changes.
@@ -262,7 +226,7 @@ def send_success_email(config: configparser.SectionProxy, changes: list,
     :param config: the configuration for the email
     :type config: configparser.SectionProxy
     :param changes: the changes made to the ledger
-    :type changes: list
+    :type changes: dict
     :param pdf_filepath: the path to the PDF to attach
     :type pdf_filepath: str
     :param sheet_url: the URL of the Google Sheet to link to
@@ -274,13 +238,12 @@ def send_success_email(config: configparser.SectionProxy, changes: list,
     """
 
     message = MIMEMultipart("alternative")
-    message["Subject"] = config["society_name"] + " Ledger Update"
+    message["Subject"] = changes["societyName"] + " Ledger Update"
     message["To"] = config["to"]
     message["From"] = config["from"]
 
     # Prepare the email
-    text, html = prepare_email_body(config=config,
-                                    changes=changes,
+    text, html = prepare_email_body(changes=changes,
                                     sheet_url=sheet_url,
                                     pdf_url=pdf_url,
                                     old_timestamp=old_timestamp)
@@ -405,19 +368,20 @@ def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
         LOGGER.info("Email saved successfully!")
 
 
-def check_ledger(save_data: LedgerCheckerSaveFile):
+def check_ledger(save_data: LedgerCheckerSaveFile,
+                 parser: configparser.ConfigParser):
     """Runs a check of the ledger.
 
     :param save_data: the save data object
     :type save_data: LedgerCheckerSaveFile
+    :param parser: the whole config
+    :type parser: configparser.ConfigParser
     :raises: AppsScriptApiException
     """
 
     LOGGER.info("\n")
 
     # Fetch info from the config
-    parser = configparser.ConfigParser()
-    parser.read("config.ini")
     config = parser["ledger_checker"]
     expense365 = parser["eXpense365"]
 
@@ -497,15 +461,15 @@ def check_ledger(save_data: LedgerCheckerSaveFile):
     # If the returned changes aren't actually new to us then
     # just delete the new sheet we just made
     # This compares the total income & expenditure
-    elif changes[-1][-1][1] == old_changes[-1][-1][1] and \
-            changes[-1][-1][2] == old_changes[-1][-1][2]:
-        sheet_id = changes.pop(0)
+    elif old_changes is not None and \
+            changes["grandTotal"]["totalIn"] == old_changes["grandTotal"]["totalIn"] and \
+            changes["grandTotal"]["totalOut"] == old_changes["grandTotal"]["totalOut"]:
         print("The new changes is the same as the old.")
         LOGGER.info("The new changes is the same as the old.")
         LOGGER.info("Deleting the new sheet (that's the same as the old one)...")
         delete_sheet(sheets_service=sheets,
                      spreadsheet_id=config["destination_sheet_id"],
-                     sheet_id=sheet_id)
+                     sheet_id=changes["sheetId"])
         os.remove(pdf_filepath)
         os.remove(xlsx_filepath)
         LOGGER.info("The local PDF and XLSX have been deleted successfully!")
@@ -518,7 +482,6 @@ def check_ledger(save_data: LedgerCheckerSaveFile):
     # Notify the user (via email) and delete the old sheet
     # Save the new data to the save file
     else:
-        sheet_id = changes.pop(0)
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
         pdf_url = update_pdf_ledger(dir_name=config["dir_name"],
@@ -536,7 +499,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile):
                      spreadsheet_id=config["destination_sheet_id"],
                      sheet_id=old_sheet_id)
         save_data.new_check_success(changes=changes,
-                                    sheet_id=sheet_id,
+                                    sheet_id=changes["sheetId"],
                                     timestamp=timestamp)
 
 
@@ -549,12 +512,12 @@ def main():
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
-    parser.read("config.ini")
+    parser.read(CONFIG_FILENAME)
 
-    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"])
+    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"], LOGGER)
 
     try:
-        check_ledger(save_data=save_data)
+        check_ledger(save_data=save_data, parser=parser)
     except Exception:
         save_data.new_check_fail(stack_trace=traceback.format_exc())
         traceback.print_exc()
@@ -566,6 +529,7 @@ def main():
 
         if len(save_data.get_stack_traces()) == ATTEMPTS:
             send_error_email(config=parser["email"], save_data=save_data)
+            print("Email sent successfully!")
 
 
 if __name__ == "__main__":
