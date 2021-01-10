@@ -3,7 +3,8 @@
 <head>
     <meta name="viewport" content="width=device-width">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>{{ society_name }}'s balance has changed by {{ cost_code_totals["grand_total"][0] }}</title>
+    <title>{{ changes["societyName"] }}'s balance has changed
+        by {{ changes["grandTotal"]["changeInTotalBalance"] }}</title>
     <style>
         /* -------------------------------------
             INLINED WITH htmlemail.io/inline
@@ -165,7 +166,7 @@
                 <!-- START CENTERED WHITE CONTAINER -->
                 <!-- This has the little tagline of text that the email viewer might show -->
                 <span class="preheader"
-                      style="color: transparent; display: none; height: 0; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all; visibility: hidden; width: 0;">{{ society_name }}'s balance has changed by {{ cost_code_totals["grand_total"][0] }}.</span>
+                      style="color: transparent; display: none; height: 0; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all; visibility: hidden; width: 0;">{{ changes["societyName"] }}'s balance has changed by {{ changes["grandTotal"]["changeInTotalBalance"] }}.</span>
                 <table class="main"
                        style="border-collapse: separate; mso-table-lspace: 0pt; mso-table-rspace: 0pt; width: 100%; background: #ffffff; border-radius: 3px;">
 
@@ -180,14 +181,15 @@
                                         <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
                                             Hello,</p>
                                         <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                            There have been some changes to the ledger for {{ society_name }}{{ last_check }}. These are
+                                            There have been some changes to the ledger for
+                                            {{ changes["societyName"] }}{{ last_check }}. These are
                                             listed
                                             below.</p>
 
                                         {# For each cost code #}
                                         {# Create the table header #}
-                                        {% for cost_code in cost_codes.keys() %}
-                                            <h3 style="margin-bottom: 5px">{{ cost_code }}</h3>
+                                        {% for name, value in changes["costCodes"].items() %}
+                                            <h3 style="margin-bottom: 5px">{{ name }}</h3>
                                             <table class="blueTable">
                                                 <thead>
                                                 <tr>
@@ -199,14 +201,14 @@
                                                 <tbody>
 
                                                 {# For each entry in the cost code #}
-                                                {% for entry in cost_codes[cost_code] %}
+                                                {% for entry in value["entries"] %}
                                                     <tr>
-                                                        <td>{{ entry[0] }}</td>
-                                                        <td style="text-align: left">{{ entry[1] }}</td>
-                                                        {% if "-" in entry[2] %}
-                                                            <td style="color: darkred">{{ entry[2] }}</td>
+                                                        <td>{{ entry["date"] }}</td>
+                                                        <td style="text-align: left">{{ entry["description"] }}</td>
+                                                        {% if "-" in entry["money"] %}
+                                                            <td style="color: darkred">{{ entry["money"] }}</td>
                                                         {% else %}
-                                                            <td>{{ entry[2] }}</td>
+                                                            <td>{{ entry["money"] }}</td>
                                                         {% endif %}
                                                     </tr>
                                                 {% endfor %}
@@ -215,21 +217,21 @@
                                                 </tbody>
                                                 <tr class="tfoot">
                                                     <td colspan="2" style="text-align: left">Total change
-                                                        for {{ cost_code }}</td>
-                                                    {% if "-" in cost_code_totals[cost_code][0] %}
-                                                        <td style="color: darkred">{{ cost_code_totals[cost_code][0] }}</td>
+                                                        for {{ name }}</td>
+                                                    {% if "-" in value["changeInBalance"] %}
+                                                        <td style="color: darkred">{{ value["changeInBalance"] }}</td>
                                                     {% else %}
-                                                        <td>{{ cost_code_totals[cost_code][0] }}</td>
+                                                        <td>{{ value["changeInBalance"] }}</td>
                                                     {% endif %}
                                                 </tr>
                                                 <tr class="tfoot" style="border-top: none">
                                                     <td colspan="2" style="text-align: left; font-size: 15px">Total
                                                         balance
-                                                        for {{ cost_code }}</td>
-                                                    {% if "-" in cost_code_totals[cost_code][1] %}
-                                                        <td style="color: darkred; font-size: 15px">{{ cost_code_totals[cost_code][1] }}</td>
+                                                        for {{ name }}</td>
+                                                    {% if "-" in value["balance"] %}
+                                                        <td style="color: darkred; font-size: 15px">{{ value["balance"] }}</td>
                                                     {% else %}
-                                                        <td style="font-size: 15px">{{ cost_code_totals[cost_code][1] }}</td>
+                                                        <td style="font-size: 15px">{{ value["balance"] }}</td>
                                                     {% endif %}
                                                 </tr>
                                             </table>
@@ -237,28 +239,34 @@
                                         {% endfor %}
 
                                         {# Print the total change #}
-                                        {% if "-" in cost_code_totals["grand_total"][0] %}
+                                        {% if "-" in changes["grandTotal"]["changeInTotalBalance"] %}
                                             <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
                                                 The sum of the above changes in the ledger is <b
-                                                    style="color: darkred">{{ cost_code_totals["grand_total"][0] }}</b>.
+                                                    style="color: darkred">{{ changes["grandTotal"]["changeInTotalBalance"] }}</b>.
                                             </p>
                                         {% else %}
                                             <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
                                                 The sum of the above changes in the ledger is
-                                                <b>{{ cost_code_totals["grand_total"][0] }}</b>.</p>
+                                                <b>{{ changes["grandTotal"]["changeInTotalBalance"] }}</b>.</p>
                                         {% endif %}
 
                                         {# Print the total balance #}
-                                        {% if "-" in cost_code_totals["grand_total"][1] %}
+                                        {% if "-" in changes["grandTotal"]["totalBalance"] %}
                                             <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                                <b style="color: darkred"> The total balance for {{ society_name }} is
-                                                    {{ cost_code_totals["grand_total"][1] }}</b>{{ cost_code_totals["grand_total"][2] }}
-                                            </p>
+                                                <b style="color: darkred"> The total balance
+                                                    for {{ changes["societyName"] }} is
+                                                    {{ changes["grandTotal"]["totalBalance"] }}</b>
                                         {% else %}
                                             <p style="font-family: Tahoma, Helvetica, sans-serif; font-size: 14px; font-weight: normal; margin: 0; Margin-bottom: 15px;">
-                                                The total balance for {{ society_name }} is
-                                                <b>{{ cost_code_totals["grand_total"][1] }}</b>{{ cost_code_totals["grand_total"][2] }}
-                                            </p>
+                                            The total balance for {{ changes["societyName"] }} is
+                                            <b>{{ changes["grandTotal"]["totalBalance"] }}</b>
+                                        {% endif %}
+                                        {% if changes["grandTotal"]["balanceBroughtForward"] != "£0.00" %}
+                                            including {{ changes["grandTotal"]["balanceBroughtForward"] }} that
+                                            was
+                                            brought forward.</p>
+                                        {% else %}
+                                            .</p>
                                         {% endif %}
 
                                         {# Print the buttons #}

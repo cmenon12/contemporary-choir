@@ -161,30 +161,33 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
 
     # Remove the cost codes with no change
     LOGGER.info("Creating the email...")
-    for cost_code_name, cost_code_value in changes["costCodes"].items():
-        if cost_code_value["changeInBalance"] == 0:
-            changes["costCodes"].pop(cost_code_name)
+    for name, value in changes["costCodes"].copy().items():
+        if value["changeInBalance"] == 0:
+            changes["costCodes"].pop(name)
 
     # Calculate a grand total change
-    for cost_code_name, cost_code_value in changes["costCodes"].items():
-        changes["grandTotal"]["changeInTotalBalance"] += cost_code_value["changeInBalance"]
+    changes["grandTotal"]["changeInTotalBalance"] = 0
+    for name, value in changes["costCodes"].items():
+        changes["grandTotal"]["changeInTotalBalance"] += value["changeInBalance"]
 
     # Format all of the money values in each cost code
     cost_code_items = ["balance", "changeInBalance", "moneyIn", "moneyOut"]
-    for cost_code_name, cost_code_value in changes["costCodes"].items():
+    for name, value in changes["costCodes"].items():
 
         # For the cost code totals
         for item in cost_code_items:
-            changes["costCodes"][cost_code_name][item] = \
-                format_currency(cost_code_value[item], "GBP", locale="en_GB")
+            changes["costCodes"][name][item] = \
+                format_currency(value[item], "GBP", locale="en_GB")
 
         # For each entry in the cost code
-        for i in range(0, len(cost_code_value["entries"])):
-            changes["costCodes"][cost_code_name]["entries"][i]["money"] = \
-                format_currency(changes["costCodes"][cost_code_name]["entries"][i]["money"], "GBP", locale="en_GB")
+        for i in range(0, len(value["entries"])):
+            changes["costCodes"][name]["entries"][i]["money"] = \
+                format_currency(changes["costCodes"][name]["entries"][i]["money"],
+                                "GBP", locale="en_GB")
 
     # Format the grand total values
-    grand_total_items = ["balanceBroughtForward", "totalIn", "totalBalance", "totalOut"]
+    grand_total_items = ["balanceBroughtForward", "totalIn", "totalBalance",
+                         "totalOut", "changeInTotalBalance"]
     for item in grand_total_items:
         changes["grandTotal"][item] = \
             format_currency(changes["grandTotal"][item], "GBP", locale="en_GB")
