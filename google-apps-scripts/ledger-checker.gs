@@ -103,16 +103,13 @@ class Ledger {
    * Calculates a single value for the money based on the money in
    * or money out (which is how the ledger represents it).
    *
-   * @param {undefined|Number} moneyIn the money in
-   * @param {undefined|Number} moneyOut the money out
+   * @param {Number} moneyIn the money in
+   * @param {Number} moneyOut the money out
    * @return {Number} the actual change
    */
-  static calculateMoney(moneyIn = undefined,
-                        moneyOut = undefined) {
+  static calculateMoney(moneyIn, moneyOut) {
 
-    if (moneyIn !== undefined && moneyOut !== undefined) {
-      throw new Error("Only moneyIn or moneyOut can be defined, not both.")
-    } else if (moneyOut !== undefined) {
+    if (Number(moneyIn) === 0) {
       return -moneyOut;
     } else {
       return moneyIn;
