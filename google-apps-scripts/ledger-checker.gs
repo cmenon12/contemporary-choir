@@ -15,20 +15,19 @@ class Entry {
   /**
    * Constructor, sets everything needed.
    *
-   * @param {String} costCodeName
    * @param {String} date
    * @param {String} description
    * @param {Number} money
    */
-  constructor(costCodeName, date, description, money) {
-    Object.assign(this, {costCodeName, date, description, money});
+  constructor(date, description, money) {
+    Object.assign(this, {date, description, money});
   }
 
 }
 
 
 /**
- * Represents a cost code on a ledger (but doesn't contain its entries).
+ * Represents a cost code on a ledger, including an array of entries.
  */
 class CostCode {
 
@@ -36,18 +35,27 @@ class CostCode {
    * Constructor, sets everything needed.
    * Checks that balance===moneyIn-moneyOut.
    *
-   * @param {String} name
    * @param {Number} moneyIn
    * @param {Number} moneyOut
    * @param {Number} balance
    * @param {Number} lastRowNumber
    */
-  constructor(name, moneyIn, moneyOut, balance, lastRowNumber) {
+  constructor(moneyIn, moneyOut, balance, lastRowNumber) {
     if (balance !== moneyIn - moneyOut) {
       Logger.log(`balance=${balance}; moneyIn=${moneyIn}; moneyOut=${moneyOut}`);
       // throw new Error("The balance is invalid (balance!==moneyIn-moneyOut).");
     }
-    Object.assign(this, {name, moneyIn, moneyOut, balance, lastRowNumber});
+    const entries = [];
+    Object.assign(this, {moneyIn, moneyOut, balance, lastRowNumber, entries});
+  }
+
+  /**
+   * Adds an entry to the cost code.
+   *
+   * @param {Array} entry the entry to add.
+   */
+  addEntry(entry) {
+    this.entries.push(entry)
   }
 
 }
@@ -81,8 +89,9 @@ class GrandTotal {
 
 /**
  * Represents a ledger.
- * It contains the sheet ID, society name, an array of entries, an
- * array of cost codes, and the grand total.
+ * It contains the sheet ID, society name, an array of cost codes,
+ * and the grand total.
+ * The entries are contained within each cost code.
  */
 class Ledger {
 
@@ -94,8 +103,7 @@ class Ledger {
    */
   constructor(sheetId) {
     this.sheetId = sheetId;
-    this.entries = [];
-    this.costCodes = [];
+    this.costCodes = {};
     this.grandTotal = undefined;
   }
 
@@ -135,7 +143,7 @@ class Ledger {
   }
 
   /**
-   * Adds a new entry on this ledger.
+   * Adds a new entry to the named cost code on this ledger.
    *
    * @param {String} costCodeName
    * @param {String} date
@@ -145,7 +153,13 @@ class Ledger {
    */
   addEntry(costCodeName, date, description, moneyIn = undefined, moneyOut = undefined) {
     const money = Ledger.calculateMoney(moneyIn, moneyOut);
-    this.entries.push(new Entry(costCodeName, date, description, money));
+
+    if (!this.costCodes.hasOwnProperty(costCodeName)) {
+      throw new Error(`The cost code ${costCodeName} doesn't exist.`);
+    } else {
+      this.costCodes[costCodeName].entries.push(new Entry(date, description, money));
+    }
+
   }
 
   /**
@@ -158,7 +172,8 @@ class Ledger {
    * @param {Number} lastRowNumber
    */
   addCostCode(name, moneyIn, moneyOut, balance, lastRowNumber) {
-    this.costCodes.push(new CostCode(name, moneyIn, moneyOut, balance, lastRowNumber));
+    Object.assign(this.costCodes,
+      {[name]: new CostCode(moneyIn, moneyOut, balance, lastRowNumber)});
   }
 
   /**
@@ -193,11 +208,10 @@ class Ledger {
   getCostCodeRows() {
 
     const costCodeRows = [];
-    for (let i = 0; i < this.costCodes.length; i++) {
-      costCodeRows.push([this.costCodes[i].name,
-        this.costCodes[i].lastRowNumber]);
+    for (const [key, value] of Object.entries(this.costCodes)) {
+      costCodeRows.push([key, value.lastRowNumber]);
     }
-
+    Logger.log(`costCodeRows is: ${costCodeRows}.`);
     return costCodeRows;
 
   }
@@ -206,7 +220,7 @@ class Ledger {
    * Saves the whole thing to the log.
    */
   log() {
-    Logger.log(`The Ledger object is: ${this}`);
+    Logger.log(`The Ledger object is: ${JSON.stringify(this)}`);
   }
 }
 
