@@ -45,6 +45,9 @@ NUMBER_OF_CONVERTERS = 2
 # How long to wait for conversion (in seconds)
 CONVERSION_TIMEOUT = 120
 
+# The name of the config file
+CONFIG_FILENAME = "config.ini"
+
 # This variable specifies the name of a file that contains the
 # OAuth 2.0 information for this application, including its client_id
 # and client_secret.
@@ -260,7 +263,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
             check_count += 1
 
             # Stop if we've been waiting for 2 minutes
-            if check_count == (CONVERSION_TIMEOUT/2):
+            if check_count == (CONVERSION_TIMEOUT / 2):
                 raise ConversionTimeoutException(
                     "Waited %d seconds for file conversion from %s."
                     % (CONVERSION_TIMEOUT, converter["name"]))
@@ -392,7 +395,7 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
 
     # Upload the ledger
     LOGGER.info("Uploading the ledger to Google Sheets")
-    file_metadata = {"name": "The Latest Ledger",
+    file_metadata = {"name": "The Latest Ledger (temporary)",
                      "mimeType": "application/vnd.google-apps.spreadsheet"}
     xlsx_mimetype = ("application/vnd.openxmlformats-officedocument" +
                      ".spreadsheetml.sheet")
@@ -423,8 +426,29 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
                 sheetId=sheet_id,
                 body=body).execute()
     new_sheet_id = response["sheetId"]
-    new_sheet_title = response["title"]
-    LOGGER.info("Sheet copied successfully. Sheet has ID %s and title %s.",
+    LOGGER.info("Sheet copied successfully. Sheet has ID %s.",
+                new_sheet_id)
+
+    # Generate a new title for the sheet
+    head, filename = os.path.split(xlsx_filepath)
+    filename_parts = filename.split(" ")
+    tuple(filename_parts[-3:])
+    filename_no_prefix = "%s %s %s" % tuple(filename_parts[-3:])
+    timestamp = datetime.strptime(filename_no_prefix,
+                                  "%d-%m-%Y at %H.%M.%S.xlsx")
+    new_sheet_title = timestamp.strftime("%d/%m/%Y %H:%M:%S")
+
+    # Rename the copied sheet
+    body = {"requests": [{
+      "updateSheetProperties": {
+          "properties": {"sheetId": int(new_sheet_id),
+                         "title": new_sheet_title},
+          "fields": "title"
+        }
+    }], "includeSpreadsheetInResponse": False}
+    sheets.spreadsheets().batchUpdate(spreadsheetId=destination_sheet_id,
+                                      body=body).execute()
+    LOGGER.info("Sheet renamed successfully. Sheet has ID %s and title %s.",
                 new_sheet_id, new_sheet_title)
 
     # Delete the uploaded Google Sheet
@@ -484,7 +508,7 @@ def main(app_gui: gui):
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
-    parser.read("config.ini")
+    parser.read(CONFIG_FILENAME)
     config = parser["ledger_fetcher"]
     expense365 = parser["eXpense365"]
 
