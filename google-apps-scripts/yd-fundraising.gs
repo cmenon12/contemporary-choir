@@ -15,8 +15,6 @@
  */
 function getEnthuseAmount(url) {
 
-  let amount;
-
   // Make the GET request
   const response = UrlFetchApp.fetch(url);
   const status = response.getResponseCode();
@@ -31,8 +29,9 @@ function getEnthuseAmount(url) {
       index = 1;
     }
 
+    // Extract and return the total
     let match = html.match(/£\d+/g)[index];
-    amount = Number(match.match(/\d+/)[0]);
+    return Number(match.match(/\d+/)[0]);
 
     // Otherwise log the error and stop
   } else {
@@ -45,8 +44,51 @@ function getEnthuseAmount(url) {
     Logger.log(html);
     throw new Error(`There was an error (status ${status}) fetching ${URL}.`);
   }
+}
 
-  return amount;
+
+/**
+ * Fetch the total fees and number of donors.
+ *
+ * @param {String} profileUrl the URL of the fundraising profile.
+ * @returns {{}} the total in fees and total donors.
+ */
+function getEnthuseFeesAndDonors(profileUrl) {
+
+  let donors;
+  let amount;
+
+  // Make the GET request
+  const response = UrlFetchApp.fetch(profileUrl);
+  const status = response.getResponseCode();
+  const html = response.getContentText();
+
+  // If successful then extract the amount and number of donors
+  if (status === 200) {
+
+    // Get the total amount
+    let match = html.match(/£\d+/)[0];
+    amount = Number(match.match(/\d+/)[0]);
+
+    // Get the total number of donors
+    match = html.match(/<span id="js-total-donations">\d+</)[0];
+    donors = Number(match.match(/\d+/)[0]);
+
+    // Calculate the fees and return
+    const fees = (amount * 0.005) + (0.2 * donors);
+    return {"fees": fees, "donors": donors};
+
+    // Otherwise log the error and stop
+  } else {
+    Logger.log(`There was an error fetching ${URL}.`);
+    SpreadsheetApp
+      .getActiveSpreadsheet()
+      .toast(`There was an error (status ${status}) fetching ${URL}.`,
+        "ERROR", -1);
+    Logger.log(status);
+    Logger.log(html);
+    throw new Error(`There was an error (status ${status}) fetching ${URL}.`);
+  }
 }
 
 
@@ -84,9 +126,7 @@ function getMultipleEnthuseAmounts(urls) {
   for (let i = 0; i < urls.length; i++) {
     total = total + getEnthuseAmount(urls[i]);
   }
-
   return total;
-
 }
 
 
@@ -161,6 +201,13 @@ function updateAll() {
   toastMsg = updateRange("VirtualChoir", virtualChoirTotal, toastMsg);
   toastMsg = updateRange("OtherEnthuse",
     enthuseTotal - santaRunTotal - adventCalendarTotal - virtualChoirTotal, toastMsg);
+
+  // Update the fees
+  const summary = getEnthuseFeesAndDonors("https://exeterguild.enthuse.com/execontempchoir/profile");
+  toastMsg = updateRange("EnthuseFees", -summary.fees, toastMsg);
+  getNamedRange("EnthuseFeesNotes", SpreadsheetApp.getActiveSpreadsheet())
+    .setValue(`Estimate, based on ${summary.donors} donors.`);
+  Logger.log(`Updated the number of donors in named range EnthuseFeesNotes to ${summary.donors} successfully.`);
 
   // Produce the toast to notify the user
   if (toastMsg === "") {
