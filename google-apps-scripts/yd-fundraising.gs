@@ -7,6 +7,10 @@
   =============================================================================
  */
 
+/**
+ * Represents a single Enthuse fundraising source.
+ * Each source can consist of multiple pages.
+ */
 class EnthuseFundraisingSource {
 
   /**
@@ -45,7 +49,6 @@ class EnthuseFundraisingSource {
     this.log();
 
   }
-
 
   /**
    * Fetch the fundraising total from the Enthuse page at url.
@@ -110,7 +113,7 @@ class EnthuseFundraisingSource {
         /<span id="js-total-donations">\d+</, 0)
 
       // Calculate the fees and return
-      const fees = (amount * 0.019) + (0.2 * donors);
+      const fees = this.calculateFees(amount, donors);
       return {"fees": fees, "donors": donors};
 
       // Otherwise log the error and stop
@@ -126,9 +129,29 @@ class EnthuseFundraisingSource {
     }
   }
 
+  /**
+   * Searches the string using the regex, and returns the first number
+   * present in the find at the index.
+   *
+   * @param {String} string
+   * @param {Object} regex the regex to search for
+   * @param {Number} index the match from the search to use
+   * @returns {Number} the first number found in the match at the index.
+   */
   static regexSearchForNumber(string, regex, index) {
     let match = string.match(regex)[index];
     return Number(match.match(/\d+/)[0]);
+  }
+
+  /**
+   * Calculate the Enthuse fees.
+   *
+   * @param {Number} amount the amount donated.
+   * @param {Number} donors the number of donors that donated this.
+   * @returns {Number} the fees.
+   */
+  static calculateFees(amount, donors) {
+    return (amount * 0.019) + (0.2 * donors);
   }
 
   /**
@@ -151,7 +174,7 @@ class EnthuseFundraisingSource {
     }
 
     // Recalculate the fees
-    this.fees = (this.amount * 0.019) + (0.2 * this.donors);
+    this.fees = EnthuseFundraisingSource.calculateFees(this.amount, this.donors);
     this.log();
     return this;
   }
@@ -295,11 +318,12 @@ function updateAll() {
       "https://exeterguild.enthuse.com/pf/tom-joshi-cale",
       "https://exeterguild.enthuse.com/pf/chris-menon-santa-run-2020-9558f"]);
 
+  // Retrieve and calculate the excess (donated on the profile page)
   const otherEnthuse = new EnthuseFundraisingSource("OtherEnthuse",
     ["https://exeterguild.enthuse.com/execontempchoir/profile"])
     .removeAndRecalculate([adventCalendar, virtualChoir, santaRun]);
 
-  // Update the amounts
+  // Update the amounts and fees
   let toastMsg = "";
   toastMsg = adventCalendar.updateRange(toastMsg);
   toastMsg = virtualChoir.updateRange(toastMsg);

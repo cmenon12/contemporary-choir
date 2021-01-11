@@ -55,7 +55,11 @@ can be used  to download the society ledger from eXpense365 to your computer (in
 
 **[`google-apps-scripts/macmillan-fundraising.gs`](google-apps-scripts/macmillan-fundraising.gs)** updates how much has been fundraised for Macmillan from a GoFundMe page. It fetches the page, extracts the total fundraised and the total number of donors, applies a reduction due to payment processor fees & postage, and then updates a pre-defined named range in the sheet with the total.
 
-**[`google-apps-scripts/yd-fundraising.gs`](google-apps-scripts/yd-fundraising.gs)** updates how much has been fundraised for Young Devon. It currently fetches the totals from multiple Enthuse pages, and updates several named ranges in the sheet with the totals. It also calculates the fees that Enthuse charges.
+**[`google-apps-scripts/yd-fundraising.gs`](google-apps-scripts/yd-fundraising.gs)** updates how much has been fundraised for Young Devon. 
+* It currently fetches the totals from multiple Enthuse pages, and updates several named ranges in the sheet with the totals.
+* It also calculates the fees that Enthuse charges.
+* `EnthuseFundraisingSource` is a class used to represent an Enthuse fundraising source (which can consist of one or more pages). 
+  * Each source has an amount, number of donors, and fees, as well as it's named range. 
 
 ### Society Ledger Downloader Apps Script Add-On
 **[`google-apps-scripts/society-ledger-downloader/`](google-apps-scripts/society-ledger-downloader)** is a Google Workspace Add-On that allows you to download your society ledger and save it straight to Drive. *Note that all of these files should have a `.gs` file extension instead of `.js` but [`clasp`](https://developers.google.com/apps-script/guides/clasp) changes this for me.*
