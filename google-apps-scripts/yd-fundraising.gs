@@ -11,11 +11,9 @@
  * Fetch the fundraising total from the Enthuse page at url.
  *
  * @param {String} url the URL of the fundraising page.
- * @param {Number} index the index of the matches to use, because for
- * some pages the first match is the target, not the total.
  * @returns {Number} the amount extracted.
  */
-function getEnthuseAmount(url, index = 0) {
+function getEnthuseAmount(url) {
 
   let amount;
 
@@ -25,11 +23,16 @@ function getEnthuseAmount(url, index = 0) {
   const html = response.getContentText();
 
   // If successful then extract the amount
-  if (status == 200) {
-    let regex = /£\d+/g;
-    let match = html.match(regex)[index];
-    regex = /\d+/;
-    amount = Number(match.match(regex)[0]);
+  if (status === 200) {
+
+    // Determine the index to use
+    let index = 0;
+    if (url.includes("pf/")) {
+      index = 1;
+    }
+
+    let match = html.match(/£\d+/g)[index];
+    amount = Number(match.match(/\d+/)[0]);
 
     // Otherwise log the error and stop
   } else {
@@ -60,12 +63,30 @@ function getNamedRange(name, spreadsheet) {
   const namedRanges = spreadsheet.getNamedRanges();
   let range;
   for (let i = 0; i < namedRanges.length; i++) {
-    if (namedRanges[i].getName() == name) {
+    if (namedRanges[i].getName() === name) {
       range = namedRanges[i].getRange();
       break;
     }
   }
   return range;
+}
+
+
+/**
+ * Fetches the sum fundraising total for all of the URLs in the array.
+ *
+ * @param {String[]} urls the enthuse URLs.
+ * @returns {Number} the sum of the total for all the URLs.
+ */
+function getMultipleEnthuseAmounts(urls) {
+
+  let total = 0;
+  for (let i = 0; i < urls.length; i++) {
+    total = total + getEnthuseAmount(urls[i]);
+  }
+
+  return total;
+
 }
 
 
@@ -79,11 +100,11 @@ function updateRange(name, value, toastMsg) {
   const range = getNamedRange(name, SpreadsheetApp.getActiveSpreadsheet());
 
   // If the range has been located
-  if (range != undefined) {
+  if (range !== undefined) {
 
     // If the value has changed then update it and update the toast
     const oldValue = range.getValue();
-    if (value != oldValue) {
+    if (value !== oldValue) {
       toastMsg = toastMsg.concat(`${name} has increased by £${value - oldValue}. `);
       range.setValue(value);
       Logger.log(`Updated the named range ${name} to ${value} successfully.`);
@@ -124,13 +145,14 @@ function updateAll() {
   const adventCalendarTotal = getEnthuseAmount("https://exeterguild.enthuse.com/cf/contemporary-choir-s-advent-calendar");
   const virtualChoirTotal = getEnthuseAmount("https://exeterguild.enthuse.com/cf/virtual-choir-performances");
 
-  // Get the Santa Run totals
-  let santaRunTotal = getEnthuseAmount("https://exeterguild.enthuse.com/pf/jamie-harvey", 1);
-  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/rebekah-lydia", 1);
-  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/ellie-doherr", 1);
-  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/bethany-piper-edd11", 1);
-  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/tom-joshi-cale", 1);
-  santaRunTotal = santaRunTotal + getEnthuseAmount("https://exeterguild.enthuse.com/pf/chris-menon-santa-run-2020-9558f", 1);
+  // Get the Santa Run total
+  const santaRunUrls = ["https://exeterguild.enthuse.com/pf/jamie-harvey",
+    "https://exeterguild.enthuse.com/pf/rebekah-lydia",
+    "https://exeterguild.enthuse.com/pf/ellie-doherr",
+    "https://exeterguild.enthuse.com/pf/bethany-piper-edd11",
+    "https://exeterguild.enthuse.com/pf/tom-joshi-cale",
+    "https://exeterguild.enthuse.com/pf/chris-menon-santa-run-2020-9558f"];
+  const santaRunTotal = getMultipleEnthuseAmounts(santaRunUrls);
 
   // Run the update functions
   let toastMsg = "";
@@ -141,7 +163,7 @@ function updateAll() {
     enthuseTotal - santaRunTotal - adventCalendarTotal - virtualChoirTotal, toastMsg);
 
   // Produce the toast to notify the user
-  if (toastMsg == "") {
+  if (toastMsg === "") {
     SpreadsheetApp.getActiveSpreadsheet().toast("No new changes were found.", "");
   } else {
     SpreadsheetApp.getActiveSpreadsheet().toast(toastMsg, "", -1);
@@ -149,7 +171,7 @@ function updateAll() {
 
   // Update when this script was last run
   const range = getNamedRange("ScriptLastRun", SpreadsheetApp.getActiveSpreadsheet());
-  if (range != undefined) {
+  if (range !== undefined) {
     const date = new Date();
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
