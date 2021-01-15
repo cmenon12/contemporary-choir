@@ -235,7 +235,7 @@ class EnthuseFundraisingSource {
     // If the amount has changed then update it and update the toast
     let oldValue = this.range.getValue();
     if (this.amount !== oldValue) {
-      toastMsg = toastMsg.concat(`${this.rangeName} has increased by £${value - oldValue}. `);
+      toastMsg = toastMsg.concat(`${this.rangeName} has increased by £${this.amount - oldValue}. `);
       this.range.setValue(this.amount);
       Logger.log(`Updated the named range ${this.rangeName} to ${this.amount} successfully.`);
 
