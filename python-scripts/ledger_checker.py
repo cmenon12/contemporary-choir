@@ -194,7 +194,7 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
 
     # Prepare when the last check was made
     if old_timestamp is not None:
-        last_check = "since the last check %s at %s" % (timeago.format(old_timestamp),
+        last_check = " since the last check %s at %s" % (timeago.format(old_timestamp),
                                                         old_timestamp.strftime("%H:%M:%S on %A %d %B %Y"))
     else:
         last_check = ""
@@ -462,8 +462,10 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     # just delete the new sheet we just made
     # This compares the total income & expenditure
     elif old_changes is not None and \
-            changes["grandTotal"]["totalIn"] == old_changes["grandTotal"]["totalIn"] and \
-            changes["grandTotal"]["totalOut"] == old_changes["grandTotal"]["totalOut"]:
+            format_currency(changes["grandTotal"]["totalIn"],
+                            "GBP", locale="en_GB") == old_changes["grandTotal"]["totalIn"] and \
+            format_currency(changes["grandTotal"]["totalOut"],
+                            "GBP", locale="en_GB") == old_changes["grandTotal"]["totalOut"]:
         print("The new changes is the same as the old.")
         LOGGER.info("The new changes is the same as the old.")
         LOGGER.info("Deleting the new sheet (that's the same as the old one)...")
