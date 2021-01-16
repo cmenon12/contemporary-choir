@@ -51,8 +51,8 @@ __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
 # This is the number of consecutive failed attempts that the program
-# can make before it stops trying to run the checks.
-ATTEMPTS = 3
+# can make before it sends an error email
+ATTEMPTS = [3, 8, 15]
 
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
@@ -122,7 +122,8 @@ class LedgerCheckerSaveFile:
         :type stack_trace: str
         """
 
-        self.stack_traces.append(stack_trace)
+        date = datetime.now().strftime("%A %d %B %Y AT %H:%M:%S")
+        self.stack_traces.append("ERROR ON %s\n%s" % (date, stack_trace))
         self.save_data()
         self.log.debug("Failed check saved to %s",
                        self.save_data_filepath)
@@ -194,8 +195,8 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
 
     # Prepare when the last check was made
     if old_timestamp is not None:
-        last_check = " since the last check %s at %s" % (timeago.format(old_timestamp),
-                                                        old_timestamp.strftime("%H:%M:%S on %A %d %B %Y"))
+        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp),
+                                                         old_timestamp.strftime("%A %d %B %Y at %H:%M:%S"))
     else:
         last_check = ""
 
@@ -306,7 +307,7 @@ def send_error_email(config: configparser.SectionProxy,
     # Get the count of errors and stack traces
     error_count = len(save_data.get_stack_traces())
     stack_traces = ""
-    for e in save_data.get_stack_traces()[-ATTEMPTS:]:
+    for e in save_data.get_stack_traces():
         stack_traces += e
         stack_traces += "\n\n"
 
@@ -318,12 +319,26 @@ def send_error_email(config: configparser.SectionProxy,
     message["X-Priority"] = "1"
 
     # Prepare the email
+    if error_count >= ATTEMPTS[-1]:
+        future_attempts = " and no further error emails will be sent."
+    else:
+        future_attempts = "."
+        for i in ATTEMPTS:
+            if i > error_count:
+                future_attempts = (" and another email will be sent if %d "
+                                   "consecutive and fatal errors occur "
+                                   "(including the %d below)."
+                                   % (i, error_count))
+                break
+
     text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
-            "Please see the stack traces below and check the logs.\n\n %s "
+            "Please see the stack traces below and check the log. Note that "
+            "future executions will continue as scheduled%s\n\n %s "
             "———\nThis email was sent automatically by a "
             "computer program (https://github.com/cmenon12/contemporary-choir). "
             "If you want to leave some feedback "
             "then please reply directly to it." % (error_count,
+                                                   future_attempts,
                                                    stack_traces))
     message.attach(MIMEText(text, "plain"))
 
@@ -529,7 +544,7 @@ def main():
         print("This is consecutive error number %d"
               % len(save_data.get_stack_traces()))
 
-        if len(save_data.get_stack_traces()) == ATTEMPTS:
+        if len(save_data.get_stack_traces()) in ATTEMPTS:
             send_error_email(config=parser["email"], save_data=save_data)
             print("Email sent successfully!")
 
