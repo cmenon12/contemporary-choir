@@ -40,7 +40,7 @@ __license__ = "gpl-3.0"
 # 30 is used for the ledger, 31 for the balance
 REPORT_ID = "30"
 
-# The number of PDF to XLSX converters that this program has
+# The number of PDF to XLSX converters in the PDFtoXLSXConverter class
 NUMBER_OF_CONVERTERS = 2
 
 # How long to wait for conversion (in seconds)
@@ -64,6 +64,130 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
 # automatically when the authorization flow completes for the first
 # time. This specifies where the file is stored
 TOKEN_PICKLE_FILE = "token.pickle"
+
+
+class PDFToXLSXConverter:
+    """Represents a PDF to XLSX converter."""
+
+    def __init__(self, pdf_filepath: str, converter_number: int = 0):
+        """Creates the converter.
+
+        :param pdf_filepath: the filepath of the PDF
+        :type pdf_filepath: str
+        :param converter_number: the chosen converter
+        :type converter_number: int, optional
+        """
+
+        # Define the user agent, which doesn't change
+        user_agent = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75")
+
+        # Define the fixed headers
+        headers = {
+            "Connection": "keep-alive",
+            "X-Requested-With": "XMLHttpRequest",
+            "DNT": "1",
+            "User-Agent": user_agent,
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Dest": "empty",
+            "Accept-Language": "en-GB,en;q=0.9",
+        }
+
+        # If no valid number was specified then choose randomly
+        if converter_number not in range(1, NUMBER_OF_CONVERTERS + 1):
+            converter_number = random.randint(1, NUMBER_OF_CONVERTERS + 1)
+
+        # Use pdftoexcel.com
+        if converter_number == 1:
+            self.name = "pdftoexcel.com"
+            self.request_url = "https://www.pdftoexcel.com/upload.instant.php"
+            headers["Accept"] = "*/*"
+            headers["Origin"] = "https://www.pdftoexcel.com"
+            headers["Referer"] = "https://www.pdftoexcel.com/"
+            self.files = {"Filedata": open(pdf_filepath, "rb")}
+            self.status_url = "https://www.pdftoexcel.com/status"
+            self.download_url = "https://www.pdftoexcel.com"
+
+        # Use pdftoexcelconverter.net
+        else:
+            self.name = "pdftoexcelconverter.net"
+            self.request_url = "https://www.pdftoexcelconverter.net/upload.instant.php"
+            headers["Accept"] = "application/json"
+            headers["Origin"] = "https://www.pdftoexcelconverter.net"
+            headers["Referer"] = "https://www.pdftoexcelconverter.net/"
+            self.files = {"file[0]": open(pdf_filepath, "rb")}
+            self.status_url = "https://www.pdftoexcelconverter.net/getIsConverted.php"
+            self.download_url = "https://www.pdftoexcelconverter.net"
+
+        # Create the session that'll be used to make all the requests
+        self.session = requests.Session()
+        self.session.headers.update(headers)
+
+    def upload_pdf(self, raise_for_status: bool = True) -> str:
+        """Make the conversion request and upload the PDF.
+
+        :param raise_for_status: whether to raise_for_status()
+        :type raise_for_status: bool, optional
+        :return: the conversion job ID
+        :rtype: str
+        :raises HTTPError: if a bad HTTP status code is returned
+        :raises ConversionRejectedException: if server rejects the PDF
+        """
+
+        response = self.session.post(url=self.request_url, files=self.files)
+        if raise_for_status:
+            response.raise_for_status()
+        if "jobId" not in response.json().keys():
+            raise ConversionRejectedException(self.get_name())
+        return response.json()["jobId"]
+
+    def check_conversion_status(self, job_id: str,
+                                raise_for_status: bool = True) \
+            -> str:
+        """Check the status of the request and get the download URL.
+
+        :param job_id: the ID of the conversion job
+        :type job_id: str
+        :param raise_for_status: whether to raise_for_status()
+        :type raise_for_status: bool, optional
+        :return: the download URL (which might be empty)
+        :rtype: str
+        :raises HTTPError: if a bad HTTP status code is returned
+        :raises JSONDecodeError: if the response can't be decoded
+        """
+
+        response = self.session.get(url=self.status_url,
+                                    params=(("jobId", job_id), ("rand", "16")))
+        if raise_for_status:
+            response.raise_for_status()
+        return response.json()["download_url"]
+
+    def download_xlsx(self, job_id: str, download_url: str,
+                      raise_for_status: bool = True) -> bytes:
+        """Download the XLSX file.
+
+        :param job_id: the ID of the conversion job
+        :type job_id: str
+        :param download_url: the download URL
+        :type download_url: str
+        :param raise_for_status: whether to raise_for_status()
+        :type raise_for_status: bool, optional
+        :return: the XLSX file
+        :rtype: bytes
+        :raises HTTPError: if a bad HTTP status code is returned
+        """
+
+        response = self.session.get(url=self.download_url + download_url,
+                                    params={"id": job_id})
+        if raise_for_status:
+            response.raise_for_status()
+        return response.content
+
+    def get_name(self) -> str:
+        """Return the name of the converter."""
+        return self.name
 
 
 def download_pdf(auth: str, group_id: str, subgroup_id: str,
@@ -146,70 +270,6 @@ def download_pdf(auth: str, group_id: str, subgroup_id: str,
     return pdf_filepath
 
 
-def choose_xlsx_converter(pdf_filepath: str,
-                          converter_number: int = 0) -> dict:
-    """Choose a PDF to XLSX converter_number and return its data.
-
-    :param pdf_filepath: the path to the PDF file to convert
-    :type pdf_filepath: str
-    :param converter_number: the number of the converter to use
-    :type converter_number: int, optional
-    :return: the data needed for the converter
-    :rtype: dict
-    """
-
-    # Define the user agent, which doesn't change
-    user_agent = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/86.0.4240.111 Safari/537.36")
-
-    # Define the fixed headers
-    headers = {
-        "Connection": "keep-alive",
-        "X-Requested-With": "XMLHttpRequest",
-        "DNT": "1",
-        "User-Agent": user_agent,
-        "Sec-Fetch-Site": "same-origin",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Dest": "empty",
-        "Accept-Language": "en-GB,en;q=0.9",
-    }
-
-    # If no valid number was specified then choose randomly
-    if converter_number not in range(1, NUMBER_OF_CONVERTERS + 1):
-        converter_number = random.randint(1, NUMBER_OF_CONVERTERS + 1)
-
-    converter = {}
-
-    # Use pdftoexcel.com
-    if converter_number == 1:
-        converter["name"] = "pdftoexcel.com"
-        converter["request_url"] = "https://www.pdftoexcel.com/upload.instant.php"
-        headers["Accept"] = "*/*"
-        headers["Origin"] = "https://www.pdftoexcel.com"
-        headers["Referer"] = "https://www.pdftoexcel.com/"
-        converter["headers"] = headers
-        converter["files"] = {"Filedata": open(pdf_filepath, "rb")}
-        converter["status_url"] = "https://www.pdftoexcel.com/status"
-        converter["download_url"] = "https://www.pdftoexcel.com"
-
-    # Use pdftoexcelconverter.net
-    else:
-        converter["name"] = "pdftoexcelconverter.net"
-        converter["request_url"] = "https://www.pdftoexcelconverter.net/upload.instant.php"
-        headers["Accept"] = "application/json"
-        headers["Origin"] = "https://www.pdftoexcelconverter.net"
-        headers["Referer"] = "https://www.pdftoexcelconverter.net/"
-        converter["headers"] = headers
-        converter["files"] = {"file[0]": open(pdf_filepath, "rb")}
-        converter["status_url"] = "https://www.pdftoexcelconverter.net/getIsConverted.php"
-        converter["download_url"] = "https://www.pdftoexcelconverter.net"
-
-    # Return the data
-    LOGGER.info("Using %s to convert the XLSX", converter["name"])
-    return converter
-
-
 def convert_to_xlsx(pdf_filepath: str, dir_name: str,
                     app_gui: gui) -> str:
     """Converts the PDF to an Excel file and saves it.
@@ -222,27 +282,16 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     :type app_gui: appJar.appjar.gui
     :return: the path to the downloaded XLSX spreadsheet
     :rtype: str
-    :raises HTTPError: if an unsuccessful HTTP status code is returned
-    :raises JSONDecodeError: if we can't decode the response
-    :raises ConversionRejectedException: if the server rejects the PDF
     :raises ConversionTimeoutException: if the conversion takes too long
     """
 
     # Prepare for the request
-    converter = choose_xlsx_converter(pdf_filepath)
-
-    # Create a session that we can add headers to
-    session = requests.Session()
-    session.headers.update(converter["headers"])
+    converter = PDFToXLSXConverter(pdf_filepath)
 
     # Make the request and check that it was successful
-    LOGGER.info("Sending the PDF for conversion to %s..." % converter["name"])
-    response = session.post(url=converter["request_url"],
-                            files=converter["files"])
-    response.raise_for_status()
-    if "jobId" not in response.json().keys():
-        raise ConversionRejectedException(converter["name"])
-    job_id = response.json()["jobId"]
+    LOGGER.info("Sending the PDF for conversion to %s..." %
+                converter.get_name())
+    job_id = converter.upload_pdf()
     LOGGER.info("The request was successful with no HTTP errors.")
     LOGGER.info("The jobId is %s.", job_id)
 
@@ -255,12 +304,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
         # Prepare and make the request
         LOGGER.info("Checking if the conversion is complete...")
-        response = session.get(url=converter["status_url"],
-                               params=(("jobId", job_id), ("rand", "16")))
-
-        # Check that the request was successful
-        response.raise_for_status()
-        download_url = response.json()["download_url"]
+        download_url = converter.check_conversion_status(job_id=job_id)
 
         # Wait before checking again
         if download_url == "":
@@ -268,17 +312,14 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
             # Stop if we've been waiting for 2 minutes
             if check_count == (CONVERSION_TIMEOUT / 2):
-                raise ConversionTimeoutException(CONVERSION_TIMEOUT,
-                                                 converter["name"])
+                raise ConversionTimeoutException(converter.get_name(),
+                                                 CONVERSION_TIMEOUT)
             time.sleep(2)
 
     # Prepare and make the request to download the file
-    url = converter["download_url"] + download_url
     LOGGER.info("Downloading the converted file...")
-    response = session.get(url=url, params={"id": job_id})
-
-    # Check that the request was successful
-    response.raise_for_status()
+    xlsx_content = converter.download_xlsx(job_id=job_id,
+                                           download_url=download_url)
 
     # Get a filename and save the XLSX
     LOGGER.info("Saving the spreadsheet...")
@@ -300,7 +341,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     else:
         xlsx_filepath = pdf_filepath.replace(".pdf", ".xlsx")
     with open(xlsx_filepath, "wb") as xlsx_file:
-        xlsx_file.write(response.content)
+        xlsx_file.write(xlsx_content)
 
     # If successful then return the file path
     LOGGER.info("Spreadsheet ledger saved successfully at %s.", xlsx_filepath)
@@ -443,10 +484,10 @@ def upload_ledger(dir_name: str, destination_sheet_id: str,
 
     # Rename the copied sheet
     body = {"requests": [{
-      "updateSheetProperties": {
-          "properties": {"sheetId": int(new_sheet_id),
-                         "title": new_sheet_title},
-          "fields": "title"
+        "updateSheetProperties": {
+            "properties": {"sheetId": int(new_sheet_id),
+                           "title": new_sheet_title},
+            "fields": "title"
         }
     }], "includeSpreadsheetInResponse": False}
     sheets.spreadsheets().batchUpdate(spreadsheetId=destination_sheet_id,
