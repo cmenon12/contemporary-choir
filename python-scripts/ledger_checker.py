@@ -40,9 +40,7 @@ from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
 
-# noinspection PyCompatibility
-from exceptions import AppsScriptApiException
-# noinspection PyUnresolvedReferences
+from custom_exceptions import AppsScriptApiException
 from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
     authorize, update_pdf_ledger
 

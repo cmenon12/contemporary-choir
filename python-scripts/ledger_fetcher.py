@@ -30,7 +30,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-from exceptions import ConversionTimeoutException, \
+from custom_exceptions import ConversionTimeoutException, \
     ConversionRejectedException
 
 __author__ = "Christopher Menon"
@@ -64,6 +64,28 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
 # automatically when the authorization flow completes for the first
 # time. This specifies where the file is stored
 TOKEN_PICKLE_FILE = "token.pickle"
+
+
+class Ledger:
+
+    def __init__(self):
+        pass
+
+    def download_pdf(self):
+        pass
+
+    def convert_to_xlsx(self):
+        pass
+
+    def update_pdf_ledger(self):
+        pass
+
+    def upload_ledger(self):
+        pass
+
+    @staticmethod
+    def authorize():
+        pass
 
 
 class PDFToXLSXConverter:
