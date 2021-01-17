@@ -30,7 +30,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-from exceptions import ConversionTimeoutException
+from exceptions import ConversionTimeoutException, \
+    ConversionRejectedException
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -223,6 +224,7 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     :rtype: str
     :raises HTTPError: if an unsuccessful HTTP status code is returned
     :raises JSONDecodeError: if we can't decode the response
+    :raises ConversionRejectedException: if the server rejects the PDF
     :raises ConversionTimeoutException: if the conversion takes too long
     """
 
@@ -238,6 +240,8 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
     response = session.post(url=converter["request_url"],
                             files=converter["files"])
     response.raise_for_status()
+    if "jobId" not in response.json().keys():
+        raise ConversionRejectedException(converter["name"])
     job_id = response.json()["jobId"]
     LOGGER.info("The request was successful with no HTTP errors.")
     LOGGER.info("The jobId is %s.", job_id)
@@ -264,9 +268,8 @@ def convert_to_xlsx(pdf_filepath: str, dir_name: str,
 
             # Stop if we've been waiting for 2 minutes
             if check_count == (CONVERSION_TIMEOUT / 2):
-                raise ConversionTimeoutException(
-                    "Waited %d seconds for file conversion from %s."
-                    % (CONVERSION_TIMEOUT, converter["name"]))
+                raise ConversionTimeoutException(CONVERSION_TIMEOUT,
+                                                 converter["name"])
             time.sleep(2)
 
     # Prepare and make the request to download the file
