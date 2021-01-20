@@ -65,6 +65,7 @@ TOKEN_PICKLE_FILE = "token.pickle"
 
 
 class Ledger:
+    """Represents the ledger."""
 
     def __init__(self, config: configparser.SectionProxy,
                  expense365: configparser.SectionProxy,
@@ -83,7 +84,7 @@ class Ledger:
 
         # Prepare the authentication
         data = expense365["email"] + ":" + expense365["password"]
-        auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
+        self.auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
 
         # Download the ledger
         self.expense365_data = {"ReportID": int(expense365["report_id"]),
@@ -92,7 +93,7 @@ class Ledger:
         self.filename_prefix = config["filename_prefix"]
         self.dir_name = config["dir_name"]
         self.pdf_filepath = None
-        self.download_pdf(auth)
+        self.download_pdf()
 
         # Prepare for future use
         self.pdf_ledger_id = config["pdf_ledger_id"]
@@ -102,13 +103,11 @@ class Ledger:
         self.browser_path = config["browser_path"]
         self.drive_pdf_url = None
         self.xlsx_filepath = None
-        self.google_sheets_data = None
+        self.sheets_data = None
 
-    def download_pdf(self, auth: str) -> None:
+    def download_pdf(self) -> None:
         """Downloads the ledger from expense365.com.
 
-        :param auth: the authentication header with the email and password
-        :type auth: str
         :raises HTTPError: if an unsuccessful HTTP status code is returned
         """
 
@@ -117,7 +116,7 @@ class Ledger:
         headers = {
             "Host": "service.expense365.com:443",
             "User-Agent": "eXpense365|1.6.1|Google Pixel XL|Android|10|en_GB",
-            "Authorization": auth,
+            "Authorization": self.auth,
             "Accept": "application/json",
             "If-Modified-Since": "Mon, 1 Oct 1990 05:00:00 GMT",
             "Content-Type": "text/plain;charset=UTF-8",
@@ -340,10 +339,10 @@ class Ledger:
         drive.files().delete(fileId=latest_ledger_id).execute()
         LOGGER.info("Original uploaded ledger deleted successfully.")
 
-        self.google_sheets_data = {"name": new_sheet_title,
-                                   "url": ("https://docs.google.com/spreadsheets/d/" +
-                                           self.destination_sheet_id +
-                                           "/edit#gid=" + str(new_sheet_id))}
+        self.sheets_data = {"name": new_sheet_title,
+                            "url": ("https://docs.google.com/spreadsheets/d/" +
+                                    self.destination_sheet_id +
+                                    "/edit#gid=" + str(new_sheet_id))}
 
     def get_pdf_filepath(self) -> str:
         """Returns the filepath of the PDF ledger.
@@ -364,11 +363,9 @@ class Ledger:
         """
         if self.xlsx_filepath is None and convert is True:
             self.convert_to_xlsx()
-            return self.xlsx_filepath
         elif self.xlsx_filepath is None and convert is False:
             raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
-        else:
-            return self.xlsx_filepath
+        return self.xlsx_filepath
 
     def get_drive_pdf_url(self, upload: bool = True) -> str:
         """Returns the URL of the PDF ledger in Drive.
@@ -381,11 +378,9 @@ class Ledger:
         """
         if self.drive_pdf_url is None and upload is True:
             self.update_drive_pdf()
-            return self.drive_pdf_url
         elif self.drive_pdf_url is None and upload is False:
             raise URLDoesNotExist("The PDF ledger isn't in Drive.")
-        else:
-            return self.drive_pdf_url
+        return self.drive_pdf_url
 
     def get_sheets_data(self, convert: bool = True, upload: bool = True) -> dict:
         """Returns the name and URL of the ledger in Google Sheets.
@@ -405,12 +400,20 @@ class Ledger:
         elif self.xlsx_filepath is None and convert is False:
             raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
 
-        if self.google_sheets_data is None and upload is True:
+        if self.sheets_data is None and upload is True:
             self.upload_to_sheets()
-        elif self.google_sheets_data is None and upload is False:
+        elif self.sheets_data is None and upload is False:
             raise URLDoesNotExist("The XLSX ledger isn't in Sheets.")
 
-        return self.google_sheets_data
+        return self.sheets_data
+
+    def refresh_ledger(self):
+        """Fetches a fresh copy of the ledger and invalidates everything."""
+
+        self.download_pdf()
+        self.drive_pdf_url = None
+        self.xlsx_filepath = None
+        self.sheets_data = None
 
     def open_pdf_in_browser(self):
         """Opens the PDF ledger in the designated browser."""
@@ -420,7 +423,7 @@ class Ledger:
                             webbrowser.BackgroundBrowser(self.browser_path))
         webbrowser.get(using="my-browser").open(open_path)
 
-    def open_google_sheet_in_browser(self):
+    def open_sheet_in_browser(self):
         """Opens the ledger in Google Sheets in the designated browser."""
         open_path = self.get_sheets_data()["url"]
         webbrowser.register("my-browser",
@@ -608,7 +611,6 @@ def main(app_gui: gui):
     # Get the ledger
     print("Downloading the PDF...")
     ledger = Ledger(config=config, expense365=expense365, app_gui=app_gui)
-    pdf_filepath = ledger.get_pdf_filepath()
 
     # Ask the user if they want to open it
     if app_gui.yesNoBox("Open PDF?",
@@ -618,8 +620,7 @@ def main(app_gui: gui):
     # Ask the user if they want to convert it to an XLSX spreadsheet
     if app_gui.yesNoBox("Convert to XLSX?",
                         ("Do you want to convert the PDF ledger to an XLSX " +
-                         "spreadsheet using pdftoexcel.com, and then upload " +
-                         "it to %s?" %
+                         "spreadsheet, and then upload it to %s?" %
                          config["destination_sheet_name"])) is True:
 
         # If so then convert it and upload it
@@ -637,7 +638,7 @@ def main(app_gui: gui):
                              "Google Sheets?")) is True:
             # If so then open it in the prescribed browser
             LOGGER.info("User chose to open the uploaded ledger in Sheets.")
-            ledger.open_google_sheet_in_browser()
+            ledger.open_sheet_in_browser()
 
 
 if __name__ == "__main__":
