@@ -69,7 +69,7 @@ class Ledger:
 
     def __init__(self, config: configparser.SectionProxy,
                  expense365: configparser.SectionProxy,
-                 app_gui: gui):
+                 app_gui: gui = None):
         """Constructs the ledger, including downloading the PDF.
 
         :param config: the general config
@@ -382,7 +382,8 @@ class Ledger:
             raise URLDoesNotExist("The PDF ledger isn't in Drive.")
         return self.drive_pdf_url
 
-    def get_sheets_data(self, convert: bool = True, upload: bool = True) -> dict:
+    def get_sheets_data(self, convert: bool = True,
+                        upload: bool = True) -> dict:
         """Returns the name and URL of the ledger in Google Sheets.
 
         :param convert: whether to convert the PDF if needed

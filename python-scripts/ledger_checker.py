@@ -14,7 +14,6 @@ an Apps Script project linked to the Google Sheet that the ledger is
 uploaded to.
 """
 
-import base64
 import configparser
 import email.utils
 import imaplib
@@ -41,8 +40,7 @@ from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
 
 from custom_exceptions import AppsScriptApiException
-from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
-    authorize, update_pdf_ledger
+from ledger_fetcher import Ledger
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -59,7 +57,7 @@ CONFIG_FILENAME = "config.ini"
 class LedgerCheckerSaveFile:
     """Represents the save file used to maintain persistence."""
 
-    def __init__(self, save_data_filepath: str, log: logging):
+    def __init__(self, save_data_filepath: str):
 
         # Try to open the save file if it exists
         try:
@@ -83,7 +81,6 @@ class LedgerCheckerSaveFile:
             self.sheet_id = None
             self.timestamp = None
 
-        self.log = log
         self.save_data()
 
     def save_data(self):
@@ -110,8 +107,8 @@ class LedgerCheckerSaveFile:
         self.timestamp = timestamp
         self.stack_traces.clear()
         self.save_data()
-        self.log.debug("Successful check saved to %s",
-                       self.save_data_filepath)
+        LOGGER.debug("Successful check saved to %s",
+                     self.save_data_filepath)
 
     def new_check_fail(self, stack_trace: str):
         """Runs when a check failed.
@@ -123,8 +120,8 @@ class LedgerCheckerSaveFile:
         date = datetime.now().strftime("%A %d %B %Y AT %H:%M:%S")
         self.stack_traces.append("ERROR ON %s\n%s" % (date, stack_trace))
         self.save_data()
-        self.log.debug("Failed check saved to %s",
-                       self.save_data_filepath)
+        LOGGER.debug("Failed check saved to %s",
+                     self.save_data_filepath)
 
     def get_data(self) -> tuple:
         """Gets and returns the saved data."""
@@ -398,34 +395,22 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     config = parser["ledger_checker"]
     expense365 = parser["eXpense365"]
 
-    # Prepare the authentication
-    data = expense365["email"] + ":" + expense365["password"]
-    auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
-
     # Download the ledger, convert it, and upload it to Google Sheets
     print("Downloading the PDF...")
-    pdf_filepath = download_pdf(auth=auth,
-                                group_id=expense365["group_id"],
-                                subgroup_id=expense365["subgroup_id"],
-                                filename_prefix=config["filename_prefix"],
-                                dir_name=config["dir_name"],
-                                app_gui=None)
+    ledger = Ledger(config=config, expense365=expense365)
+    pdf_filepath = ledger.get_pdf_filepath()
     print("Converting the ledger...")
-    xlsx_filepath = convert_to_xlsx(pdf_filepath=pdf_filepath,
-                                    app_gui=None,
-                                    dir_name=config["dir_name"])
+    xlsx_filepath = ledger.get_xlsx_filepath()
     print("Uploading the ledger to Google Sheets...")
-    sheet_url, sheet_name = upload_ledger(dir_name=config["dir_name"],
-                                          destination_sheet_id=config["destination_sheet_id"],
-                                          xlsx_filepath=xlsx_filepath)
+    sheets_data = ledger.get_sheets_data()
     print("Ledger downloaded, converted, and uploaded successfully.")
 
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
-    drive, sheets, apps_script = authorize()
+    drive, sheets, apps_script = Ledger.authorize()
     print("Executing the Apps Script function (this may take some time)...")
     LOGGER.info("Starting the Apps Script function...")
-    body = {"function": config["function"], "parameters": sheet_name}
+    body = {"function": config["function"], "parameters": sheets_data["name"]}
     response = apps_script.scripts().run(body=body,
                                          scriptId=config["script_id"]).execute()
 
@@ -499,14 +484,11 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     else:
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
-        pdf_url = update_pdf_ledger(dir_name=config["dir_name"],
-                                    pdf_ledger_id=config["pdf_ledger_id"],
-                                    pdf_ledger_name=config["pdf_ledger_name"],
-                                    pdf_filepath=pdf_filepath)
+        pdf_url = ledger.get_drive_pdf_url()
         old_timestamp = save_data.get_timestamp()
         send_success_email(config=parser["email"], changes=changes,
                            pdf_filepath=pdf_filepath,
-                           sheet_url=sheet_url, pdf_url=pdf_url,
+                           sheet_url=sheets_data["url"], pdf_url=pdf_url,
                            old_timestamp=old_timestamp)
         print("Email sent successfully!")
         LOGGER.info("Deleting the old sheet...")
@@ -529,7 +511,7 @@ def main():
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
 
-    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"], LOGGER)
+    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"])
 
     try:
         check_ledger(save_data=save_data, parser=parser)
