@@ -14,6 +14,7 @@ from __future__ import print_function
 
 import base64
 import configparser
+import json
 import logging
 import os
 import pickle
@@ -85,9 +86,9 @@ class Ledger:
         auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
 
         # Download the ledger
-        self.expense365_data = {"ReportID": expense365["report_id"],
-                                "UserGroupID": expense365["group_id"],
-                                "SubGroupID": expense365["subgroup_id"]}
+        self.expense365_data = {"ReportID": int(expense365["report_id"]),
+                                "UserGroupID": int(expense365["group_id"]),
+                                "SubGroupID": int(expense365["subgroup_id"])}
         self.filename_prefix = config["filename_prefix"]
         self.dir_name = config["dir_name"]
         self.pdf_filepath = None
@@ -125,7 +126,7 @@ class Ledger:
         # Make the request and check it was successful
         LOGGER.info("Making the HTTP request to service.expense365.com...")
         response = requests.post(url=url, headers=headers,
-                                 data=self.expense365_data)
+                                 data=json.dumps(self.expense365_data))
         response.raise_for_status()
         LOGGER.info("The request was successful with no HTTP errors.")
 
@@ -419,6 +420,14 @@ class Ledger:
                             webbrowser.BackgroundBrowser(self.browser_path))
         webbrowser.get(using="my-browser").open(open_path)
 
+    def open_google_sheet_in_browser(self):
+        """Opens the ledger in Google Sheets in the designated browser."""
+        open_path = self.get_sheets_data()["url"]
+        webbrowser.register("my-browser",
+                            None,
+                            webbrowser.BackgroundBrowser(self.browser_path))
+        webbrowser.get(using="my-browser").open(open_path)
+
     @staticmethod
     def authorize() -> tuple:
         """Authorizes access to the user's Drive, Sheets, and Apps Script.
@@ -596,30 +605,15 @@ def main(app_gui: gui):
     config = parser["ledger_fetcher"]
     expense365 = parser["eXpense365"]
 
-    # Prepare the authentication
-    data = expense365["email"] + ":" + expense365["password"]
-    auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
-
-    # Download the PDF, returning the file path
+    # Get the ledger
     print("Downloading the PDF...")
-    pdf_filepath = download_pdf(auth=auth,
-                                group_id=expense365["group_id"],
-                                subgroup_id=expense365["subgroup_id"],
-                                filename_prefix=config["filename_prefix"],
-                                dir_name=config["dir_name"],
-                                app_gui=app_gui)
-    print("PDF ledger saved successfully at %s." % pdf_filepath)
+    ledger = Ledger(config=config, expense365=expense365, app_gui=app_gui)
+    pdf_filepath = ledger.get_pdf_filepath()
 
     # Ask the user if they want to open it
     if app_gui.yesNoBox("Open PDF?",
                         "Do you want to open the ledger?") is True:
-        # If so then open it in the prescribed browser
-        LOGGER.info("User chose to open the PDF in the browser.")
-        open_path = "file://///" + pdf_filepath
-        webbrowser.register("my-browser",
-                            None,
-                            webbrowser.BackgroundBrowser(config["browser_path"]))
-        webbrowser.get(using="my-browser").open(open_path)
+        ledger.open_pdf_in_browser()
 
     # Ask the user if they want to convert it to an XLSX spreadsheet
     if app_gui.yesNoBox("Convert to XLSX?",
@@ -631,16 +625,11 @@ def main(app_gui: gui):
         # If so then convert it and upload it
         LOGGER.info("User chose to convert and upload the ledger.")
         print("Converting the ledger...")
-        xlsx_filepath = convert_to_xlsx(pdf_filepath=pdf_filepath,
-                                        app_gui=app_gui,
-                                        dir_name=config["dir_name"])
-        print("XLSX ledger saved successfully at %s." % xlsx_filepath)
+        ledger.get_xlsx_filepath()
         print("Uploading the ledger to Google Sheets...")
-        new_url, sheet_name = upload_ledger(dir_name=config["dir_name"],
-                                            destination_sheet_id=config["destination_sheet_id"],
-                                            app_gui=app_gui, xlsx_filepath=xlsx_filepath)
+        sheets_data = ledger.get_sheets_data()
         print("Ledger uploaded to Google Sheets successfully. "
-              "Find it in the sheet named %s." % sheet_name)
+              "Find it in the sheet named %s." % sheets_data["name"])
 
         # Ask the user if they want to open the new ledger in Google Sheets
         if app_gui.yesNoBox("Open %s?" % config["destination_sheet_name"],
@@ -648,11 +637,7 @@ def main(app_gui: gui):
                              "Google Sheets?")) is True:
             # If so then open it in the prescribed browser
             LOGGER.info("User chose to open the uploaded ledger in Sheets.")
-            open_path = new_url
-            webbrowser.register("my-browser",
-                                None,
-                                webbrowser.BackgroundBrowser(config["browser_path"]))
-            webbrowser.get(using="my-browser").open(open_path)
+            ledger.open_google_sheet_in_browser()
 
 
 if __name__ == "__main__":
