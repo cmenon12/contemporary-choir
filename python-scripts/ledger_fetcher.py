@@ -68,6 +68,15 @@ class Ledger:
     def __init__(self, config: configparser.SectionProxy,
                  expense365: configparser.SectionProxy,
                  app_gui: gui):
+        """Constructs the ledger, including downloading the PDF.
+
+        :param config: the general config
+        :type: configparser.SectionProxy
+        :param expense365: the expense365-specific config
+        :type: configparser.SectionProxy
+        :param app_gui: the appJar GUI to use
+        :type app_gui: gui
+        """
 
         self.app_gui = app_gui
 
@@ -81,11 +90,8 @@ class Ledger:
                                 "SubGroupID": expense365["subgroup_id"]}
         self.filename_prefix = config["filename_prefix"]
         self.dir_name = config["dir_name"]
-
+        self.pdf_filepath = None
         self.download_pdf(auth)
-        self.drive_pdf_url = None
-        self.xlsx_filepath = None
-        self.google_sheets_data = None
 
         # Prepare for future use
         self.pdf_ledger_id = config["pdf_ledger_id"]
@@ -93,8 +99,9 @@ class Ledger:
         self.destination_sheet_name = config["destination_sheet_name"]
         self.destination_sheet_id = config["destination_sheet_id"]
         self.browser_path = config["browser_path"]
-
-        pass
+        self.drive_pdf_url = None
+        self.xlsx_filepath = None
+        self.google_sheets_data = None
 
     def download_pdf(self, auth: str) -> None:
         """Downloads the ledger from expense365.com.
@@ -229,7 +236,7 @@ class Ledger:
         LOGGER.info("PDF at %s has been opened.", self.pdf_filepath)
 
         # Authenticate and retrieve the required services
-        drive, sheets, apps_script = authorize()
+        drive, sheets, apps_script = Ledger.authorize()
 
         # Update the PDF copy of the ledger with a new version
         LOGGER.info("Uploading the new PDF ledger to Drive...")
@@ -267,7 +274,7 @@ class Ledger:
         LOGGER.info("Spreadsheet at %s has been opened.", self.xlsx_filepath)
 
         # Authenticate and retrieve the required services
-        drive, sheets, apps_script = authorize()
+        drive, sheets, apps_script = Ledger.authorize()
 
         # Upload the ledger
         LOGGER.info("Uploading the ledger to Google Sheets")
@@ -412,6 +419,45 @@ class Ledger:
                             webbrowser.BackgroundBrowser(self.browser_path))
         webbrowser.get(using="my-browser").open(open_path)
 
+    @staticmethod
+    def authorize() -> tuple:
+        """Authorizes access to the user's Drive, Sheets, and Apps Script.
+
+        :return: the authenticated services
+        :rtype: tuple
+        """
+
+        LOGGER.info("Authenticating the user to access Google APIs...")
+        credentials = None
+        if os.path.exists(TOKEN_PICKLE_FILE):
+            with open(TOKEN_PICKLE_FILE, "rb") as token:
+                credentials = pickle.load(token)
+
+        # If there are no (valid) credentials available, let the user log in.
+        if not credentials or not credentials.valid:
+            LOGGER.info("There are no credentials or they are invalid.")
+            if credentials and credentials.expired and \
+                    credentials.refresh_token:
+                credentials.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    CLIENT_SECRETS_FILE, SCOPES)
+                credentials = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open(TOKEN_PICKLE_FILE, "wb") as token:
+                pickle.dump(credentials, token)
+            LOGGER.info("Credentials saved to %s successfully.", TOKEN_PICKLE_FILE)
+
+        # Build the services and return them as a tuple
+        drive_service = build("drive", "v3", credentials=credentials,
+                              cache_discovery=False)
+        sheets_service = build("sheets", "v4", credentials=credentials,
+                               cache_discovery=False)
+        apps_script_service = build("script", "v1", credentials=credentials,
+                                    cache_discovery=False)
+        LOGGER.info("Services built successfully.")
+        return drive_service, sheets_service, apps_script_service
+
 
 class PDFToXLSXConverter:
     """Represents a PDF to XLSX converter."""
@@ -535,45 +581,6 @@ class PDFToXLSXConverter:
     def get_name(self) -> str:
         """Return the name of the converter."""
         return self.name
-
-
-def authorize() -> tuple:
-    """Authorizes access to the user's Drive, Sheets, and Apps Script.
-
-    :return: the authenticated services
-    :rtype: tuple
-    """
-
-    LOGGER.info("Authenticating the user to access Google APIs...")
-    credentials = None
-    if os.path.exists(TOKEN_PICKLE_FILE):
-        with open(TOKEN_PICKLE_FILE, "rb") as token:
-            credentials = pickle.load(token)
-
-    # If there are no (valid) credentials available, let the user log in.
-    if not credentials or not credentials.valid:
-        LOGGER.info("There are no credentials or they are invalid.")
-        if credentials and credentials.expired and \
-                credentials.refresh_token:
-            credentials.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                CLIENT_SECRETS_FILE, SCOPES)
-            credentials = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(TOKEN_PICKLE_FILE, "wb") as token:
-            pickle.dump(credentials, token)
-        LOGGER.info("Credentials saved to %s successfully.", TOKEN_PICKLE_FILE)
-
-    # Build the services and return them as a tuple
-    drive_service = build("drive", "v3", credentials=credentials,
-                          cache_discovery=False)
-    sheets_service = build("sheets", "v4", credentials=credentials,
-                           cache_discovery=False)
-    apps_script_service = build("script", "v1", credentials=credentials,
-                                cache_discovery=False)
-    LOGGER.info("Services built successfully.")
-    return drive_service, sheets_service, apps_script_service
 
 
 def main(app_gui: gui):
