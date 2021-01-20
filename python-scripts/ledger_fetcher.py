@@ -83,6 +83,13 @@ class Ledger:
         self.download_pdf(auth)
         self.xlsx_filepath = None
 
+        # Prepare for future use
+        self.pdf_ledger_id = config["pdf_ledger_id"]
+        self.pdf_ledger_name = config["pdf_ledger_name"]
+        self.destination_sheet_name = config["destination_sheet_name"]
+        self.destination_sheet_id = config["destination_sheet_id"]
+        self.browser_path = config["browser_path"]
+
         pass
 
     def download_pdf(self, auth: str) -> str:
@@ -218,14 +225,123 @@ class Ledger:
         self.xlsx_filepath = xlsx_filepath
         return xlsx_filepath
 
-    def update_drive_pdf(self):
-        pass
+    def update_drive_pdf(self) -> str:
+        """Updates the PDF in Drive with the new version of the ledger.
 
-    def upload_to_sheets(self):
-        pass
+        :return: the URL of the destination PDF
+        :rtype: str
+        """
 
-    def get_pdf_file(self):
-        pass
+        LOGGER.info("PDF at %s has been opened.", self.pdf_filepath)
+
+        # Authenticate and retrieve the required services
+        drive, sheets, apps_script = authorize()
+
+        # Update the PDF copy of the ledger with a new version
+        LOGGER.info("Uploading the new PDF ledger to Drive...")
+        head, filename = os.path.split(self.pdf_filepath)
+        file_metadata = {"name": self.pdf_ledger_name,
+                         "mimeType": "application/pdf",
+                         "originalFilename": filename}
+        media = MediaFileUpload(self.pdf_filepath,
+                                mimetype="application/pdf",
+                                resumable=True)
+        file = drive.files().update(body=file_metadata,
+                                    media_body=media,
+                                    fields="webViewLink",
+                                    fileId=self.pdf_ledger_id,
+                                    keepRevisionForever=True).execute()
+        pdf_url = file.get("webViewLink")
+        LOGGER.info("PDF Ledger uploaded to Google Drive at %s.",
+                    pdf_url)
+
+        return pdf_url
+
+    def upload_to_sheets(self, convert: bool = True) -> tuple:
+        """Uploads the ledger to the specified Google Sheet.
+
+        :param convert: whether to convert the PDF if needed
+        :type convert: bool, optional
+        :return: the URL of the destination spreadsheet and the sheet name
+        :rtype: tuple
+        :raises XLSXDoesNotExist: when convert is False.
+        """
+
+        if self.xlsx_filepath is None and convert is True:
+            self.convert_to_xlsx()
+        elif self.xlsx_filepath is None and convert is False:
+            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
+
+        LOGGER.info("Spreadsheet at %s has been opened.", self.xlsx_filepath)
+
+        # Authenticate and retrieve the required services
+        drive, sheets, apps_script = authorize()
+
+        # Upload the ledger
+        LOGGER.info("Uploading the ledger to Google Sheets")
+        file_metadata = {"name": "The Latest Ledger (temporary)",
+                         "mimeType": "application/vnd.google-apps.spreadsheet"}
+        xlsx_mimetype = ("application/vnd.openxmlformats-officedocument" +
+                         ".spreadsheetml.sheet")
+        media = MediaFileUpload(self.xlsx_filepath,
+                                mimetype=xlsx_mimetype,
+                                resumable=True)
+        file = drive.files().create(body=file_metadata,
+                                    media_body=media,
+                                    fields="id").execute()
+        latest_ledger_id = file.get("id")
+        LOGGER.info("Ledger uploaded to Google Sheets with file ID %s.",
+                    latest_ledger_id)
+
+        # Get the ID of the first sheet in the newly-uploaded spreadsheet
+        LOGGER.info("Fetching the sheet ID...")
+        response = sheets.spreadsheets().get(spreadsheetId=latest_ledger_id,
+                                             ranges="A1:D4",
+                                             includeGridData=False).execute()
+        sheet_id = response["sheets"][0]["properties"]["sheetId"]
+        LOGGER.info("The ledger is in the sheet with ID %s.", sheet_id)
+
+        # Copy the uploader ledger to the sheet with the macro
+        LOGGER.info("Copying the sheet to the spreadsheet with ID %s...",
+                    self.destination_sheet_id)
+        body = {"destinationSpreadsheetId": self.destination_sheet_id}
+        response = sheets.spreadsheets().sheets() \
+            .copyTo(spreadsheetId=latest_ledger_id,
+                    sheetId=sheet_id,
+                    body=body).execute()
+        new_sheet_id = response["sheetId"]
+        LOGGER.info("Sheet copied successfully. Sheet has ID %s.",
+                    new_sheet_id)
+
+        # Generate a new title for the sheet
+        head, filename = os.path.split(self.xlsx_filepath)
+        filename_parts = filename.split(" ")
+        tuple(filename_parts[-3:])
+        filename_no_prefix = "%s %s %s" % tuple(filename_parts[-3:])
+        timestamp = datetime.strptime(filename_no_prefix,
+                                      "%d-%m-%Y at %H.%M.%S.xlsx")
+        new_sheet_title = timestamp.strftime("%d/%m/%Y %H:%M:%S")
+
+        # Rename the copied sheet
+        body = {"requests": [{
+            "updateSheetProperties": {
+                "properties": {"sheetId": int(new_sheet_id),
+                               "title": new_sheet_title},
+                "fields": "title"
+            }
+        }], "includeSpreadsheetInResponse": False}
+        sheets.spreadsheets().batchUpdate(spreadsheetId=self.destination_sheet_id,
+                                          body=body).execute()
+        LOGGER.info("Sheet renamed successfully. Sheet has ID %s and title %s.",
+                    new_sheet_id, new_sheet_title)
+
+        # Delete the uploaded Google Sheet
+        LOGGER.info("Deleting the uploaded ledger...")
+        drive.files().delete(fileId=latest_ledger_id).execute()
+        LOGGER.info("Original uploaded ledger deleted successfully.")
+
+        return ("https://docs.google.com/spreadsheets/d/" + self.destination_sheet_id +
+                "/edit#gid=" + str(new_sheet_id)), new_sheet_title
 
     def get_pdf_filepath(self):
         """Returns the filepath of the PDF ledger.
@@ -251,8 +367,13 @@ class Ledger:
         else:
             raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
 
-    def open_pdf(self, browser: str):
-        pass
+    def open_pdf_in_browser(self):
+        """Opens the PDF ledger in the designated browser."""
+        open_path = "file://///" + self.pdf_filepath
+        webbrowser.register("my-browser",
+                            None,
+                            webbrowser.BackgroundBrowser(self.browser_path))
+        webbrowser.get(using="my-browser").open(open_path)
 
 
 class PDFToXLSXConverter:
@@ -377,162 +498,6 @@ class PDFToXLSXConverter:
     def get_name(self) -> str:
         """Return the name of the converter."""
         return self.name
-
-
-def update_pdf_ledger(dir_name: str, pdf_ledger_id: str, pdf_ledger_name: str,
-                      app_gui: gui = None, pdf_filepath: str = "") -> str:
-    """Updates the PDF with the new version of the ledger.
-
-    :param dir_name: the default directory to open the PDF file from
-    :type dir_name: str
-    :param pdf_ledger_id: the id of the PDF to upload it to
-    :type pdf_ledger_id: str
-    :param pdf_ledger_name: the name of the PDF in Drive
-    :type pdf_ledger_name: str
-    :param app_gui: the appJar GUI to use
-    :type app_gui: appJar.appjar.gui
-    :param pdf_filepath: the filepath of the PDF
-    :type pdf_filepath: str, optional
-    :return: the URL of the destination PDF
-    :rtype: str
-    """
-
-    # Open the spreadsheet
-    if pdf_filepath == "":
-        pdf_file_box = app_gui.openBox(title="Open PDF",
-                                       dirName=dir_name,
-                                       fileTypes=[("Portable Document " +
-                                                   "Format", "*.pdf")],
-                                       asFile=True)
-        if pdf_file_box is None:
-            LOGGER.warning("The user cancelled opening the PDF.")
-            raise SystemExit("User cancelled opening the PDF.")
-        pdf_filepath = pdf_file_box.name
-        app_gui.removeAllWidgets()
-    LOGGER.info("PDF at %s has been opened.", pdf_filepath)
-
-    # Authenticate and retrieve the required services
-    drive, sheets, apps_script = authorize()
-
-    # Update the PDF copy of the ledger with a new version
-    LOGGER.info("Uploading the new PDF ledger to Drive...")
-    head, filename = os.path.split(pdf_filepath)
-    file_metadata = {"name": pdf_ledger_name,
-                     "mimeType": "application/pdf",
-                     "originalFilename": filename}
-    media = MediaFileUpload(pdf_filepath,
-                            mimetype="application/pdf",
-                            resumable=True)
-    file = drive.files().update(body=file_metadata,
-                                media_body=media,
-                                fields="webViewLink",
-                                fileId=pdf_ledger_id,
-                                keepRevisionForever=True).execute()
-    pdf_url = file.get("webViewLink")
-    LOGGER.info("PDF Ledger uploaded to Google Drive at %s.",
-                pdf_url)
-
-    return pdf_url
-
-
-def upload_ledger(dir_name: str, destination_sheet_id: str,
-                  app_gui: gui = None, xlsx_filepath: str = "") -> tuple:
-    """Uploads the ledger to the specified Google Sheet.
-
-    :param dir_name: the default directory to open the XLSX file from
-    :type dir_name: str
-    :param destination_sheet_id: the id of the sheet to upload it to
-    :type destination_sheet_id: str
-    :param app_gui: the appJar GUI to use
-    :type app_gui: appJar.appjar.gui
-    :param xlsx_filepath: the filepath of the XLSX spreadsheet
-    :type xlsx_filepath: str, optional
-    :return: the URL of the destination spreadsheet and the sheet name
-    :rtype: tuple
-    """
-
-    # Open the spreadsheet
-    if xlsx_filepath == "":
-        xlsx_file_box = app_gui.openBox(title="Open spreadsheet",
-                                        dirName=dir_name,
-                                        fileTypes=[("Office Open XML " +
-                                                    "Workbook", "*.xlsx")],
-                                        asFile=True)
-        if xlsx_file_box is None:
-            LOGGER.warning("The user cancelled opening the XLSX.")
-            raise SystemExit("User cancelled opening the XLSX.")
-        xlsx_filepath = xlsx_file_box.name
-        app_gui.removeAllWidgets()
-    LOGGER.info("Spreadsheet at %s has been opened.", xlsx_filepath)
-
-    # Authenticate and retrieve the required services
-    drive, sheets, apps_script = authorize()
-
-    # Upload the ledger
-    LOGGER.info("Uploading the ledger to Google Sheets")
-    file_metadata = {"name": "The Latest Ledger (temporary)",
-                     "mimeType": "application/vnd.google-apps.spreadsheet"}
-    xlsx_mimetype = ("application/vnd.openxmlformats-officedocument" +
-                     ".spreadsheetml.sheet")
-    media = MediaFileUpload(xlsx_filepath,
-                            mimetype=xlsx_mimetype,
-                            resumable=True)
-    file = drive.files().create(body=file_metadata,
-                                media_body=media,
-                                fields="id").execute()
-    latest_ledger_id = file.get("id")
-    LOGGER.info("Ledger uploaded to Google Sheets with file ID %s.",
-                latest_ledger_id)
-
-    # Get the ID of the first sheet in the newly-uploaded spreadsheet
-    LOGGER.info("Fetching the sheet ID...")
-    response = sheets.spreadsheets().get(spreadsheetId=latest_ledger_id,
-                                         ranges="A1:D4",
-                                         includeGridData=False).execute()
-    sheet_id = response["sheets"][0]["properties"]["sheetId"]
-    LOGGER.info("The ledger is in the sheet with ID %s.", sheet_id)
-
-    # Copy the uploader ledger to the sheet with the macro
-    LOGGER.info("Copying the sheet to the spreadsheet with ID %s...",
-                destination_sheet_id)
-    body = {"destinationSpreadsheetId": destination_sheet_id}
-    response = sheets.spreadsheets().sheets() \
-        .copyTo(spreadsheetId=latest_ledger_id,
-                sheetId=sheet_id,
-                body=body).execute()
-    new_sheet_id = response["sheetId"]
-    LOGGER.info("Sheet copied successfully. Sheet has ID %s.",
-                new_sheet_id)
-
-    # Generate a new title for the sheet
-    head, filename = os.path.split(xlsx_filepath)
-    filename_parts = filename.split(" ")
-    tuple(filename_parts[-3:])
-    filename_no_prefix = "%s %s %s" % tuple(filename_parts[-3:])
-    timestamp = datetime.strptime(filename_no_prefix,
-                                  "%d-%m-%Y at %H.%M.%S.xlsx")
-    new_sheet_title = timestamp.strftime("%d/%m/%Y %H:%M:%S")
-
-    # Rename the copied sheet
-    body = {"requests": [{
-        "updateSheetProperties": {
-            "properties": {"sheetId": int(new_sheet_id),
-                           "title": new_sheet_title},
-            "fields": "title"
-        }
-    }], "includeSpreadsheetInResponse": False}
-    sheets.spreadsheets().batchUpdate(spreadsheetId=destination_sheet_id,
-                                      body=body).execute()
-    LOGGER.info("Sheet renamed successfully. Sheet has ID %s and title %s.",
-                new_sheet_id, new_sheet_title)
-
-    # Delete the uploaded Google Sheet
-    LOGGER.info("Deleting the uploaded ledger...")
-    drive.files().delete(fileId=latest_ledger_id).execute()
-    LOGGER.info("Original uploaded ledger deleted successfully.")
-
-    return ("https://docs.google.com/spreadsheets/d/" + destination_sheet_id +
-            "/edit#gid=" + str(new_sheet_id)), new_sheet_title
 
 
 def authorize() -> tuple:
