@@ -31,7 +31,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 from custom_exceptions import ConversionTimeoutException, \
-    ConversionRejectedException, XLSXDoesNotExist
+    ConversionRejectedException, XLSXDoesNotExist, URLDoesNotExist
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -65,7 +65,9 @@ TOKEN_PICKLE_FILE = "token.pickle"
 
 class Ledger:
 
-    def __init__(self, config: configparser, expense365: configparser, app_gui):
+    def __init__(self, config: configparser.SectionProxy,
+                 expense365: configparser.SectionProxy,
+                 app_gui: gui):
 
         self.app_gui = app_gui
 
@@ -81,7 +83,9 @@ class Ledger:
         self.dir_name = config["dir_name"]
 
         self.download_pdf(auth)
+        self.drive_pdf_url = None
         self.xlsx_filepath = None
+        self.google_sheets_data = None
 
         # Prepare for future use
         self.pdf_ledger_id = config["pdf_ledger_id"]
@@ -92,13 +96,11 @@ class Ledger:
 
         pass
 
-    def download_pdf(self, auth: str) -> str:
+    def download_pdf(self, auth: str) -> None:
         """Downloads the ledger from expense365.com.
 
         :param auth: the authentication header with the email and password
         :type auth: str
-        :returns: the filepath of the saved PDF
-        :rtype: str
         :raises HTTPError: if an unsuccessful HTTP status code is returned
         """
 
@@ -152,13 +154,10 @@ class Ledger:
         # If successful then return the file path
         LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
         self.pdf_filepath = pdf_filepath
-        return pdf_filepath
 
-    def convert_to_xlsx(self) -> str:
+    def convert_to_xlsx(self) -> None:
         """Converts the PDF to an Excel file and saves it.
 
-        :return: the path to the downloaded XLSX spreadsheet
-        :rtype: str
         :raises ConversionTimeoutException: if the conversion takes too long
         """
 
@@ -167,7 +166,7 @@ class Ledger:
 
         # Make the request and check that it was successful
         LOGGER.info("Sending the PDF for conversion to %s..." %
-                         converter.get_name())
+                    converter.get_name())
         job_id = converter.upload_pdf()
         LOGGER.info("The request was successful with no HTTP errors.")
         LOGGER.info("The jobId is %s.", job_id)
@@ -223,14 +222,9 @@ class Ledger:
         # If successful then return the file path
         LOGGER.info("Spreadsheet ledger saved successfully at %s.", xlsx_filepath)
         self.xlsx_filepath = xlsx_filepath
-        return xlsx_filepath
 
-    def update_drive_pdf(self) -> str:
-        """Updates the PDF in Drive with the new version of the ledger.
-
-        :return: the URL of the destination PDF
-        :rtype: str
-        """
+    def update_drive_pdf(self) -> None:
+        """Updates the PDF in Drive with the new version of the ledger."""
 
         LOGGER.info("PDF at %s has been opened.", self.pdf_filepath)
 
@@ -255,15 +249,13 @@ class Ledger:
         LOGGER.info("PDF Ledger uploaded to Google Drive at %s.",
                     pdf_url)
 
-        return pdf_url
+        self.drive_pdf_url = pdf_url
 
-    def upload_to_sheets(self, convert: bool = True) -> tuple:
+    def upload_to_sheets(self, convert: bool = True) -> None:
         """Uploads the ledger to the specified Google Sheet.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
-        :return: the URL of the destination spreadsheet and the sheet name
-        :rtype: tuple
         :raises XLSXDoesNotExist: when convert is False.
         """
 
@@ -340,10 +332,12 @@ class Ledger:
         drive.files().delete(fileId=latest_ledger_id).execute()
         LOGGER.info("Original uploaded ledger deleted successfully.")
 
-        return ("https://docs.google.com/spreadsheets/d/" + self.destination_sheet_id +
-                "/edit#gid=" + str(new_sheet_id)), new_sheet_title
+        self.google_sheets_data = {"name": new_sheet_title,
+                                   "url": ("https://docs.google.com/spreadsheets/d/" +
+                                           self.destination_sheet_id +
+                                           "/edit#gid=" + str(new_sheet_id))}
 
-    def get_pdf_filepath(self):
+    def get_pdf_filepath(self) -> str:
         """Returns the filepath of the PDF ledger.
 
         :return: the filepath of the PDF ledger.
@@ -351,21 +345,64 @@ class Ledger:
         """
         return self.pdf_filepath
 
-    def get_xlsx_filepath(self, convert: bool = True):
+    def get_xlsx_filepath(self, convert: bool = True) -> str:
         """Returns the filepath of the XLSX spreadsheet.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
         :return: the filepath of the XLSX ledger
         :rtype: str
-        :raises XLSXDoesNotExist: when convert is False.
+        :raises XLSXDoesNotExist: when convert is False
         """
         if self.xlsx_filepath is None and convert is True:
-            return self.convert_to_xlsx()
-        elif self.xlsx_filepath is not None:
+            self.convert_to_xlsx()
             return self.xlsx_filepath
-        else:
+        elif self.xlsx_filepath is None and convert is False:
             raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
+        else:
+            return self.xlsx_filepath
+
+    def get_drive_pdf_url(self, upload: bool = True) -> str:
+        """Returns the URL of the PDF ledger in Drive.
+
+        :param upload: whether to upload the PDF if needed
+        :type upload: bool, optional
+        :return: the URL of the PDF in Drive
+        :rtype: str
+        :raises URLDoesNotExist: when upload is False
+        """
+        if self.drive_pdf_url is None and upload is True:
+            self.update_drive_pdf()
+            return self.drive_pdf_url
+        elif self.drive_pdf_url is None and upload is False:
+            raise URLDoesNotExist("The PDF ledger isn't in Drive.")
+        else:
+            return self.drive_pdf_url
+
+    def get_sheets_data(self, convert: bool = True, upload: bool = True) -> dict:
+        """Returns the name and URL of the ledger in Google Sheets.
+
+        :param convert: whether to convert the PDF if needed
+        :type convert: bool, optional
+        :param upload: whether to upload the XLSX if needed
+        :type upload: bool, optional
+        :returns: the sheet name and url
+        :rtype: dict
+        :raises XLSXDoesNotExist: when convert is False
+        :raises URLDoesNotExist: when upload is False
+        """
+
+        if self.xlsx_filepath is None and convert is True:
+            self.convert_to_xlsx()
+        elif self.xlsx_filepath is None and convert is False:
+            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
+
+        if self.google_sheets_data is None and upload is True:
+            self.upload_to_sheets()
+        elif self.google_sheets_data is None and upload is False:
+            raise URLDoesNotExist("The XLSX ledger isn't in Sheets.")
+
+        return self.google_sheets_data
 
     def open_pdf_in_browser(self):
         """Opens the PDF ledger in the designated browser."""

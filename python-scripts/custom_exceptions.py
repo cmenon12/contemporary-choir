@@ -57,3 +57,8 @@ class AppsScriptApiException(Exception):
 class XLSXDoesNotExist(Exception):
     """Thrown when the XLSX file doesn't exist."""
     pass
+
+
+class URLDoesNotExist(Exception):
+    """Thrown when a URL doesn't exist."""
+    pass
