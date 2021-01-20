@@ -31,7 +31,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 from custom_exceptions import ConversionTimeoutException, \
-    ConversionRejectedException
+    ConversionRejectedException, XLSXDoesNotExist
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -68,7 +68,6 @@ class Ledger:
     def __init__(self, config: configparser, expense365: configparser, app_gui):
 
         self.app_gui = app_gui
-        self.logger = logging.getLogger(__name__)
 
         # Prepare the authentication
         data = expense365["email"] + ":" + expense365["password"]
@@ -81,7 +80,8 @@ class Ledger:
         self.filename_prefix = config["filename_prefix"]
         self.dir_name = config["dir_name"]
 
-        self.pdf_filepath = self.download_pdf(auth)
+        self.download_pdf(auth)
+        self.xlsx_filepath = None
 
         pass
 
@@ -107,11 +107,11 @@ class Ledger:
         }
 
         # Make the request and check it was successful
-        self.logger.info("Making the HTTP request to service.expense365.com...")
+        LOGGER.info("Making the HTTP request to service.expense365.com...")
         response = requests.post(url=url, headers=headers,
                                  data=self.expense365_data)
         response.raise_for_status()
-        self.logger.info("The request was successful with no HTTP errors.")
+        LOGGER.info("The request was successful with no HTTP errors.")
 
         # Parse the date and convert it to the local timezone
         date_string = datetime.strptime(response.headers["Date"],
@@ -124,7 +124,7 @@ class Ledger:
         filename = self.filename_prefix + " " + date_string
 
         # Get a filename and save the PDF
-        self.logger.info("Saving the PDF...")
+        LOGGER.info("Saving the PDF...")
         if self.app_gui is not None:
             pdf_file_box = self.app_gui.saveBox("Save ledger",
                                                 dirName=self.dir_name,
@@ -133,7 +133,7 @@ class Ledger:
                                                 fileTypes=[("PDF file", "*.pdf")],
                                                 asFile=True)
             if pdf_file_box is None:
-                self.logger.warning("The user cancelled saving the PDF.")
+                LOGGER.warning("The user cancelled saving the PDF.")
                 raise SystemExit("User cancelled saving the PDF.")
             pdf_filepath = pdf_file_box.name
             self.app_gui.removeAllWidgets()
@@ -143,26 +143,113 @@ class Ledger:
             pdf_file.write(response.content)
 
         # If successful then return the file path
-        self.logger.info("PDF ledger saved successfully at %s.", pdf_filepath)
+        LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
+        self.pdf_filepath = pdf_filepath
         return pdf_filepath
 
-    def convert_to_xlsx(self):
-        pass
+    def convert_to_xlsx(self) -> str:
+        """Converts the PDF to an Excel file and saves it.
+
+        :return: the path to the downloaded XLSX spreadsheet
+        :rtype: str
+        :raises ConversionTimeoutException: if the conversion takes too long
+        """
+
+        # Prepare for the request
+        converter = PDFToXLSXConverter(self.pdf_filepath)
+
+        # Make the request and check that it was successful
+        LOGGER.info("Sending the PDF for conversion to %s..." %
+                         converter.get_name())
+        job_id = converter.upload_pdf()
+        LOGGER.info("The request was successful with no HTTP errors.")
+        LOGGER.info("The jobId is %s.", job_id)
+
+        # Prepare to keep checking the status of the conversion
+        download_url = ""
+
+        # Whilst it is still being converted
+        check_count = 0
+        while download_url == "":
+
+            # Prepare and make the request
+            LOGGER.info("Checking if the conversion is complete...")
+            download_url = converter.check_conversion_status(job_id=job_id)
+
+            # Wait before checking again
+            if download_url == "":
+                check_count += 1
+
+                # Stop if we've been waiting for 2 minutes
+                if check_count == (CONVERSION_TIMEOUT / 2):
+                    raise ConversionTimeoutException(converter.get_name(),
+                                                     CONVERSION_TIMEOUT)
+                time.sleep(2)
+
+        # Prepare and make the request to download the file
+        LOGGER.info("Downloading the converted file...")
+        xlsx_content = converter.download_xlsx(job_id=job_id,
+                                               download_url=download_url)
+
+        # Get a filename and save the XLSX
+        LOGGER.info("Saving the spreadsheet...")
+        head, filename = os.path.split(self.pdf_filepath)
+        filename = filename.replace(".pdf", ".xlsx")
+        if self.app_gui is not None:
+            xlsx_file_box = self.app_gui.saveBox("Save spreadsheet",
+                                                 dirName=self.dir_name,
+                                                 fileName=filename,
+                                                 fileExt=".xlsx",
+                                                 fileTypes=[("Office Open XML " +
+                                                             "Workbook", "*.xlsx")],
+                                                 asFile=True)
+            if xlsx_file_box is None:
+                LOGGER.warning("The user cancelled saving the XLSX.")
+                raise SystemExit("User cancelled saving the XLSX.")
+            xlsx_filepath = xlsx_file_box.name
+            self.app_gui.removeAllWidgets()
+        else:
+            xlsx_filepath = self.pdf_filepath.replace(".pdf", ".xlsx")
+        with open(xlsx_filepath, "wb") as xlsx_file:
+            xlsx_file.write(xlsx_content)
+
+        # If successful then return the file path
+        LOGGER.info("Spreadsheet ledger saved successfully at %s.", xlsx_filepath)
+        self.xlsx_filepath = xlsx_filepath
+        return xlsx_filepath
 
     def update_drive_pdf(self):
         pass
 
-    def upload_to_sheets(self, convert: bool = True):
+    def upload_to_sheets(self):
         pass
 
     def get_pdf_file(self):
         pass
 
     def get_pdf_filepath(self):
+        """Returns the filepath of the PDF ledger.
+
+        :return: the filepath of the PDF ledger.
+        :rtype: str
+        """
         return self.pdf_filepath
 
     def get_xlsx_filepath(self, convert: bool = True):
-        pass
+        """Returns the filepath of the XLSX spreadsheet.
+
+        :param convert: whether to convert the PDF if needed
+        :type convert: bool, optional
+        :return: the filepath of the XLSX ledger
+        :rtype: str
+        :raises XLSXDoesNotExist: when convert is False.
+        """
+        if self.xlsx_filepath is None and convert is True:
+            return self.convert_to_xlsx()
+        elif self.xlsx_filepath is not None:
+            return self.xlsx_filepath
+        else:
+            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
 
     def open_pdf(self, browser: str):
         pass
@@ -290,84 +377,6 @@ class PDFToXLSXConverter:
     def get_name(self) -> str:
         """Return the name of the converter."""
         return self.name
-
-
-def convert_to_xlsx(pdf_filepath: str, dir_name: str,
-                    app_gui: gui) -> str:
-    """Converts the PDF to an Excel file and saves it.
-
-    :param pdf_filepath: the path to the PDF file to convert
-    :type pdf_filepath: str
-    :param dir_name: the default directory to save the PDF
-    :type dir_name: str
-    :param app_gui: the appJar GUI to use
-    :type app_gui: appJar.appjar.gui
-    :return: the path to the downloaded XLSX spreadsheet
-    :rtype: str
-    :raises ConversionTimeoutException: if the conversion takes too long
-    """
-
-    # Prepare for the request
-    converter = PDFToXLSXConverter(pdf_filepath)
-
-    # Make the request and check that it was successful
-    LOGGER.info("Sending the PDF for conversion to %s..." %
-                converter.get_name())
-    job_id = converter.upload_pdf()
-    LOGGER.info("The request was successful with no HTTP errors.")
-    LOGGER.info("The jobId is %s.", job_id)
-
-    # Prepare to keep checking the status of the conversion
-    download_url = ""
-
-    # Whilst it is still being converted
-    check_count = 0
-    while download_url == "":
-
-        # Prepare and make the request
-        LOGGER.info("Checking if the conversion is complete...")
-        download_url = converter.check_conversion_status(job_id=job_id)
-
-        # Wait before checking again
-        if download_url == "":
-            check_count += 1
-
-            # Stop if we've been waiting for 2 minutes
-            if check_count == (CONVERSION_TIMEOUT / 2):
-                raise ConversionTimeoutException(converter.get_name(),
-                                                 CONVERSION_TIMEOUT)
-            time.sleep(2)
-
-    # Prepare and make the request to download the file
-    LOGGER.info("Downloading the converted file...")
-    xlsx_content = converter.download_xlsx(job_id=job_id,
-                                           download_url=download_url)
-
-    # Get a filename and save the XLSX
-    LOGGER.info("Saving the spreadsheet...")
-    head, filename = os.path.split(pdf_filepath)
-    filename = filename.replace(".pdf", ".xlsx")
-    if app_gui is not None:
-        xlsx_file_box = app_gui.saveBox("Save spreadsheet",
-                                        dirName=dir_name,
-                                        fileName=filename,
-                                        fileExt=".xlsx",
-                                        fileTypes=[("Office Open XML " +
-                                                    "Workbook", "*.xlsx")],
-                                        asFile=True)
-        if xlsx_file_box is None:
-            LOGGER.warning("The user cancelled saving the XLSX.")
-            raise SystemExit("User cancelled saving the XLSX.")
-        xlsx_filepath = xlsx_file_box.name
-        app_gui.removeAllWidgets()
-    else:
-        xlsx_filepath = pdf_filepath.replace(".pdf", ".xlsx")
-    with open(xlsx_filepath, "wb") as xlsx_file:
-        xlsx_file.write(xlsx_content)
-
-    # If successful then return the file path
-    LOGGER.info("Spreadsheet ledger saved successfully at %s.", xlsx_filepath)
-    return xlsx_filepath
 
 
 def update_pdf_ledger(dir_name: str, pdf_ledger_id: str, pdf_ledger_name: str,

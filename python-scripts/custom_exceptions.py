@@ -52,3 +52,8 @@ class ConversionRejectedException(Exception):
 class AppsScriptApiException(Exception):
     """Thrown when the Apps Script API returns an error."""
     pass
+
+
+class XLSXDoesNotExist(Exception):
+    """Thrown when the XLSX file doesn't exist."""
+    pass
