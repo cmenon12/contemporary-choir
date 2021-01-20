@@ -37,9 +37,6 @@ __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
-# 30 is used for the ledger, 31 for the balance
-REPORT_ID = "30"
-
 # The number of PDF to XLSX converters in the PDFtoXLSXConverter class
 NUMBER_OF_CONVERTERS = 2
 
@@ -68,23 +65,106 @@ TOKEN_PICKLE_FILE = "token.pickle"
 
 class Ledger:
 
-    def __init__(self):
+    def __init__(self, config: configparser, expense365: configparser, app_gui):
+
+        self.app_gui = app_gui
+        self.logger = logging.getLogger(__name__)
+
+        # Prepare the authentication
+        data = expense365["email"] + ":" + expense365["password"]
+        auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
+
+        # Download the ledger
+        self.expense365_data = {"ReportID": expense365["report_id"],
+                                "UserGroupID": expense365["group_id"],
+                                "SubGroupID": expense365["subgroup_id"]}
+        self.filename_prefix = config["filename_prefix"]
+        self.dir_name = config["dir_name"]
+
+        self.pdf_filepath = self.download_pdf(auth)
+
         pass
 
-    def download_pdf(self):
-        pass
+    def download_pdf(self, auth: str) -> str:
+        """Downloads the ledger from expense365.com.
+
+        :param auth: the authentication header with the email and password
+        :type auth: str
+        :returns: the filepath of the saved PDF
+        :rtype: str
+        :raises HTTPError: if an unsuccessful HTTP status code is returned
+        """
+
+        # Prepare the request
+        url = "https://service.expense365.com/ws/rest/eXpense365/RequestDocument"
+        headers = {
+            "Host": "service.expense365.com:443",
+            "User-Agent": "eXpense365|1.6.1|Google Pixel XL|Android|10|en_GB",
+            "Authorization": auth,
+            "Accept": "application/json",
+            "If-Modified-Since": "Mon, 1 Oct 1990 05:00:00 GMT",
+            "Content-Type": "text/plain;charset=UTF-8",
+        }
+
+        # Make the request and check it was successful
+        self.logger.info("Making the HTTP request to service.expense365.com...")
+        response = requests.post(url=url, headers=headers,
+                                 data=self.expense365_data)
+        response.raise_for_status()
+        self.logger.info("The request was successful with no HTTP errors.")
+
+        # Parse the date and convert it to the local timezone
+        date_string = datetime.strptime(response.headers["Date"],
+                                        "%a, %d %b %Y %H:%M:%S %Z") \
+            .replace(tzinfo=tz.tzutc()) \
+            .astimezone(tz.tzlocal()) \
+            .strftime("%d-%m-%Y at %H.%M.%S")
+
+        # Prepare to save the file
+        filename = self.filename_prefix + " " + date_string
+
+        # Get a filename and save the PDF
+        self.logger.info("Saving the PDF...")
+        if self.app_gui is not None:
+            pdf_file_box = self.app_gui.saveBox("Save ledger",
+                                                dirName=self.dir_name,
+                                                fileName=filename,
+                                                fileExt=".pdf",
+                                                fileTypes=[("PDF file", "*.pdf")],
+                                                asFile=True)
+            if pdf_file_box is None:
+                self.logger.warning("The user cancelled saving the PDF.")
+                raise SystemExit("User cancelled saving the PDF.")
+            pdf_filepath = pdf_file_box.name
+            self.app_gui.removeAllWidgets()
+        else:
+            pdf_filepath = self.dir_name + filename + ".pdf"
+        with open(pdf_filepath, "wb") as pdf_file:
+            pdf_file.write(response.content)
+
+        # If successful then return the file path
+        self.logger.info("PDF ledger saved successfully at %s.", pdf_filepath)
+        return pdf_filepath
 
     def convert_to_xlsx(self):
         pass
 
-    def update_pdf_ledger(self):
+    def update_drive_pdf(self):
         pass
 
-    def upload_ledger(self):
+    def upload_to_sheets(self, convert: bool = True):
         pass
 
-    @staticmethod
-    def authorize():
+    def get_pdf_file(self):
+        pass
+
+    def get_pdf_filepath(self):
+        return self.pdf_filepath
+
+    def get_xlsx_filepath(self, convert: bool = True):
+        pass
+
+    def open_pdf(self, browser: str):
         pass
 
 
@@ -210,86 +290,6 @@ class PDFToXLSXConverter:
     def get_name(self) -> str:
         """Return the name of the converter."""
         return self.name
-
-
-def download_pdf(auth: str, group_id: str, subgroup_id: str,
-                 filename_prefix: str, dir_name: str,
-                 app_gui: gui, report_id: str = REPORT_ID) -> str:
-    """Downloads the ledger from expense365.com.
-
-    :param auth: the authentication header with the email and password
-    :type auth: str
-    :param group_id: the ID of the group to download the ledger
-    :type group_id: str
-    :param subgroup_id: the ID of the subgroup to download the ledger
-    :type subgroup_id: str
-    :param filename_prefix: what to prefix the default filename with
-    :type filename_prefix: str
-    :param dir_name: the default directory to save the PDF
-    :type dir_name: str
-    :param app_gui: the appJar GUI to use
-    :type app_gui: appJar.appjar.gui
-    :param report_id: the ID of the report to fetch, 30 for ledger
-    :type report_id: str, optional
-    :returns: the filepath of the saved PDF
-    :rtype: str
-    :raises HTTPError: if an unsuccessful HTTP status code is returned
-    """
-
-    # Prepare the request
-    url = "https://service.expense365.com/ws/rest/eXpense365/RequestDocument"
-    headers = {
-        "Host": "service.expense365.com:443",
-        "User-Agent": "eXpense365|1.6.1|Google Pixel XL|Android|10|en_GB",
-        "Authorization": auth,
-        "Accept": "application/json",
-        "If-Modified-Since": "Mon, 1 Oct 1990 05:00:00 GMT",
-        "Content-Type": "text/plain;charset=UTF-8",
-    }
-
-    # Prepare the body
-    data = ("{\"ReportID\":" + report_id +
-            ",\"UserGroupID\":" + group_id +
-            ",\"SubGroupID\":" + subgroup_id + "}")
-
-    # Make the request and check it was successful
-    LOGGER.info("Making the HTTP request to service.expense365.com...")
-    response = requests.post(url=url, headers=headers, data=data)
-    response.raise_for_status()
-    LOGGER.info("The request was successful with no HTTP errors.")
-
-    # Parse the date and convert it to the local timezone
-    date_string = datetime.strptime(response.headers["Date"],
-                                    "%a, %d %b %Y %H:%M:%S %Z") \
-        .replace(tzinfo=tz.tzutc()) \
-        .astimezone(tz.tzlocal()) \
-        .strftime("%d-%m-%Y at %H.%M.%S")
-
-    # Prepare to save the file
-    filename = filename_prefix + " " + date_string
-
-    # Get a filename and save the PDF
-    LOGGER.info("Saving the PDF...")
-    if app_gui is not None:
-        pdf_file_box = app_gui.saveBox("Save ledger",
-                                       dirName=dir_name,
-                                       fileName=filename,
-                                       fileExt=".pdf",
-                                       fileTypes=[("PDF file", "*.pdf")],
-                                       asFile=True)
-        if pdf_file_box is None:
-            LOGGER.warning("The user cancelled saving the PDF.")
-            raise SystemExit("User cancelled saving the PDF.")
-        pdf_filepath = pdf_file_box.name
-        app_gui.removeAllWidgets()
-    else:
-        pdf_filepath = dir_name + filename + ".pdf"
-    with open(pdf_filepath, "wb") as pdf_file:
-        pdf_file.write(response.content)
-
-    # If successful then return the file path
-    LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
-    return pdf_filepath
 
 
 def convert_to_xlsx(pdf_filepath: str, dir_name: str,
