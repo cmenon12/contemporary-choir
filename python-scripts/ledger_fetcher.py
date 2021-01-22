@@ -93,6 +93,8 @@ class Ledger:
         self.filename_prefix = config["filename_prefix"]
         self.dir_name = config["dir_name"]
         self.pdf_filepath = None
+        self.pdf_file = None
+        self.timestamp = None
         self.download_pdf()
 
         # Prepare for future use
@@ -131,12 +133,14 @@ class Ledger:
         response.raise_for_status()
         LOGGER.info("The request was successful with no HTTP errors.")
 
-        # Parse the date and convert it to the local timezone
-        date_string = datetime.strptime(response.headers["Date"],
-                                        "%a, %d %b %Y %H:%M:%S %Z") \
+        # Save the date and convert it to the local timezone
+        self.timestamp = datetime.strptime(response.headers["Date"],
+                                           "%a, %d %b %Y %H:%M:%S %Z") \
             .replace(tzinfo=tz.tzutc()) \
-            .astimezone(tz.tzlocal()) \
-            .strftime("%d-%m-%Y at %H.%M.%S")
+            .astimezone(tz.tzlocal())
+
+        # Parse the date as a string
+        date_string = self.timestamp.strftime("%d-%m-%Y at %H.%M.%S")
 
         # Prepare to save the file
         filename = self.filename_prefix + " " + date_string
@@ -163,6 +167,7 @@ class Ledger:
         # If successful then return the file path
         LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
         self.pdf_filepath = pdf_filepath
+        self.pdf_file = response.content
 
     def convert_to_xlsx(self) -> None:
         """Converts the PDF to an Excel file and saves it.
@@ -342,9 +347,20 @@ class Ledger:
         LOGGER.info("Original uploaded ledger deleted successfully.")
 
         self.sheets_data = {"name": new_sheet_title,
+                            "spreadsheet_id": self.destination_sheet_id,
+                            "sheet_id": str(new_sheet_id),
                             "url": ("https://docs.google.com/spreadsheets/d/" +
                                     self.destination_sheet_id +
                                     "/edit#gid=" + str(new_sheet_id))}
+
+    def get_timestamp(self) -> datetime:
+        """Get the timestamp of the ledger.
+
+        :return: the timestamp of the ledger.
+        :rtype: datetime
+        """
+
+        return self.timestamp
 
     def get_pdf_filepath(self) -> str:
         """Returns the filepath of the PDF ledger.
@@ -352,7 +368,17 @@ class Ledger:
         :return: the filepath of the PDF ledger.
         :rtype: str
         """
+
         return self.pdf_filepath
+
+    def get_pdf_file(self) -> bytes:
+        """Returns the PDF ledger as a string of bytes.
+
+        :return: the PDF file itself.
+        :rtype: bytes
+        """
+
+        return self.pdf_file
 
     def get_xlsx_filepath(self, convert: bool = True) -> str:
         """Returns the filepath of the XLSX spreadsheet.
@@ -363,6 +389,7 @@ class Ledger:
         :rtype: str
         :raises XLSXDoesNotExist: when convert is False
         """
+
         if self.xlsx_filepath is None and convert is True:
             self.convert_to_xlsx()
         elif self.xlsx_filepath is None and convert is False:
@@ -378,6 +405,7 @@ class Ledger:
         :rtype: str
         :raises URLDoesNotExist: when upload is False
         """
+
         if self.drive_pdf_url is None and upload is True:
             self.update_drive_pdf()
         elif self.drive_pdf_url is None and upload is False:
