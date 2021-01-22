@@ -17,6 +17,7 @@ uploaded to.
 import configparser
 import email.utils
 import imaplib
+import json
 import logging
 import os
 import pickle
@@ -83,15 +84,17 @@ class LedgerCheckerSaveFile:
 
         self.save_data()
 
-    def save_data(self):
+    def save_data(self) -> None:
         """Save to the actual file."""
 
         with open(self.save_data_filepath, "wb") as save_file:
             pickle.dump(self, save_file)
             save_file.close()
 
+        self.log()
+
     def new_check_success(self, changes: dict, sheet_id: int,
-                          timestamp: datetime):
+                          timestamp: datetime) -> None:
         """Runs when a check was successful.
 
         :param changes: the changes made to the ledger
@@ -110,7 +113,7 @@ class LedgerCheckerSaveFile:
         LOGGER.debug("Successful check saved to %s",
                      self.save_data_filepath)
 
-    def new_check_fail(self, stack_trace: str):
+    def new_check_fail(self, stack_trace: str) -> None:
         """Runs when a check failed.
 
         :param stack_trace: the stack trace
@@ -138,9 +141,14 @@ class LedgerCheckerSaveFile:
 
         return self.timestamp
 
+    def log(self) -> None:
+        """Logs the object to the log."""
+
+        LOGGER.info(json.dumps(self.__dict__, default=str))
+
 
 def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
-                       old_timestamp: datetime):
+                       old_timestamp: datetime) -> tuple:
     """Prepares an email detailing the changes to the ledger.
 
     :param changes: the changes made to the ledger
@@ -216,7 +224,7 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
 
 def send_success_email(config: configparser.SectionProxy, changes: dict,
                        pdf_filepath: str, sheet_url: str, pdf_url: str,
-                       old_timestamp: datetime):
+                       old_timestamp: datetime) -> None:
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
@@ -268,7 +276,7 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
 
 
 def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
-                 spreadsheet_id: str, sheet_id: id):
+                 spreadsheet_id: str, sheet_id: id) -> None:
     """Deletes the named Google Sheet in the specified spreadsheet.
 
     :param sheets_service: the authenticated service for Google Sheets
@@ -290,7 +298,7 @@ def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
 
 
 def send_error_email(config: configparser.SectionProxy,
-                     save_data: LedgerCheckerSaveFile):
+                     save_data: LedgerCheckerSaveFile) -> None:
     """Used to email the user about a fatal exception.
 
     :param config: the configuration for the email
@@ -341,7 +349,7 @@ def send_error_email(config: configparser.SectionProxy,
     send_email(config=config, message=message)
 
 
-def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
+def send_email(config: configparser.SectionProxy, message: MIMEMultipart) -> None:
     """Sends the message using the config with SSL.
 
     :param config: the configuration for the email
@@ -372,14 +380,14 @@ def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
         with imaplib.IMAP4_SSL(config["imap_host"],
                                int(config["imap_port"])) as server:
             server.login(config["username"], config["password"])
-            server.append('INBOX.Sent', '\\Seen',
+            server.append("INBOX.Sent", "\\Seen",
                           imaplib.Time2Internaldate(time.time()),
-                          message.as_string().encode('utf8'))
+                          message.as_string().encode("utf8"))
         LOGGER.info("Email saved successfully!")
 
 
 def check_ledger(save_data: LedgerCheckerSaveFile,
-                 parser: configparser.ConfigParser):
+                 parser: configparser.ConfigParser) -> None:
     """Runs a check of the ledger.
 
     :param save_data: the save data object
@@ -388,8 +396,6 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     :type parser: configparser.ConfigParser
     :raises: AppsScriptApiException
     """
-
-    LOGGER.info("\n")
 
     # Fetch info from the config
     config = parser["ledger_checker"]
@@ -500,12 +506,14 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
                                     timestamp=timestamp)
 
 
-def main():
+def main() -> None:
     """Manages the checks.
 
     This function runs the checks of the ledger regularly and gracefully
     handles any errors that occur.
     """
+
+    LOGGER.info("\n")
 
     # Fetch info from the config
     parser = configparser.ConfigParser()

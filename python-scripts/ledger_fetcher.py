@@ -105,6 +105,8 @@ class Ledger:
         self.xlsx_filepath = None
         self.sheets_data = None
 
+        self.log()
+
     def download_pdf(self) -> None:
         """Downloads the ledger from expense365.com.
 
@@ -415,9 +417,11 @@ class Ledger:
         self.drive_pdf_url = None
         self.xlsx_filepath = None
         self.sheets_data = None
+        self.log()
 
     def open_pdf_in_browser(self):
         """Opens the PDF ledger in the designated browser."""
+
         open_path = "file://///" + self.pdf_filepath
         webbrowser.register("my-browser",
                             None,
@@ -426,6 +430,7 @@ class Ledger:
 
     def open_sheet_in_browser(self):
         """Opens the ledger in Google Sheets in the designated browser."""
+
         open_path = self.get_sheets_data()["url"]
         webbrowser.register("my-browser",
                             None,
@@ -470,6 +475,11 @@ class Ledger:
                                     cache_discovery=False)
         LOGGER.info("Services built successfully.")
         return drive_service, sheets_service, apps_script_service
+
+    def log(self) -> None:
+        """Logs the object to the log."""
+
+        LOGGER.info(json.dumps(self.__dict__, default=str))
 
 
 class PDFToXLSXConverter:
@@ -530,6 +540,8 @@ class PDFToXLSXConverter:
         # Create the session that'll be used to make all the requests
         self.session = requests.Session()
         self.session.headers.update(headers)
+
+        self.log()
 
     def upload_pdf(self, raise_for_status: bool = True) -> str:
         """Make the conversion request and upload the PDF.
@@ -595,8 +607,13 @@ class PDFToXLSXConverter:
         """Return the name of the converter."""
         return self.name
 
+    def log(self) -> None:
+        """Logs the object to the log."""
 
-def main(app_gui: gui):
+        LOGGER.info(json.dumps(self.__dict__, default=str))
+
+
+def main(app_gui: gui) -> None:
     """Runs the program.
 
     :param app_gui: the appJar GUI to use
