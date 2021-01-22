@@ -93,6 +93,7 @@ class Ledger:
         self.filename_prefix = config["filename_prefix"]
         self.dir_name = config["dir_name"]
         self.pdf_filepath = None
+        self.pdf_filename = None
         self.pdf_file = None
         self.timestamp = None
         self.download_pdf()
@@ -105,6 +106,7 @@ class Ledger:
         self.browser_path = config["browser_path"]
         self.drive_pdf_url = None
         self.xlsx_filepath = None
+        self.xlsx_file = None
         self.sheets_data = None
 
         self.log()
@@ -167,6 +169,8 @@ class Ledger:
         # If successful then return the file path
         LOGGER.info("PDF ledger saved successfully at %s.", pdf_filepath)
         self.pdf_filepath = pdf_filepath
+        head, filename = os.path.split(pdf_filepath)
+        self.pdf_filename = filename
         self.pdf_file = response.content
 
     def convert_to_xlsx(self) -> None:
@@ -236,6 +240,7 @@ class Ledger:
         # If successful then return the file path
         LOGGER.info("Spreadsheet ledger saved successfully at %s.", xlsx_filepath)
         self.xlsx_filepath = xlsx_filepath
+        self.xlsx_file = xlsx_content
 
     def update_drive_pdf(self) -> None:
         """Updates the PDF in Drive with the new version of the ledger."""
@@ -371,6 +376,15 @@ class Ledger:
 
         return self.pdf_filepath
 
+    def get_pdf_filename(self) -> str:
+        """Returns the filename of the PDF.
+
+        :return: the filename of the PDF ledger.
+        :rtype: str
+        """
+
+        return self.pdf_filename
+
     def get_pdf_file(self) -> bytes:
         """Returns the PDF ledger as a string of bytes.
 
@@ -395,6 +409,22 @@ class Ledger:
         elif self.xlsx_filepath is None and convert is False:
             raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
         return self.xlsx_filepath
+
+    def get_xlsx_file(self, convert: bool = True) -> bytes:
+        """Returns the XLSX spreadsheet as a string of bytes.
+
+        :param convert: whether to convert the PDF if needed
+        :type convert: bool, optional
+        :return: the XLSX file itself
+        :rtype: bytes
+        :raises XLSXDoesNotExist: when convert is False
+        """
+
+        if self.xlsx_filepath is None and convert is True:
+            self.convert_to_xlsx()
+        elif self.xlsx_filepath is None and convert is False:
+            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
+        return self.xlsx_file
 
     def get_drive_pdf_url(self, upload: bool = True) -> str:
         """Returns the URL of the PDF ledger in Drive.
@@ -444,6 +474,7 @@ class Ledger:
         self.download_pdf()
         self.drive_pdf_url = None
         self.xlsx_filepath = None
+        self.xlsx_file = None
         self.sheets_data = None
         self.log()
 
