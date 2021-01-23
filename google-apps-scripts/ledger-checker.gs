@@ -270,10 +270,9 @@ function checkForNewTotals(sheetName) {
   let oldLedger = new Ledger(oldSheet.getSheetId());
   oldLedger = getCostCodeTotals(oldSheet, oldLedger);
 
-  // If they're equal then stop and delete the sheet
+  // If they're equal then stop
   if (Ledger.compareLedgers(ledger, oldLedger) === true) {
     Logger.log("There is no difference in the total income, expenditure, or balance brought forward.");
-    spreadsheet.deleteSheet(newSheet);
     return "False";
   }
 

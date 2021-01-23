@@ -188,7 +188,7 @@ class Ledger:
                 # Stop if we've been waiting for 2 minutes
                 if check_count == (CONVERSION_TIMEOUT / 2):
                     raise ConversionTimeoutError(converter.get_name(),
-                                                     CONVERSION_TIMEOUT)
+                                                 CONVERSION_TIMEOUT)
                 time.sleep(2)
 
         # Prepare and make the request to download the file
@@ -596,7 +596,7 @@ class Ledger:
             body = {"requests": {"deleteSheet": {"sheetId": self.sheets_data["sheet_id"]}}}
             sheets.spreadsheets().batchUpdate(spreadsheetId=self.sheets_data["spreadsheet_id"],
                                               body=body).execute()
-            LOGGER.info("Sheet %d has been deleted successfully.", self.sheets_data["sheet_id"])
+            LOGGER.info("Sheet %s has been deleted successfully.", self.sheets_data["sheet_id"])
             self.sheets_data = None
         else:
             LOGGER.info("There is no Google Sheet to delete.")
