@@ -39,7 +39,7 @@ from babel.numbers import format_currency
 from jinja2 import Environment, FileSystemLoader
 
 from custom_exceptions import AppsScriptApiError
-from ledger_fetcher import Ledger
+from ledger_fetcher import Ledger, CustomEncoder
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -151,7 +151,7 @@ class LedgerCheckerSaveFile:
     def log(self) -> None:
         """Logs the object to the log."""
 
-        LOGGER.info(json.dumps(self.__dict__, default=str))
+        LOGGER.info(json.dumps(self.__dict__, cls=CustomEncoder))
 
 
 def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,

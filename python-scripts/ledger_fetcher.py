@@ -63,6 +63,25 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
 TOKEN_PICKLE_FILE = "token.pickle"
 
 
+class CustomEncoder(json.JSONEncoder):
+    """Represents a custom JSON encoder."""
+
+    def default(self, obj):
+        """Overrides the default encoder"""
+
+        # If it's bytes then skip it
+        if isinstance(obj, bytes):
+            return "bytes object of length %d not shown" % len(obj)
+
+        # Try to use the default encoder
+        try:
+            return json.JSONEncoder.default(self, obj)
+
+        # Otherwise just convert it to a string
+        except TypeError:
+            return str(obj)
+
+
 class Ledger:
     """Represents the ledger."""
 
@@ -643,7 +662,7 @@ class Ledger:
     def log(self) -> None:
         """Logs the object to the log."""
 
-        LOGGER.info(json.dumps(self.__dict__, default=str))
+        LOGGER.info(json.dumps(self.__dict__, cls=CustomEncoder))
 
 
 class PDFToXLSXConverter:
@@ -774,7 +793,7 @@ class PDFToXLSXConverter:
     def log(self) -> None:
         """Logs the object to the log."""
 
-        LOGGER.info(json.dumps(self.__dict__, default=str))
+        LOGGER.info(json.dumps(self.__dict__, cls=CustomEncoder))
 
 
 def main(app_gui: gui) -> None:
