@@ -40,7 +40,7 @@ from babel.numbers import format_currency
 from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
 
-from custom_exceptions import AppsScriptApiException
+from custom_exceptions import AppsScriptApiError
 from ledger_fetcher import Ledger
 
 __author__ = "Christopher Menon"
@@ -394,7 +394,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     :type save_data: LedgerCheckerSaveFile
     :param parser: the whole config
     :type parser: configparser.ConfigParser
-    :raises: AppsScriptApiException
+    :raises: AppsScriptApiError
     """
 
     # Fetch info from the config
@@ -433,7 +433,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
             for trace in error["scriptStackTraceElements"]:
                 print("\t{0}: {1}".format(trace["function"],
                                           trace["lineNumber"]))
-        raise AppsScriptApiException(response["error"])
+        raise AppsScriptApiError(response["error"])
 
     # Otherwise save the data that the Apps Script returns
     changes = response["response"].get("result")

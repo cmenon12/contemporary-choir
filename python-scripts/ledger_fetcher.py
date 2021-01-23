@@ -157,7 +157,7 @@ class Ledger:
 
         :param save: whether to save the XLSX ledger
         :type save: bool, optional
-        :raises ConversionTimeoutException: if the conversion takes too long
+        :raises ConversionTimeoutError: if the conversion takes too long
         """
 
         # Prepare for the request
@@ -187,7 +187,7 @@ class Ledger:
 
                 # Stop if we've been waiting for 2 minutes
                 if check_count == (CONVERSION_TIMEOUT / 2):
-                    raise ConversionTimeoutException(converter.get_name(),
+                    raise ConversionTimeoutError(converter.get_name(),
                                                      CONVERSION_TIMEOUT)
                 time.sleep(2)
 
@@ -328,13 +328,13 @@ class Ledger:
         :type save: bool, optional
         :return: the filepath of the PDF ledger.
         :rtype: str
-        :raises PDFIsNotSavedException: if the PDF file isn't saved
+        :raises PDFIsNotSavedError: if the PDF file isn't saved
         """
 
         if self.pdf_filepath is None and save is True:
             self.save_pdf()
         elif self.pdf_filepath is None and save is False:
-            raise PDFIsNotSavedException("The PDF ledger isn't saved.")
+            raise PDFIsNotSavedError("The PDF ledger isn't saved.")
         return self.pdf_filepath
 
     def get_pdf_filename(self) -> str:
@@ -365,14 +365,14 @@ class Ledger:
         :type save: bool, optional
         :return: the filepath of the XLSX ledger
         :rtype: str
-        :raises XLSXDoesNotExist: when convert is False
-        :raises XLSXIsNotSavedException: when save is False
+        :raises XLSXDoesNotExistError: when convert is False
+        :raises XLSXIsNotSavedError: when save is False
         """
 
         if self.xlsx_filepath is None and save is True:
             self.save_xlsx(convert=convert)
         elif self.xlsx_filepath is None and save is False:
-            raise XLSXIsNotSavedException("The XLSX isn't saved.")
+            raise XLSXIsNotSavedError("The XLSX isn't saved.")
 
         return self.xlsx_filepath
 
@@ -383,13 +383,13 @@ class Ledger:
         :type convert: bool, optional
         :return: the filename of the XLSX ledger
         :rtype: str
-        :raises XLSXDoesNotExist: when convert is False
+        :raises XLSXDoesNotExistError: when convert is False
         """
 
         if self.xlsx_filename is None and convert is True:
             self.convert_to_xlsx()
         elif self.xlsx_filename is None and convert is False:
-            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
+            raise XLSXDoesNotExistError("The XLSX ledger doesn't exist.")
         return self.xlsx_filename
 
     def get_xlsx_file(self, convert: bool = True) -> bytes:
@@ -399,13 +399,13 @@ class Ledger:
         :type convert: bool, optional
         :return: the XLSX file itself
         :rtype: bytes
-        :raises XLSXDoesNotExist: when convert is False
+        :raises XLSXDoesNotExistError: when convert is False
         """
 
         if self.xlsx_filepath is None and convert is True:
             self.convert_to_xlsx()
         elif self.xlsx_filepath is None and convert is False:
-            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
+            raise XLSXDoesNotExistError("The XLSX ledger doesn't exist.")
         return self.xlsx_file
 
     def get_drive_pdf_url(self, save: bool = True, upload: bool = True) -> str:
@@ -417,13 +417,13 @@ class Ledger:
         :type upload: bool, optional
         :return: the URL of the PDF in Drive
         :rtype: str
-        :raises URLDoesNotExist: when upload is False
+        :raises URLDoesNotExistError: when upload is False
         """
 
         if self.drive_pdf_url is None and upload is True:
             self.update_drive_pdf(save=save)
         elif self.drive_pdf_url is None and upload is False:
-            raise URLDoesNotExist("The PDF ledger isn't in Drive.")
+            raise URLDoesNotExistError("The PDF ledger isn't in Drive.")
         return self.drive_pdf_url
 
     def get_sheets_data(self, convert: bool = True, save: bool = True,
@@ -438,15 +438,15 @@ class Ledger:
         :type upload: bool, optional
         :returns: the sheet name and url
         :rtype: dict
-        :raises XLSXDoesNotExist: when convert is False
-        :raises XLSXIsNotSavedException: when save is False
-        :raises URLDoesNotExist: when upload is False
+        :raises XLSXDoesNotExistError: when convert is False
+        :raises XLSXIsNotSavedError: when save is False
+        :raises URLDoesNotExistError: when upload is False
         """
 
         if self.sheets_data is None and upload is True:
             self.upload_to_sheets(convert=convert, save=save)
         elif self.sheets_data is None and upload is False:
-            raise URLDoesNotExist("The XLSX ledger isn't in Sheets.")
+            raise URLDoesNotExistError("The XLSX ledger isn't in Sheets.")
         return self.sheets_data
 
     def refresh_ledger(self):
@@ -715,14 +715,14 @@ class PDFToXLSXConverter:
         :return: the conversion job ID
         :rtype: str
         :raises HTTPError: if a bad HTTP status code is returned
-        :raises ConversionRejectedException: if server rejects the PDF
+        :raises ConversionRejectedError: if server rejects the PDF
         """
 
         response = self.session.post(url=self.request_url, files=self.files)
         if raise_for_status:
             response.raise_for_status()
         if "jobId" not in response.json().keys():
-            raise ConversionRejectedException(self.get_name())
+            raise ConversionRejectedError(self.get_name())
         return response.json()["jobId"]
 
     def check_conversion_status(self, job_id: str,
