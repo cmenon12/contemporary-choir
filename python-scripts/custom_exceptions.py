@@ -62,3 +62,13 @@ class XLSXDoesNotExist(Exception):
 class URLDoesNotExist(Exception):
     """Thrown when a URL doesn't exist."""
     pass
+
+
+class PDFIsNotSavedException(Exception):
+    """Thrown when the PDF file isn't saved."""
+    pass
+
+
+class XLSXIsNotSavedException(Exception):
+    """Thrown when the XLSX file isn't saved."""
+    pass
