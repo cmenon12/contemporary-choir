@@ -267,7 +267,7 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
     part.set_payload(new_ledger.get_pdf_file())
     encoders.encode_base64(part)
     part.add_header("Content-Disposition",
-                    "attachment; filename=\"NEW: %s\"" % new_ledger.get_pdf_filename())
+                    "attachment; filename=\"NEW %s\"" % new_ledger.get_pdf_filename())
     message.attach(part)
 
     # Attach the old ledger if it exists
@@ -276,7 +276,7 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
         part.set_payload(old_ledger.get_pdf_file())
         encoders.encode_base64(part)
         part.add_header("Content-Disposition",
-                        "attachment; filename=\"OLD: %s\"" % old_ledger.get_pdf_filename())
+                        "attachment; filename=\"OLD %s\"" % old_ledger.get_pdf_filename())
         message.attach(part)
 
     # Send the email
@@ -460,6 +460,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     else:
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
+        ledger.update_drive_pdf()
         send_success_email(config=parser["email"], changes=changes,
                            new_ledger=ledger,
                            old_ledger=save_data.get_most_recent_ledger())
