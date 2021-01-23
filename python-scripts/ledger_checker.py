@@ -14,10 +14,10 @@ an Apps Script project linked to the Google Sheet that the ledger is
 uploaded to.
 """
 
-import base64
 import configparser
 import email.utils
 import imaplib
+import json
 import logging
 import os
 import pickle
@@ -33,18 +33,13 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-import googleapiclient
 import html2text
 import timeago
 from babel.numbers import format_currency
-from googleapiclient.discovery import build
 from jinja2 import Environment, FileSystemLoader
 
-# noinspection PyCompatibility
-from exceptions import AppsScriptApiException
-# noinspection PyUnresolvedReferences
-from ledger_fetcher import download_pdf, convert_to_xlsx, upload_ledger, \
-    authorize, update_pdf_ledger
+from custom_exceptions import AppsScriptApiError
+from ledger_fetcher import Ledger, CustomEncoder
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -61,20 +56,24 @@ CONFIG_FILENAME = "config.ini"
 class LedgerCheckerSaveFile:
     """Represents the save file used to maintain persistence."""
 
-    def __init__(self, save_data_filepath: str, log: logging):
+    def __init__(self, save_data_filepath: str):
+        """Constructor.
+
+        :param save_data_filepath: where the save data is saved
+        :type save_data_filepath: str
+        """
 
         # Try to open the save file if it exists
         try:
-            with open(save_data_filepath, "rb") as f:
+            with open(save_data_filepath, "rb") as save_file:
 
                 # Load it and set the attributes for self from it
-                inst = pickle.load(f)
+                inst = pickle.load(save_file)
                 for k in inst.__dict__.keys():
                     setattr(self, k, getattr(inst, k))
 
             if not isinstance(inst, LedgerCheckerSaveFile):
                 raise FileNotFoundError("The save data file is invalid.")
-            pass
 
         # If it fails then just initialise with blank values
         except FileNotFoundError:
@@ -82,40 +81,41 @@ class LedgerCheckerSaveFile:
             self.save_data_filepath = save_data_filepath
             self.stack_traces = []
             self.changes = None
-            self.sheet_id = None
-            self.timestamp = None
+            self.most_recent_ledger = None
+            self.changes_ledger = None
 
-        self.log = log
         self.save_data()
 
-    def save_data(self):
+    def save_data(self) -> None:
         """Save to the actual file."""
 
         with open(self.save_data_filepath, "wb") as save_file:
             pickle.dump(self, save_file)
             save_file.close()
 
-    def new_check_success(self, changes: dict, sheet_id: int,
-                          timestamp: datetime):
+        self.log()
+
+    def new_check_success(self, new_ledger: Ledger, changes: dict = None) -> None:
         """Runs when a check was successful.
 
+        :param new_ledger: the ledger that was just checked
+        :type new_ledger: Ledger
         :param changes: the changes made to the ledger
         :type changes: dict
-        :param sheet_id: the ID of the new sheet
-        :type sheet_id: int
-        :param timestamp: when the last check was run
-        :type timestamp: datetime
         """
 
-        self.changes = changes
-        self.sheet_id = sheet_id
-        self.timestamp = timestamp
+        # This means that we have new changes (and an email was sent)
+        if changes is not None:
+            self.changes = changes
+            self.changes_ledger = new_ledger
+
+        self.most_recent_ledger = new_ledger
         self.stack_traces.clear()
         self.save_data()
-        self.log.debug("Successful check saved to %s",
-                       self.save_data_filepath)
+        LOGGER.debug("Successful check saved to %s",
+                     self.save_data_filepath)
 
-    def new_check_fail(self, stack_trace: str):
+    def new_check_fail(self, stack_trace: str) -> None:
         """Runs when a check failed.
 
         :param stack_trace: the stack trace
@@ -125,27 +125,37 @@ class LedgerCheckerSaveFile:
         date = datetime.now().strftime("%A %d %B %Y AT %H:%M:%S")
         self.stack_traces.append("ERROR ON %s\n%s" % (date, stack_trace))
         self.save_data()
-        self.log.debug("Failed check saved to %s",
-                       self.save_data_filepath)
+        LOGGER.debug("Failed check saved to %s",
+                     self.save_data_filepath)
 
-    def get_data(self) -> tuple:
-        """Gets and returns the saved data."""
+    def get_changes(self) -> dict:
+        """Gets and returns changes."""
 
-        return self.changes, self.sheet_id, self.timestamp
+        return self.changes
+
+    def get_most_recent_ledger(self) -> Ledger:
+        """Gets and returns the most recent ledger."""
+
+        return self.most_recent_ledger
+
+    def get_changes_ledger(self) -> Ledger:
+        """Gets and returns the ledger associated with changes."""
+
+        return self.changes_ledger
 
     def get_stack_traces(self) -> list:
         """Gets and returns the list of stack traces."""
 
         return self.stack_traces
 
-    def get_timestamp(self) -> datetime:
-        """Gets and returns the timestamp."""
+    def log(self) -> None:
+        """Logs the object to the log."""
 
-        return self.timestamp
+        LOGGER.info(json.dumps(self.__dict__, cls=CustomEncoder))
 
 
 def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
-                       old_timestamp: datetime):
+                       last_check: str) -> tuple:
     """Prepares an email detailing the changes to the ledger.
 
     :param changes: the changes made to the ledger
@@ -154,8 +164,8 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
     :type sheet_url: str
     :param pdf_url: the URL of the PDF to link to
     :type pdf_url: str
-    :param old_timestamp: when the previous check was made
-    :type old_timestamp: datetime.datetime
+    :param last_check: when the previous check was made
+    :type last_check: str
     :return: the plain-text and html
     :rtype: tuple
     """
@@ -193,13 +203,6 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
         changes["grandTotal"][item] = \
             format_currency(changes["grandTotal"][item], "GBP", locale="en_GB")
 
-    # Prepare when the last check was made
-    if old_timestamp is not None:
-        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp),
-                                                         old_timestamp.strftime("%A %d %B %Y at %H:%M:%S"))
-    else:
-        last_check = ""
-
     # Render the template
     root = os.path.dirname(os.path.abspath(__file__))
     env = Environment(loader=FileSystemLoader(root))
@@ -220,22 +223,17 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
 
 
 def send_success_email(config: configparser.SectionProxy, changes: dict,
-                       pdf_filepath: str, sheet_url: str, pdf_url: str,
-                       old_timestamp: datetime):
+                       new_ledger: Ledger, old_ledger: Ledger) -> None:
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
     :type config: configparser.SectionProxy
     :param changes: the changes made to the ledger
     :type changes: dict
-    :param pdf_filepath: the path to the PDF to attach
-    :type pdf_filepath: str
-    :param sheet_url: the URL of the Google Sheet to link to
-    :type sheet_url: str
-    :param pdf_url: the URL of the PDF to link to
-    :type pdf_url: str
-    :param old_timestamp: when the previous check was made
-    :type old_timestamp: datetime.datetime
+    :param new_ledger: the ledger with these new changes
+    :type new_ledger: Ledger
+    :param old_ledger: the ledger just before these new changes
+    :type old_ledger: Ledger
     """
 
     message = MIMEMultipart("alternative")
@@ -244,10 +242,19 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
     message["From"] = config["from"]
 
     # Prepare the email
+    if old_ledger is not None:
+        old_timestamp = old_ledger.get_timestamp()
+        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp),
+                                                         old_timestamp.strftime("%A %d %B %Y at %H:%M:%S"))
+    else:
+        last_check = ", although we don't know how new these changes are"
     text, html = prepare_email_body(changes=changes,
-                                    sheet_url=sheet_url,
-                                    pdf_url=pdf_url,
-                                    old_timestamp=old_timestamp)
+                                    sheet_url=new_ledger.get_sheets_data(convert=False,
+                                                                         save=False,
+                                                                         upload=False)["url"],
+                                    pdf_url=new_ledger.get_drive_pdf_url(save=False,
+                                                                         upload=False),
+                                    last_check=last_check)
 
     # Turn these into plain/html MIMEText objects
     # Add HTML/plain-text parts to MIMEMultipart message
@@ -255,47 +262,29 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
     message.attach(MIMEText(text, "plain"))
     message.attach(MIMEText(html, "html"))
 
-    # Attach the ledger
-    with open(pdf_filepath, "rb") as attachment:
-        # Add file as application/octet-stream
-        # Email client can usually download this automatically as attachment
-        part = MIMEBase("application", "pdf")
-        part.set_payload(attachment.read())
+    # Attach the new ledger
+    part = MIMEBase("application", "pdf")
+    part.set_payload(new_ledger.get_pdf_file())
     encoders.encode_base64(part)
-    # Add header as key/value pair to attachment part
-    head, filename = os.path.split(pdf_filepath)
     part.add_header("Content-Disposition",
-                    "attachment; filename=\"%s\"" % filename)
+                    "attachment; filename=\"NEW %s\"" % new_ledger.get_pdf_filename())
     message.attach(part)
+
+    # Attach the old ledger if it exists
+    if old_ledger is not None:
+        part = MIMEBase("application", "pdf")
+        part.set_payload(old_ledger.get_pdf_file())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition",
+                        "attachment; filename=\"OLD %s\"" % old_ledger.get_pdf_filename())
+        message.attach(part)
 
     # Send the email
     send_email(config=config, message=message)
 
 
-def delete_sheet(sheets_service: googleapiclient.discovery.Resource,
-                 spreadsheet_id: str, sheet_id: id):
-    """Deletes the named Google Sheet in the specified spreadsheet.
-
-    :param sheets_service: the authenticated service for Google Sheets
-    :type sheets_service: googleapiclient.discovery.Resource
-    :param spreadsheet_id: the ID of the spreadsheet to use
-    :type spreadsheet_id: str
-    :param sheet_id: the id of the sheet to delete
-    :type sheet_id: int
-    """
-
-    if sheet_id is not None:
-        LOGGER.info("Deleting the sheet with ID %d", sheet_id)
-        body = {"requests": {"deleteSheet": {"sheetId": sheet_id}}}
-        sheets_service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id,
-                                                  body=body).execute()
-        LOGGER.info("Sheet %d has been deleted successfully.", sheet_id)
-    else:
-        LOGGER.info("sheet_id was None, so there was nothing to delete.")
-
-
 def send_error_email(config: configparser.SectionProxy,
-                     save_data: LedgerCheckerSaveFile):
+                     save_data: LedgerCheckerSaveFile) -> None:
     """Used to email the user about a fatal exception.
 
     :param config: the configuration for the email
@@ -307,8 +296,8 @@ def send_error_email(config: configparser.SectionProxy,
     # Get the count of errors and stack traces
     error_count = len(save_data.get_stack_traces())
     stack_traces = ""
-    for e in save_data.get_stack_traces():
-        stack_traces += e
+    for error in save_data.get_stack_traces():
+        stack_traces += error
         stack_traces += "\n\n"
 
     # Create the message
@@ -346,7 +335,7 @@ def send_error_email(config: configparser.SectionProxy,
     send_email(config=config, message=message)
 
 
-def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
+def send_email(config: configparser.SectionProxy, message: MIMEMultipart) -> None:
     """Sends the message using the config with SSL.
 
     :param config: the configuration for the email
@@ -377,57 +366,42 @@ def send_email(config: configparser.SectionProxy, message: MIMEMultipart):
         with imaplib.IMAP4_SSL(config["imap_host"],
                                int(config["imap_port"])) as server:
             server.login(config["username"], config["password"])
-            server.append('INBOX.Sent', '\\Seen',
+            server.append("INBOX.Sent", "\\Seen",
                           imaplib.Time2Internaldate(time.time()),
-                          message.as_string().encode('utf8'))
+                          message.as_string().encode("utf8"))
         LOGGER.info("Email saved successfully!")
 
 
 def check_ledger(save_data: LedgerCheckerSaveFile,
-                 parser: configparser.ConfigParser):
+                 parser: configparser.ConfigParser) -> None:
     """Runs a check of the ledger.
 
     :param save_data: the save data object
     :type save_data: LedgerCheckerSaveFile
     :param parser: the whole config
     :type parser: configparser.ConfigParser
-    :raises: AppsScriptApiException
+    :raises: AppsScriptApiError
     """
-
-    LOGGER.info("\n")
 
     # Fetch info from the config
     config = parser["ledger_checker"]
     expense365 = parser["eXpense365"]
 
-    # Prepare the authentication
-    data = expense365["email"] + ":" + expense365["password"]
-    auth = "Basic " + str(base64.b64encode(data.encode("utf-8")).decode())
-
     # Download the ledger, convert it, and upload it to Google Sheets
     print("Downloading the PDF...")
-    pdf_filepath = download_pdf(auth=auth,
-                                group_id=expense365["group_id"],
-                                subgroup_id=expense365["subgroup_id"],
-                                filename_prefix=config["filename_prefix"],
-                                dir_name=config["dir_name"],
-                                app_gui=None)
+    ledger = Ledger(config=config, expense365=expense365)
     print("Converting the ledger...")
-    xlsx_filepath = convert_to_xlsx(pdf_filepath=pdf_filepath,
-                                    app_gui=None,
-                                    dir_name=config["dir_name"])
+    ledger.get_xlsx_filepath()
     print("Uploading the ledger to Google Sheets...")
-    sheet_url, sheet_name = upload_ledger(dir_name=config["dir_name"],
-                                          destination_sheet_id=config["destination_sheet_id"],
-                                          xlsx_filepath=xlsx_filepath)
+    sheets_data = ledger.get_sheets_data()
     print("Ledger downloaded, converted, and uploaded successfully.")
 
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
-    drive, sheets, apps_script = authorize()
+    drive, sheets, apps_script = Ledger.authorize()
     print("Executing the Apps Script function (this may take some time)...")
     LOGGER.info("Starting the Apps Script function...")
-    body = {"function": config["function"], "parameters": sheet_name}
+    body = {"function": config["function"], "parameters": sheets_data["name"]}
     response = apps_script.scripts().run(body=body,
                                          scriptId=config["script_id"]).execute()
 
@@ -444,7 +418,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
             for trace in error["scriptStackTraceElements"]:
                 print("\t{0}: {1}".format(trace["function"],
                                           trace["lineNumber"]))
-        raise AppsScriptApiException(response["error"])
+        raise AppsScriptApiError(response["error"])
 
     # Otherwise save the data that the Apps Script returns
     changes = response["response"].get("result")
@@ -453,25 +427,16 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     LOGGER.info("The Apps Script function executed successfully.")
 
     # Get the old values of changes
-    old_changes, old_sheet_id, previous_check = save_data.get_data()
-
-    # Get the datetime that the request was made for the save file
-    head, filename = os.path.split(pdf_filepath)
-    timestamp = datetime.strptime(filename,
-                                  parser["ledger_checker"]["filename_prefix"] +
-                                  " %d-%m-%Y at %H.%M.%S.pdf")
+    old_changes = save_data.get_changes()
 
     # If there were no changes then do nothing
-    # The sheet will have been deleted by the Apps Script
     if changes == "False":
         print("Changes is False, so we'll do nothing.")
         LOGGER.info("Changes is False, so we'll do nothing.")
-        os.remove(pdf_filepath)
-        os.remove(xlsx_filepath)
-        LOGGER.info("The local PDF and XLSX have been deleted successfully.")
-        save_data.new_check_success(changes=old_changes,
-                                    sheet_id=old_sheet_id,
-                                    timestamp=timestamp)
+        ledger.delete_pdf()
+        ledger.delete_xlsx()
+        ledger.delete_sheet()
+        save_data.new_check_success(new_ledger=ledger)
 
     # If the returned changes aren't actually new to us then
     # just delete the new sheet we just made
@@ -483,16 +448,10 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
                             "GBP", locale="en_GB") == old_changes["grandTotal"]["totalOut"]:
         print("The new changes is the same as the old.")
         LOGGER.info("The new changes is the same as the old.")
-        LOGGER.info("Deleting the new sheet (that's the same as the old one)...")
-        delete_sheet(sheets_service=sheets,
-                     spreadsheet_id=config["destination_sheet_id"],
-                     sheet_id=changes["sheetId"])
-        os.remove(pdf_filepath)
-        os.remove(xlsx_filepath)
-        LOGGER.info("The local PDF and XLSX have been deleted successfully!")
-        save_data.new_check_success(changes=old_changes,
-                                    sheet_id=old_sheet_id,
-                                    timestamp=timestamp)
+        ledger.delete_pdf()
+        ledger.delete_xlsx()
+        ledger.delete_sheet()
+        save_data.new_check_success(new_ledger=ledger)
 
     # Otherwise these changes are new
     # Update the PDF ledger in the user's Google Drive
@@ -501,37 +460,31 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     else:
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
-        pdf_url = update_pdf_ledger(dir_name=config["dir_name"],
-                                    pdf_ledger_id=config["pdf_ledger_id"],
-                                    pdf_ledger_name=config["pdf_ledger_name"],
-                                    pdf_filepath=pdf_filepath)
-        old_timestamp = save_data.get_timestamp()
+        ledger.update_drive_pdf()
         send_success_email(config=parser["email"], changes=changes,
-                           pdf_filepath=pdf_filepath,
-                           sheet_url=sheet_url, pdf_url=pdf_url,
-                           old_timestamp=old_timestamp)
+                           new_ledger=ledger,
+                           old_ledger=save_data.get_most_recent_ledger())
         print("Email sent successfully!")
         LOGGER.info("Deleting the old sheet...")
-        delete_sheet(sheets_service=sheets,
-                     spreadsheet_id=config["destination_sheet_id"],
-                     sheet_id=old_sheet_id)
-        save_data.new_check_success(changes=changes,
-                                    sheet_id=changes["sheetId"],
-                                    timestamp=timestamp)
+        if save_data.get_changes_ledger() is not None:
+            save_data.get_changes_ledger().delete_sheet()
+        save_data.new_check_success(new_ledger=ledger, changes=changes)
 
 
-def main():
+def main() -> None:
     """Manages the checks.
 
     This function runs the checks of the ledger regularly and gracefully
     handles any errors that occur.
     """
 
+    LOGGER.info("\n")
+
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
 
-    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"], LOGGER)
+    save_data = LedgerCheckerSaveFile(parser["ledger_checker"]["save_data_filepath"])
 
     try:
         check_ledger(save_data=save_data, parser=parser)
