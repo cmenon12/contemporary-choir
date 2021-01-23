@@ -144,7 +144,7 @@ class Ledger:
             .astimezone(tz.tzlocal())
 
         # Parse the date as a string
-        date_string = self.timestamp.strftime("%d-%m-%Y at %H.%M.%S")
+        date_string = self.get_timestamp().strftime("%d-%m-%Y at %H.%M.%S")
 
         # Save the file
         self.pdf_filename = self.filename_prefix + " " + date_string + ".pdf"
@@ -161,10 +161,10 @@ class Ledger:
         """
 
         # Prepare for the request
-        converter = PDFToXLSXConverter(self.pdf_filepath)
+        converter = PDFToXLSXConverter(self)
 
         # Make the request and check that it was successful
-        LOGGER.info("Sending the PDF for conversion to %s..." %
+        LOGGER.info("Sending the PDF for conversion to %s...",
                     converter.get_name())
         job_id = converter.upload_pdf()
         LOGGER.info("The request was successful with no HTTP errors.")
@@ -197,7 +197,7 @@ class Ledger:
                                                download_url=download_url)
 
         # Save the file
-        self.xlsx_filename = self.pdf_filename.replace(".pdf", ".xlsx")
+        self.xlsx_filename = self.get_pdf_filename().replace(".pdf", ".xlsx")
         self.xlsx_file = xlsx_content
         if save is True:
             self.save_xlsx()
@@ -207,16 +207,10 @@ class Ledger:
 
         :param save: whether to save the PDF ledger
         :type save: bool, optional
-        :raises PDFIsNotSavedException: if the PDF file isn't saved
         """
 
-        # Ensure that the PDF ledger has been saved
-        if self.pdf_filepath is None and save is True:
-            self.save_pdf()
-        elif self.pdf_filepath is None and save is False:
-            raise PDFIsNotSavedException("The PDF ledger isn't saved.")
-
-        LOGGER.info("PDF at %s has been opened.", self.pdf_filepath)
+        LOGGER.info("PDF at %s has been opened.",
+                    self.get_pdf_filepath(save=save))
 
         # Authenticate and retrieve the required services
         drive, sheets, apps_script = Ledger.authorize()
@@ -225,8 +219,8 @@ class Ledger:
         LOGGER.info("Uploading the new PDF ledger to Drive...")
         file_metadata = {"name": self.pdf_ledger_name,
                          "mimeType": "application/pdf",
-                         "originalFilename": self.pdf_filename}
-        media = MediaFileUpload(self.pdf_filepath,
+                         "originalFilename": self.get_pdf_filename()}
+        media = MediaFileUpload(self.get_pdf_filepath(save=save),
                                 mimetype="application/pdf",
                                 resumable=True)
         file = drive.files().update(body=file_metadata,
@@ -239,21 +233,18 @@ class Ledger:
 
         self.drive_pdf_url = pdf_url
 
-    def upload_to_sheets(self, convert: bool = True) -> None:
+    def upload_to_sheets(self, convert: bool = True,
+                         save: bool = True) -> None:
         """Uploads the ledger to the specified Google Sheet.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
-        :raises XLSXDoesNotExist: when convert is False.
+        :param save: whether to save the XLSX ledger
+        :type save: bool, optional
         """
 
-        # Ensure that the XLSX ledger has been saved
-        if self.xlsx_filepath is None and convert is True:
-            self.save_xlsx()
-        elif self.xlsx_filepath is None and convert is False:
-            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
-
-        LOGGER.info("Spreadsheet at %s has been opened.", self.xlsx_filepath)
+        LOGGER.info("Spreadsheet at %s has been opened.",
+                    self.get_xlsx_filepath(convert=convert, save=save))
 
         # Authenticate and retrieve the required services
         drive, sheets, apps_script = Ledger.authorize()
@@ -264,7 +255,8 @@ class Ledger:
                          "mimeType": "application/vnd.google-apps.spreadsheet"}
         xlsx_mimetype = ("application/vnd.openxmlformats-officedocument" +
                          ".spreadsheetml.sheet")
-        media = MediaFileUpload(self.xlsx_filepath,
+        media = MediaFileUpload(self.get_xlsx_filepath(convert=convert,
+                                                       save=save),
                                 mimetype=xlsx_mimetype,
                                 resumable=True)
         file = drive.files().create(body=file_metadata,
@@ -295,7 +287,7 @@ class Ledger:
                     new_sheet_id)
 
         # Rename the copied sheet
-        new_sheet_title = self.timestamp.strftime("%d/%m/%Y %H:%M:%S")
+        new_sheet_title = self.get_timestamp().strftime("%d/%m/%Y %H:%M:%S")
         body = {"requests": [{
             "updateSheetProperties": {
                 "properties": {"sheetId": int(new_sheet_id),
@@ -339,12 +331,10 @@ class Ledger:
         :raises PDFIsNotSavedException: if the PDF file isn't saved
         """
 
-        # Ensure that the PDF ledger has been saved
         if self.pdf_filepath is None and save is True:
             self.save_pdf()
         elif self.pdf_filepath is None and save is False:
             raise PDFIsNotSavedException("The PDF ledger isn't saved.")
-
         return self.pdf_filepath
 
     def get_pdf_filename(self) -> str:
@@ -365,7 +355,8 @@ class Ledger:
 
         return self.pdf_file
 
-    def get_xlsx_filepath(self, convert: bool = True, save: bool = True) -> str:
+    def get_xlsx_filepath(self, convert: bool = True,
+                          save: bool = True) -> str:
         """Returns the filepath of the XLSX spreadsheet.
 
         :param convert: whether to convert the PDF if needed
@@ -378,13 +369,8 @@ class Ledger:
         :raises XLSXIsNotSavedException: when save is False
         """
 
-        if self.xlsx_filepath is None and convert is True:
-            self.convert_to_xlsx(save=save)
-        elif self.xlsx_filepath is None and convert is False:
-            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
-
         if self.xlsx_filepath is None and save is True:
-            self.save_xlsx()
+            self.save_xlsx(convert=convert)
         elif self.xlsx_filepath is None and save is False:
             raise XLSXIsNotSavedException("The XLSX isn't saved.")
 
@@ -422,9 +408,11 @@ class Ledger:
             raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
         return self.xlsx_file
 
-    def get_drive_pdf_url(self, upload: bool = True) -> str:
+    def get_drive_pdf_url(self, save: bool = True, upload: bool = True) -> str:
         """Returns the URL of the PDF ledger in Drive.
 
+        :param save: whether to save the XLSX ledger
+        :type save: bool, optional
         :param upload: whether to upload the PDF if needed
         :type upload: bool, optional
         :return: the URL of the PDF in Drive
@@ -433,7 +421,7 @@ class Ledger:
         """
 
         if self.drive_pdf_url is None and upload is True:
-            self.update_drive_pdf()
+            self.update_drive_pdf(save=save)
         elif self.drive_pdf_url is None and upload is False:
             raise URLDoesNotExist("The PDF ledger isn't in Drive.")
         return self.drive_pdf_url
@@ -455,21 +443,10 @@ class Ledger:
         :raises URLDoesNotExist: when upload is False
         """
 
-        if self.xlsx_filepath is None and convert is True:
-            self.convert_to_xlsx(save=save)
-        elif self.xlsx_filepath is None and convert is False:
-            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
-
-        if self.xlsx_filepath is None and save is True:
-            self.save_xlsx()
-        elif self.xlsx_filepath is None and save is False:
-            raise XLSXIsNotSavedException("The XLSX isn't saved.")
-
         if self.sheets_data is None and upload is True:
-            self.upload_to_sheets()
+            self.upload_to_sheets(convert=convert, save=save)
         elif self.sheets_data is None and upload is False:
             raise URLDoesNotExist("The XLSX ledger isn't in Sheets.")
-
         return self.sheets_data
 
     def refresh_ledger(self):
@@ -490,7 +467,7 @@ class Ledger:
         :type save: bool, optional
         """
 
-        open_path = "file://///" + self.pdf_filepath
+        open_path = "file://///" + self.get_pdf_filepath(save=save)
         webbrowser.register("my-browser",
                             None,
                             webbrowser.BackgroundBrowser(self.get_pdf_filepath(save=save)))
@@ -525,7 +502,7 @@ class Ledger:
         LOGGER.info("Saving the PDF...")
 
         # Find out where the user wants to save the PDF
-        filename = self.pdf_filename.replace(".pdf", "")
+        filename = self.get_pdf_filename().replace(".pdf", "")
         if self.app_gui is not None and use_gui is True:
             pdf_file_box = self.app_gui.saveBox("Save ledger",
                                                 dirName=self.dir_name,
@@ -545,7 +522,7 @@ class Ledger:
 
         # Otherwise just use the default location
         else:
-            self.pdf_filepath = self.dir_name + self.pdf_filename
+            self.pdf_filepath = self.dir_name + self.get_pdf_filename()
 
         # Save it
         with open(self.pdf_filepath, "wb") as pdf_file:
@@ -561,15 +538,10 @@ class Ledger:
         :type use_gui: bool, optional
         """
 
-        if self.xlsx_file is None and convert is True:
-            self.convert_to_xlsx()
-        elif self.xlsx_file is None and convert is False:
-            raise XLSXDoesNotExist("The XLSX ledger doesn't exist.")
-
         LOGGER.info("Saving the XLSX...")
 
         # Find out where the user wants to save the XLSX
-        filename = self.xlsx_filename.replace(".xlsx", "")
+        filename = self.get_xlsx_filename(convert=convert).replace(".xlsx", "")
         if self.app_gui is not None and use_gui is True:
             xlsx_file_box = self.app_gui.saveBox("Save ledger",
                                                  dirName=self.dir_name,
@@ -589,27 +561,27 @@ class Ledger:
 
         # Otherwise just use the default location
         else:
-            self.xlsx_filepath = self.dir_name + self.xlsx_filename
+            self.xlsx_filepath = self.dir_name + self.get_xlsx_filename(convert=convert)
 
         # Save it
         with open(self.xlsx_filepath, "wb") as xlsx_file:
-            xlsx_file.write(self.xlsx_file)
+            xlsx_file.write(self.get_xlsx_file(convert=convert))
         LOGGER.info("XLSX saved to %s successfully", self.xlsx_filepath)
 
     def delete_pdf(self) -> None:
         """Delete the PDF file and remove the filepath."""
 
-        if self.get_pdf_filepath() is not None:
-            os.remove(self.get_pdf_filepath())
-            LOGGER.info("Deleted %s", self.get_pdf_filepath())
+        if self.pdf_filepath is not None:
+            os.remove(self.pdf_filepath)
+            LOGGER.info("Deleted %s", self.pdf_filepath)
             self.pdf_filepath = None
 
     def delete_xlsx(self):
         """Delete the XLSX file and remove the filepath."""
 
-        if self.get_xlsx_filepath() is not None:
+        if self.xlsx_filepath is not None:
             os.remove(self.get_xlsx_filepath())
-            LOGGER.info("Deleted %s", self.get_xlsx_filepath())
+            LOGGER.info("Deleted %s", self.xlsx_filepath)
             self.xlsx_filepath = None
 
     def delete_sheet(self) -> None:
@@ -677,11 +649,11 @@ class Ledger:
 class PDFToXLSXConverter:
     """Represents a PDF to XLSX converter."""
 
-    def __init__(self, pdf_filepath: str, converter_number: int = 0):
+    def __init__(self, ledger: Ledger, converter_number: int = 0):
         """Creates the converter.
 
-        :param pdf_filepath: the filepath of the PDF
-        :type pdf_filepath: str
+        :param ledger: the ledger to convert
+        :type ledger: Ledger
         :param converter_number: the chosen converter
         :type converter_number: int, optional
         """
@@ -714,7 +686,7 @@ class PDFToXLSXConverter:
             headers["Accept"] = "*/*"
             headers["Origin"] = "https://www.pdftoexcel.com"
             headers["Referer"] = "https://www.pdftoexcel.com/"
-            self.files = {"Filedata": open(pdf_filepath, "rb")}
+            self.files = {"Filedata": open(ledger.get_pdf_filepath(), "rb")}
             self.status_url = "https://www.pdftoexcel.com/status"
             self.download_url = "https://www.pdftoexcel.com"
 
@@ -725,7 +697,7 @@ class PDFToXLSXConverter:
             headers["Accept"] = "application/json"
             headers["Origin"] = "https://www.pdftoexcelconverter.net"
             headers["Referer"] = "https://www.pdftoexcelconverter.net/"
-            self.files = {"file[0]": open(pdf_filepath, "rb")}
+            self.files = {"file[0]": open(ledger.get_pdf_filepath(), "rb")}
             self.status_url = "https://www.pdftoexcelconverter.net/getIsConverted.php"
             self.download_url = "https://www.pdftoexcelconverter.net"
 
