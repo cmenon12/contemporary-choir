@@ -57,6 +57,11 @@ class LedgerCheckerSaveFile:
     """Represents the save file used to maintain persistence."""
 
     def __init__(self, save_data_filepath: str):
+        """Constructor.
+
+        :param save_data_filepath: where the save data is saved
+        :type save_data_filepath: str
+        """
 
         # Try to open the save file if it exists
         try:
@@ -150,7 +155,7 @@ class LedgerCheckerSaveFile:
 
 
 def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
-                       old_timestamp: datetime) -> tuple:
+                       last_check: str) -> tuple:
     """Prepares an email detailing the changes to the ledger.
 
     :param changes: the changes made to the ledger
@@ -159,8 +164,8 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
     :type sheet_url: str
     :param pdf_url: the URL of the PDF to link to
     :type pdf_url: str
-    :param old_timestamp: when the previous check was made
-    :type old_timestamp: datetime.datetime
+    :param last_check: when the previous check was made
+    :type last_check: str
     :return: the plain-text and html
     :rtype: tuple
     """
@@ -198,13 +203,6 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
         changes["grandTotal"][item] = \
             format_currency(changes["grandTotal"][item], "GBP", locale="en_GB")
 
-    # Prepare when the last check was made
-    if old_timestamp is not None:
-        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp),
-                                                         old_timestamp.strftime("%A %d %B %Y at %H:%M:%S"))
-    else:
-        last_check = ""
-
     # Render the template
     root = os.path.dirname(os.path.abspath(__file__))
     env = Environment(loader=FileSystemLoader(root))
@@ -225,22 +223,17 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
 
 
 def send_success_email(config: configparser.SectionProxy, changes: dict,
-                       pdf_filepath: str, sheet_url: str, pdf_url: str,
-                       old_timestamp: datetime) -> None:
+                       new_ledger: Ledger, old_ledger: Ledger) -> None:
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
     :type config: configparser.SectionProxy
     :param changes: the changes made to the ledger
     :type changes: dict
-    :param pdf_filepath: the path to the PDF to attach
-    :type pdf_filepath: str
-    :param sheet_url: the URL of the Google Sheet to link to
-    :type sheet_url: str
-    :param pdf_url: the URL of the PDF to link to
-    :type pdf_url: str
-    :param old_timestamp: when the previous check was made
-    :type old_timestamp: datetime.datetime
+    :param new_ledger: the ledger with these new changes
+    :type new_ledger: Ledger
+    :param old_ledger: the ledger just before these new changes
+    :type old_ledger: Ledger
     """
 
     message = MIMEMultipart("alternative")
@@ -249,10 +242,19 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
     message["From"] = config["from"]
 
     # Prepare the email
+    if old_ledger is not None:
+        old_timestamp = old_ledger.get_timestamp()
+        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp),
+                                                         old_timestamp.strftime("%A %d %B %Y at %H:%M:%S"))
+    else:
+        last_check = ", although we don't know how new these changes are"
     text, html = prepare_email_body(changes=changes,
-                                    sheet_url=sheet_url,
-                                    pdf_url=pdf_url,
-                                    old_timestamp=old_timestamp)
+                                    sheet_url=new_ledger.get_sheets_data(convert=False,
+                                                                         save=False,
+                                                                         upload=False)["url"],
+                                    pdf_url=new_ledger.get_drive_pdf_url(save=False,
+                                                                         upload=False),
+                                    last_check=last_check)
 
     # Turn these into plain/html MIMEText objects
     # Add HTML/plain-text parts to MIMEMultipart message
@@ -260,18 +262,22 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
     message.attach(MIMEText(text, "plain"))
     message.attach(MIMEText(html, "html"))
 
-    # Attach the ledger
-    with open(pdf_filepath, "rb") as attachment:
-        # Add file as application/octet-stream
-        # Email client can usually download this automatically as attachment
-        part = MIMEBase("application", "pdf")
-        part.set_payload(attachment.read())
+    # Attach the new ledger
+    part = MIMEBase("application", "pdf")
+    part.set_payload(new_ledger.get_pdf_file())
     encoders.encode_base64(part)
-    # Add header as key/value pair to attachment part
-    head, filename = os.path.split(pdf_filepath)
     part.add_header("Content-Disposition",
-                    "attachment; filename=\"%s\"" % filename)
+                    "attachment; filename=\"NEW: %s\"" % new_ledger.get_pdf_filename())
     message.attach(part)
+
+    # Attach the old ledger if it exists
+    if old_ledger is not None:
+        part = MIMEBase("application", "pdf")
+        part.set_payload(old_ledger.get_pdf_file())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition",
+                        "attachment; filename=\"OLD: %s\"" % old_ledger.get_pdf_filename())
+        message.attach(part)
 
     # Send the email
     send_email(config=config, message=message)
@@ -384,7 +390,6 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     # Download the ledger, convert it, and upload it to Google Sheets
     print("Downloading the PDF...")
     ledger = Ledger(config=config, expense365=expense365)
-    pdf_filepath = ledger.get_pdf_filepath()
     print("Converting the ledger...")
     ledger.get_xlsx_filepath()
     print("Uploading the ledger to Google Sheets...")
@@ -455,14 +460,13 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     else:
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
-        pdf_url = ledger.get_drive_pdf_url()
         send_success_email(config=parser["email"], changes=changes,
-                           pdf_filepath=pdf_filepath,
-                           sheet_url=sheets_data["url"], pdf_url=pdf_url,
-                           old_timestamp=save_data.get_most_recent_ledger().get_timestamp())
+                           new_ledger=ledger,
+                           old_ledger=save_data.get_most_recent_ledger())
         print("Email sent successfully!")
         LOGGER.info("Deleting the old sheet...")
-        save_data.get_changes_ledger().delete_sheet()
+        if save_data.get_changes_ledger() is not None:
+            save_data.get_changes_ledger().delete_sheet()
         save_data.new_check_success(new_ledger=ledger, changes=changes)
 
 
