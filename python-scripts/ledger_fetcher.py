@@ -803,6 +803,14 @@ def main(app_gui: gui) -> None:
     :type app_gui: appJar.appjar.gui
     """
 
+    # Check that the config file exists
+    try:
+        open(CONFIG_FILENAME)
+    except FileNotFoundError:
+        print("The config file doesn't exist!")
+        time.sleep(5)
+        raise FileNotFoundError("The config file doesn't exist!")
+
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
@@ -840,6 +848,8 @@ def main(app_gui: gui) -> None:
             # If so then open it in the prescribed browser
             LOGGER.info("User chose to open the uploaded ledger in Sheets.")
             ledger.open_sheet_in_browser()
+
+    time.sleep(5)
 
 
 if __name__ == "__main__":

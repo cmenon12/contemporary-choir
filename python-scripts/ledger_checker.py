@@ -480,6 +480,14 @@ def main() -> None:
 
     LOGGER.info("\n")
 
+    # Check that the config file exists
+    try:
+        open(CONFIG_FILENAME)
+    except FileNotFoundError:
+        print("The config file doesn't exist!")
+        time.sleep(5)
+        raise FileNotFoundError("The config file doesn't exist!")
+
     # Fetch info from the config
     parser = configparser.ConfigParser()
     parser.read(CONFIG_FILENAME)
@@ -500,6 +508,8 @@ def main() -> None:
         if len(save_data.get_stack_traces()) in ATTEMPTS:
             send_error_email(config=parser["email"], save_data=save_data)
             print("Email sent successfully!")
+
+    time.sleep(5)
 
 
 if __name__ == "__main__":
