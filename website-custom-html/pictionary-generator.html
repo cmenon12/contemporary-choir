@@ -5,7 +5,7 @@
 <button id="word-generate"
         style="background-color: #E62073; width: 100%; font-size: 25px; padding: 0.5em 2em"
         onclick="generateWord()">
-    Click for a truth or a lie!
+    Click for a word!
 </button>
 
 <h2 id="word-answer"
@@ -13,10 +13,10 @@
 
 <script>
 
-  // HELLO JAMIE & ELLIE!
-  // Put the words in this array. They cannot contain any speech marks (")
-  // Just add new lines to this (but before the closing square bracket) as needed
-  // The indentation and new lines don't matter
+  /* HELLO JAMIE & ELLIE!
+     Put the words in this array. They cannot contain any speech marks (")
+     Just add new lines to this (but before the closing square bracket) as needed
+     The indentation and new lines don't matter */
   const words = ["word1", "word2", "word3", "word4",
     "word5", "word6", "word7", "word8"];
 
@@ -24,9 +24,7 @@
 
 
   /**
-   * 50/50 chance of asking for their truth or providing a word.
-   * Importantly if the button is clicked again,
-   * then they won't be asked for their truth again.
+   * Alters the button and runs randomWord().
    */
   function generateWord() {
 
