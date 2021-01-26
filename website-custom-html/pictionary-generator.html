@@ -1,0 +1,72 @@
+<!-- This is the code used in a custom HTML block on the website to
+     generate a random word for the participant when they click the
+     button. -->
+
+<button id="word-generate"
+        style="background-color: #E62073; width: 100%; font-size: 25px; padding: 0.5em 2em"
+        onclick="generateWord()">
+    Click for a truth or a lie!
+</button>
+
+<h2 id="word-answer"
+    style="text-align: center; color: #222; font: bold 32px NowRegular, sans-serif"></h2>
+
+<script>
+
+  // HELLO JAMIE & ELLIE!
+  // Put the words in this array. They cannot contain any speech marks (")
+  // Just add new lines to this (but before the closing square bracket) as needed
+  // The indentation and new lines don't matter
+  const words = ["word1", "word2", "word3", "word4",
+    "word5", "word6", "word7", "word8"];
+
+  const theButton = document.getElementById("word-generate");
+
+
+  /**
+   * 50/50 chance of asking for their truth or providing a word.
+   * Importantly if the button is clicked again,
+   * then they won't be asked for their truth again.
+   */
+  function generateWord() {
+
+    // Alter the button
+    theButton.style.backgroundColor = "#333";
+    theButton.style.width = "auto";
+    theButton.style.margin = "0 auto";
+    theButton.style.display = "block";
+    theButton.style.fontSize = "22px";
+    theButton.onclick = randomWord;
+
+    randomWord();
+
+  }
+
+
+  /**
+   * Returns a random word and removes that from the array.
+   */
+  function randomWord() {
+
+    // If all of the words have been used
+    if (words.length === 0) {
+      document.getElementById("word-answer").innerHTML = "We're out of words! 😱";
+
+      // Hide the button to generate a new word
+      theButton.style.visibility = "hidden";
+
+    } else {
+      // Pick a random word, remove it, and return it
+      const randomNum = Math.floor(Math.random() * words.length);
+      const chosenWord = words[randomNum];
+      words.splice(randomNum, 1);
+      document.getElementById("word-answer").innerHTML = chosenWord;
+
+      // Provide a button to generate a new word
+      theButton.innerHTML = "We've already had this word"
+      theButton.style.visibility = "visible";
+    }
+
+  }
+</script>
+
