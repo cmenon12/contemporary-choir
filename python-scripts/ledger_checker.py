@@ -76,7 +76,7 @@ class LedgerCheckerSaveFile:
                 raise FileNotFoundError("The save data file is invalid.")
 
         # If it fails then just initialise with blank values
-        except FileNotFoundError:
+        except (FileNotFoundError, EOFError):
 
             self.save_data_filepath = save_data_filepath
             self.stack_traces = []
@@ -244,7 +244,7 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
     # Prepare the email
     if old_ledger is not None:
         old_timestamp = old_ledger.get_timestamp()
-        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp),
+        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp.replace(tzinfo=None)),
                                                          old_timestamp.strftime("%A %d %B %Y at %H:%M:%S"))
     else:
         last_check = ", although we don't know how new these changes are"
@@ -482,7 +482,7 @@ def main() -> None:
 
     # Check that the config file exists
     try:
-        open(CONFIG_FILENAME)
+        open(CONFIG_FILENAME, "rb")
     except FileNotFoundError:
         print("The config file doesn't exist!")
         time.sleep(5)
