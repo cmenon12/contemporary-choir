@@ -642,12 +642,24 @@ class Ledger:
                 credentials.refresh(Request())
             else:
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRETS_FILE, SCOPES)
-                credentials = flow.run_local_server(port=0)
+                    CLIENT_SECRETS_FILE, SCOPES,
+                    redirect_uri="urn:ietf:wg:oauth:2.0:oob")
+
+                # Open the browser for the user to authorize it
+                # credentials = flow.run_local_server(port=0)
+
+                # Tell the user to go and authorize it themselves
+                auth_url, _ = flow.authorization_url(prompt="consent")
+                print("Please go to this URL: %s" % auth_url)
+                code = input("Enter the authorization code: ")
+                flow.fetch_token(code=code)
+                credentials = flow.credentials
+
             # Save the credentials for the next run
             with open(TOKEN_PICKLE_FILE, "wb") as token:
                 pickle.dump(credentials, token)
-            LOGGER.info("Credentials saved to %s successfully.", TOKEN_PICKLE_FILE)
+            LOGGER.info("Credentials saved to %s successfully.",
+                        TOKEN_PICKLE_FILE)
 
         # Build the services and return them as a tuple
         drive_service = build("drive", "v3", credentials=credentials,
