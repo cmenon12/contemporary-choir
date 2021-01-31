@@ -2,12 +2,40 @@
 
 This module is designed to download a society ledger from eXpense365
 instead of having to use their app. You can then also convert it to an
-XLSX spreadsheet and upload that to Google Sheets.
+XLSX spreadsheet, upload that to Google Sheets, and upload the PDF to
+Google Drive.
+
+The Ledger class represents the ledger. The ledger is automatically
+downloaded and saved upon instantiation. It contains methods to convert
+it to an XLSX spreadsheet and upload it to Google Sheets & Drive, as
+well as to delete the locally saved files or Google Sheet, and refresh
+itself to a newer version (by re-downloading the original ledger). It
+also has a large range of getter methods which can invoke these
+behaviours. Finally, it has one static method (authorize()) which
+authorizes access to Google's services, this is static because it's not
+dependent on the ledger.
+
+The PDFToXLSXConverter class represents a PDF to XLSX converter. Upon
+instantiation a converter is chosen (either by choice or randomly). It
+contains the methods to convert the ledger to an XLSX.
+
+The CustomEncoder class is a custom JSON encoder. It overrides the default()
+method of json.JSONEncoder. It will skip bytes and instead just return
+a string that states "bytes object of length X not shown", and use the
+default encoder for all other types (falling back on converting it to a
+string if this fails). This is used by the other classes to save
+themselves to the log.
 
 When main() is run then the ledger is downloaded, and the user is
 asked if they want to open it and/or upload it to Google Sheets. This
 is done using dialog boxes so the user doesn't need to interact with it
 at the command line.
+
+Before running this script, make sure you've got a valid config file
+and a valid set of credentials (saved to config.ini and
+credentials.json respectively).
+
+This script relies on the classes in custom_exceptions.py.
 """
 
 from __future__ import print_function

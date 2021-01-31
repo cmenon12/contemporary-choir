@@ -1,17 +1,28 @@
-"""Regularly checks the ledger for any changes, and notifies the user.
+"""Checks the ledger for any changes and notifies the user via email.
 
-This module is primarily designed to check the ledger on a regular basis
-for any new changes, and notify the user by email of any changes found.
+This script is designed to check the ledger for any new changes, and
+notify the user by email of any changes found.
 
-This module specifically contains functions to execute an Apps Script
-function, process the output from that function, and create and send an
-email to notify the user of any changes.
+The LedgerCheckerSaveFile class is used to represent the save file that
+maintains persistence between executions. This ensures that duplicate
+emails aren't sent. It saves the most recent changes and copy of the
+ledger, allowing this old copy to be attached to a future email. It
+also saves the stack traces, allowing the user to be notified of
+consecutive errors.
 
-This module relies on ledger_fetcher.py. It also relies on two Apps
-Scripts, ledger-comparison.gs and ledger-checker.gs, to neatly format
-and compare the ledger to an older version. These should be created in
-an Apps Script project linked to the Google Sheet that the ledger is
-uploaded to.
+This script contains standalone functions to run the check. This
+includes separate functions to prepare and send the emails.
+
+Before running this script, make sure you've got a valid config file
+and a valid set of credentials (saved to config.ini and
+credentials.json respectively).
+
+This script relies on the classes in ledger_fetcher.py and
+custom_exceptions.py. It also relies on two Apps Scripts,
+ledger-comparison.gs and ledger-checker.gs, to neatly format the ledger
+and compare it to an older version. These should be created in an Apps
+Script project linked to the Google Sheet that the ledger is uploaded
+to. Finally, it relies on email-template.html to form the email.
 """
 
 import configparser
