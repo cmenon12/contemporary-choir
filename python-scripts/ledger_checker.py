@@ -398,7 +398,10 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
 
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
-    drive, sheets, apps_script = Ledger.authorize()
+    if ledger.browser_path is False:
+        drive, sheets, apps_script = Ledger.authorize(open_browser=False)
+    else:
+        drive, sheets, apps_script = Ledger.authorize()
     print("Executing the Apps Script function (this may take some time)...")
     LOGGER.info("Starting the Apps Script function...")
     body = {"function": config["function"], "parameters": sheets_data["name"]}

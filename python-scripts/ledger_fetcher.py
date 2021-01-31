@@ -121,7 +121,10 @@ class Ledger:
         self.pdf_ledger_name = config["pdf_ledger_name"]
         self.destination_sheet_name = config["destination_sheet_name"]
         self.destination_sheet_id = config["destination_sheet_id"]
-        self.browser_path = config["browser_path"]
+        if str(config["browser_path"]).lower() == "false":
+            self.browser_path = False
+        else:
+            self.browser_path = config["browser_path"]
         self.drive_pdf_url = None
         self.xlsx_filepath = None
         self.xlsx_filename = None
@@ -232,7 +235,10 @@ class Ledger:
                     self.get_pdf_filepath(save=save))
 
         # Authenticate and retrieve the required services
-        drive, sheets, apps_script = Ledger.authorize()
+        if self.browser_path is False:
+            drive, sheets, apps_script = Ledger.authorize(open_browser=False)
+        else:
+            drive, sheets, apps_script = Ledger.authorize()
 
         # Update the PDF copy of the ledger with a new version
         LOGGER.info("Uploading the new PDF ledger to Drive...")
@@ -266,7 +272,10 @@ class Ledger:
                     self.get_xlsx_filepath(convert=convert, save=save))
 
         # Authenticate and retrieve the required services
-        drive, sheets, apps_script = Ledger.authorize()
+        if self.browser_path is False:
+            drive, sheets, apps_script = Ledger.authorize(open_browser=False)
+        else:
+            drive, sheets, apps_script = Ledger.authorize()
 
         # Upload the ledger
         LOGGER.info("Uploading the ledger to Google Sheets")
@@ -487,10 +496,13 @@ class Ledger:
         """
 
         open_path = "file://///" + self.get_pdf_filepath(save=save)
-        webbrowser.register("my-browser",
-                            None,
-                            webbrowser.BackgroundBrowser(self.get_pdf_filepath(save=save)))
-        webbrowser.get(using="my-browser").open(open_path)
+        if self.browser_path is False:
+            print("View the PDF ledger here: %s" % open_path)
+        else:
+            webbrowser.register("my-browser",
+                                None,
+                                webbrowser.BackgroundBrowser(self.browser_path))
+            webbrowser.get(using="my-browser").open(open_path)
 
     def open_sheet_in_browser(self, convert: bool = True, save: bool = True,
                               upload: bool = True) -> None:
@@ -506,10 +518,13 @@ class Ledger:
 
         open_path = self.get_sheets_data(convert=convert, save=save,
                                          upload=upload)["url"]
-        webbrowser.register("my-browser",
-                            None,
-                            webbrowser.BackgroundBrowser(self.browser_path))
-        webbrowser.get(using="my-browser").open(open_path)
+        if self.browser_path is False:
+            print("Visit the Google Sheet here: %s" % open_path)
+        else:
+            webbrowser.register("my-browser",
+                                None,
+                                webbrowser.BackgroundBrowser(self.browser_path))
+            webbrowser.get(using="my-browser").open(open_path)
 
     def save_pdf(self, use_gui: bool = True) -> None:
         """Save the PDF ledger to the file.
@@ -609,7 +624,10 @@ class Ledger:
         if self.sheets_data is not None:
 
             # Authenticate and retrieve the required services
-            drive, sheets, apps_script = Ledger.authorize()
+            if self.browser_path is False:
+                drive, sheets, apps_script = Ledger.authorize(open_browser=False)
+            else:
+                drive, sheets, apps_script = Ledger.authorize()
 
             # Delete the sheet
             body = {"requests": {"deleteSheet": {"sheetId": self.sheets_data["sheet_id"]}}}
@@ -621,7 +639,7 @@ class Ledger:
             LOGGER.info("There is no Google Sheet to delete.")
 
     @staticmethod
-    def authorize() -> tuple:
+    def authorize(open_browser: bool = True) -> tuple:
         """Authorizes access to the user's Drive, Sheets, and Apps Script.
 
         :return: the authenticated services
@@ -641,19 +659,23 @@ class Ledger:
                     credentials.refresh_token:
                 credentials.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRETS_FILE, SCOPES,
-                    redirect_uri="urn:ietf:wg:oauth:2.0:oob")
+                if open_browser is True:
+                    # Open the browser for the user to authorize it
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        CLIENT_SECRETS_FILE, SCOPES)
+                    print("Your browser should open automatically.")
+                    credentials = flow.run_local_server(port=0)
 
-                # Open the browser for the user to authorize it
-                # credentials = flow.run_local_server(port=0)
-
-                # Tell the user to go and authorize it themselves
-                auth_url, _ = flow.authorization_url(prompt="consent")
-                print("Please go to this URL: %s" % auth_url)
-                code = input("Enter the authorization code: ")
-                flow.fetch_token(code=code)
-                credentials = flow.credentials
+                else:
+                    # Tell the user to go and authorize it themselves
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        CLIENT_SECRETS_FILE, SCOPES,
+                        redirect_uri="urn:ietf:wg:oauth:2.0:oob")
+                    auth_url, _ = flow.authorization_url(prompt="consent")
+                    print("Please visit this URL to authorize this application: %s" % auth_url)
+                    code = input("Enter the authorization code: ")
+                    flow.fetch_token(code=code)
+                    credentials = flow.credentials
 
             # Save the credentials for the next run
             with open(TOKEN_PICKLE_FILE, "wb") as token:
@@ -847,7 +869,7 @@ def main(app_gui: gui) -> None:
         # If so then convert it and upload it
         LOGGER.info("User chose to convert and upload the ledger.")
         print("Converting the ledger...")
-        ledger.get_xlsx_filepath()
+        ledger.convert_to_xlsx()
         print("Uploading the ledger to Google Sheets...")
         sheets_data = ledger.get_sheets_data()
         print("Ledger uploaded to Google Sheets successfully. "
