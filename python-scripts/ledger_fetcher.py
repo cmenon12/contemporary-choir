@@ -22,6 +22,7 @@ import random
 import time
 import webbrowser
 from datetime import datetime
+from typing import Any
 
 import requests
 from appJar import gui
@@ -235,10 +236,7 @@ class Ledger:
                     self.get_pdf_filepath(save=save))
 
         # Authenticate and retrieve the required services
-        if self.browser_path is False:
-            drive, sheets, apps_script = Ledger.authorize(open_browser=False)
-        else:
-            drive, sheets, apps_script = Ledger.authorize()
+        drive, sheets, apps_script = Ledger.authorize(open_browser=self.browser_path)
 
         # Update the PDF copy of the ledger with a new version
         LOGGER.info("Uploading the new PDF ledger to Drive...")
@@ -272,10 +270,7 @@ class Ledger:
                     self.get_xlsx_filepath(convert=convert, save=save))
 
         # Authenticate and retrieve the required services
-        if self.browser_path is False:
-            drive, sheets, apps_script = Ledger.authorize(open_browser=False)
-        else:
-            drive, sheets, apps_script = Ledger.authorize()
+        drive, sheets, apps_script = Ledger.authorize(open_browser=self.browser_path)
 
         # Upload the ledger
         LOGGER.info("Uploading the ledger to Google Sheets")
@@ -624,10 +619,7 @@ class Ledger:
         if self.sheets_data is not None:
 
             # Authenticate and retrieve the required services
-            if self.browser_path is False:
-                drive, sheets, apps_script = Ledger.authorize(open_browser=False)
-            else:
-                drive, sheets, apps_script = Ledger.authorize()
+            drive, sheets, apps_script = Ledger.authorize(open_browser=self.browser_path)
 
             # Delete the sheet
             body = {"requests": {"deleteSheet": {"sheetId": self.sheets_data["sheet_id"]}}}
@@ -639,9 +631,11 @@ class Ledger:
             LOGGER.info("There is no Google Sheet to delete.")
 
     @staticmethod
-    def authorize(open_browser: bool = True) -> tuple:
+    def authorize(open_browser: Any = True) -> tuple:
         """Authorizes access to the user's Drive, Sheets, and Apps Script.
 
+        :param open_browser: whether to open the browser
+        :type open_browser: Any, optional
         :return: the authenticated services
         :rtype: tuple
         """
@@ -659,14 +653,7 @@ class Ledger:
                     credentials.refresh_token:
                 credentials.refresh(Request())
             else:
-                if open_browser is True:
-                    # Open the browser for the user to authorize it
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        CLIENT_SECRETS_FILE, SCOPES)
-                    print("Your browser should open automatically.")
-                    credentials = flow.run_local_server(port=0)
-
-                else:
+                if open_browser is False:
                     # Tell the user to go and authorize it themselves
                     flow = InstalledAppFlow.from_client_secrets_file(
                         CLIENT_SECRETS_FILE, SCOPES,
@@ -676,6 +663,13 @@ class Ledger:
                     code = input("Enter the authorization code: ")
                     flow.fetch_token(code=code)
                     credentials = flow.credentials
+
+                else:
+                    # Open the browser for the user to authorize it
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        CLIENT_SECRETS_FILE, SCOPES)
+                    print("Your browser should open automatically.")
+                    credentials = flow.run_local_server(port=0)
 
             # Save the credentials for the next run
             with open(TOKEN_PICKLE_FILE, "wb") as token:
