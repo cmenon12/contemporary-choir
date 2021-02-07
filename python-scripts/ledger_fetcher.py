@@ -52,6 +52,7 @@ import webbrowser
 from datetime import datetime
 from typing import Any
 
+import pyperclip
 import requests
 from appJar import gui
 from dateutil import tz
@@ -688,6 +689,8 @@ class Ledger:
                         redirect_uri="urn:ietf:wg:oauth:2.0:oob")
                     auth_url, _ = flow.authorization_url(prompt="consent")
                     print("Please visit this URL to authorize this application: %s" % auth_url)
+                    pyperclip.copy(auth_url)
+                    print("The URL has been copied to the clipboard.")
                     code = input("Enter the authorization code: ")
                     flow.fetch_token(code=code)
                     credentials = flow.credentials
