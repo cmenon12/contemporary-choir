@@ -278,7 +278,14 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
     part.set_payload(new_ledger.get_pdf_file())
     encoders.encode_base64(part)
     part.add_header("Content-Disposition",
-                    "attachment; filename=\"NEW %s\"" % new_ledger.get_pdf_filename())
+                    "attachment; filename=\"NEW %s\"; creation-date=\"%s\"; "
+                    "modification-date=\"%s\"; read-date=\"%s\"" %
+                    (new_ledger.get_pdf_filename(),
+                     email.utils.format_datetime(new_ledger.get_timestamp()),
+                     email.utils.format_datetime(new_ledger.get_timestamp()),
+                     email.utils.format_datetime(new_ledger.get_timestamp())))
+    part.add_header("Content-Description",
+                    "The new ledger for %s" % changes["societyName"])
     message.attach(part)
 
     # Attach the old ledger if it exists
@@ -287,7 +294,14 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
         part.set_payload(old_ledger.get_pdf_file())
         encoders.encode_base64(part)
         part.add_header("Content-Disposition",
-                        "attachment; filename=\"OLD %s\"" % old_ledger.get_pdf_filename())
+                        "attachment; filename=\"OLD %s\"; creation-date=\"%s\"; "
+                        "modification-date=\"%s\"; read-date=\"%s\"" %
+                        (old_ledger.get_pdf_filename(),
+                         email.utils.format_datetime(old_ledger.get_timestamp()),
+                         email.utils.format_datetime(old_ledger.get_timestamp()),
+                         email.utils.format_datetime(old_ledger.get_timestamp())))
+        part.add_header("Content-Description",
+                        "The old ledger for %s" % changes["societyName"])
         message.attach(part)
 
     # Send the email
