@@ -345,13 +345,17 @@ def send_error_email(config: configparser.SectionProxy,
                                    % (i, error_count))
                 break
 
+    most_recent = save_data.get_most_recent_ledger().get_timestamp().strftime("%A %d %B %Y at %H:%M:%S")
+
     text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
+            "The most recent successful check was %s.\n\n"
             "Please see the stack traces below and check the log. Note that "
-            "future executions will continue as scheduled%s\n\n %s "
+            "future executions will continue as scheduled%s\n\n\n%s"
             "———\nThis email was sent automatically by a "
             "computer program (https://github.com/cmenon12/contemporary-choir). "
             "If you want to leave some feedback "
             "then please reply directly to it." % (error_count,
+                                                   most_recent,
                                                    future_attempts,
                                                    stack_traces))
     message.attach(MIMEText(text, "plain"))
