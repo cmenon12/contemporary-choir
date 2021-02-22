@@ -56,10 +56,8 @@ function getNamedRangesFromSheet() {
   // For each named range in this sheet
   for (let i = 0; i < namedRanges.length; i++) {
 
-    // If the named range name doesn't include Pre,
-    // and the A1 notation doesn't include a : (so it's a single cell)
-    if (!namedRanges[i].getName().includes("Pre") && !namedRanges[i]
-      .getRange().getA1Notation().includes(":")) {
+    // If the named range A1 notation doesn't include a : (so it's a single cell)
+    if (!namedRanges[i].getRange().getA1Notation().includes(":")) {
 
       // Add it to our object, using the name as the key.
       namedRangesObj[namedRanges[i].getName()] = namedRanges[i].getRange();
@@ -203,7 +201,8 @@ function compareNamedRanges(namedRanges, newValues) {
   for (let key in namedRanges) {
 
     // If the value has changed then save it
-    if (namedRanges[key].getValue() !== newValues[key]) {
+    if (namedRanges[key].getValue() != newValues[key]
+      && newValues[key] != undefined) {
 
       // This saves [old value, new value, Range]
       changedRanges[key] = [namedRanges[key].getValue(),
@@ -211,6 +210,9 @@ function compareNamedRanges(namedRanges, newValues) {
 
       Logger.log(key + " has changed: old:" +
         namedRanges[key].getValue() + ", new:" + newValues[key]);
+
+    } else if (newValues[key] == undefined) {
+      Logger.log(`Skipping ${key} because it couldn't be found in the ledger.`)
     }
   }
 
@@ -264,6 +266,7 @@ function runWithoutConsent() {
   const namedRanges = getNamedRangesFromSheet();
   const newValues = getNewCostCodeValues();
   const changedRanges = compareNamedRanges(namedRanges, newValues);
+  Logger.log(`changedRanges is: ${JSON.stringify(changedRanges)}`);
 
   // If there are new values then get consent and update them
   if (Object.keys(changedRanges).length > 0) {
