@@ -285,7 +285,7 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
                      email.utils.format_datetime(new_ledger.get_timestamp()),
                      email.utils.format_datetime(new_ledger.get_timestamp())))
     part.add_header("Content-Description",
-                    "The new ledger for %s" % changes["societyName"])
+                    "NEW %s" % new_ledger.get_pdf_filename())
     message.attach(part)
 
     # Attach the old ledger if it exists
@@ -301,7 +301,7 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
                          email.utils.format_datetime(old_ledger.get_timestamp()),
                          email.utils.format_datetime(old_ledger.get_timestamp())))
         part.add_header("Content-Description",
-                        "The old ledger for %s" % changes["societyName"])
+                        "OLD %s" % new_ledger.get_pdf_filename())
         message.attach(part)
 
     # Send the email

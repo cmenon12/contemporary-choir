@@ -755,7 +755,7 @@ class PDFToXLSXConverter:
 
         # If no valid number was specified then choose randomly
         if converter_number not in range(1, NUMBER_OF_CONVERTERS + 1):
-            converter_number = random.randint(1, NUMBER_OF_CONVERTERS + 1)
+            converter_number = random.randint(1, NUMBER_OF_CONVERTERS)
 
         # Use pdftoexcel.com
         if converter_number == 1:
