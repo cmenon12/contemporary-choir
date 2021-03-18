@@ -134,7 +134,7 @@ class LedgerCheckerSaveFile:
         """
 
         date = datetime.now().strftime("%A %d %B %Y AT %H:%M:%S")
-        self.stack_traces.append("ERROR ON %s\n%s" % (date, stack_trace))
+        self.stack_traces.append(("ERROR ON %s\n%s" % (date, stack_trace)).upper())
         self.save_data()
         LOGGER.debug("Failed check saved to %s",
                      self.save_data_filepath)
@@ -301,7 +301,7 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
                          email.utils.format_datetime(old_ledger.get_timestamp()),
                          email.utils.format_datetime(old_ledger.get_timestamp())))
         part.add_header("Content-Description",
-                        "OLD %s" % new_ledger.get_pdf_filename())
+                        "OLD %s" % old_ledger.get_pdf_filename())
         message.attach(part)
 
     # Send the email
