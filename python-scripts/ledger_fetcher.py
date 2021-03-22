@@ -678,8 +678,7 @@ class Ledger:
         # If there are no (valid) credentials available, let the user log in.
         if not credentials or not credentials.valid:
             LOGGER.info("There are no credentials or they are invalid.")
-            if credentials and credentials.expired and \
-                    credentials.refresh_token:
+            if credentials and credentials.refresh_token:
                 credentials.refresh(Request())
             else:
                 if open_browser is False:
@@ -707,6 +706,10 @@ class Ledger:
                 pickle.dump(credentials, token)
             LOGGER.info("Credentials saved to %s successfully.",
                         TOKEN_PICKLE_FILE)
+
+        # If we do have valid credentials then refresh them
+        else:
+            credentials.refresh(Request())
 
         # Build the services and return them as a tuple
         drive_service = build("drive", "v3", credentials=credentials,

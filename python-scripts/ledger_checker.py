@@ -134,7 +134,7 @@ class LedgerCheckerSaveFile:
         """
 
         date = datetime.now().strftime("%A %d %B %Y AT %H:%M:%S")
-        self.stack_traces.append(("ERROR ON %s\n%s" % (date, stack_trace)).upper())
+        self.stack_traces.append(("ERROR ON %s\n%s" % (date.upper(), stack_trace)))
         self.save_data()
         LOGGER.debug("Failed check saved to %s",
                      self.save_data_filepath)
