@@ -484,7 +484,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
 
     # Otherwise these changes are new
     # Update the PDF ledger in the user's Google Drive
-    # Notify the user (via email) and delete the old sheet
+    # Notify the user (via email) and hide the old sheet
     # Save the new data to the save file
     else:
         print("We have some new changes!")
@@ -494,9 +494,9 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
                            new_ledger=ledger,
                            old_ledger=save_data.get_most_recent_ledger())
         print("Email sent successfully!")
-        LOGGER.info("Deleting the old sheet...")
+        LOGGER.info("Hiding the old sheet...")
         if save_data.get_changes_ledger() is not None:
-            save_data.get_changes_ledger().delete_sheet()
+            save_data.get_changes_ledger().hide_sheet()
         save_data.new_check_success(new_ledger=ledger, changes=changes)
 
 

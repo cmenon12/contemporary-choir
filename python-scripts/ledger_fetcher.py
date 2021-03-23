@@ -659,6 +659,35 @@ class Ledger:
         else:
             LOGGER.info("There is no Google Sheet to delete.")
 
+    def hide_sheet(self, hide: bool = True) -> None:
+        """Hides (or un-hides) the uploaded Google Sheet, if it exists.
+
+        :param hide: True to hide, False to un-hide
+        :type hide: bool, optional
+        """
+
+        if self.sheets_data is not None:
+
+            # Authenticate and retrieve the required services
+            drive, sheets, apps_script = Ledger.authorize(open_browser=self.browser_path)
+
+            # Hide the sheet
+            body = {"requests": [{
+                "updateSheetProperties": {
+                    "properties": {"sheetId": int(self.sheets_data["sheet_id"]),
+                                   "hidden": hide},
+                    "fields": "hidden"
+                }
+            }], "includeSpreadsheetInResponse": False}
+            sheets.spreadsheets().batchUpdate(spreadsheetId=self.sheets_data["spreadsheet_id"],
+                                              body=body).execute()
+            if hide:
+                LOGGER.info("Sheet %s has been hidden successfully.", self.sheets_data["sheet_id"])
+            else:
+                LOGGER.info("Sheet %s has been un-hidden successfully.", self.sheets_data["sheet_id"])
+        else:
+            LOGGER.info("There is no Google Sheet to hide.")
+
     @staticmethod
     def authorize(open_browser: Any = True) -> tuple:
         """Authorizes access to the user's Drive, Sheets, and Apps Script.
