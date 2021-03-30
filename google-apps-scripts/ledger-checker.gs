@@ -203,6 +203,15 @@ class Ledger {
   }
 
   /**
+   * Sets the timestamp of the old ledger we compared against.
+   *
+   * @param {String} timestamp
+   */
+  setOldLedgerTimestamp(timestamp){
+    this.oldLedgerTimestamp = timestamp;
+  }
+
+  /**
    * Returns each cost code with its last row number.
    * It's returned as an array of cost codes, with each element as
    * [name, lastRowNumber].
@@ -269,6 +278,9 @@ function checkForNewTotals(sheetName) {
   const oldSheet = oldSpreadsheet.getSheetByName("Original");
   let oldLedger = new Ledger(oldSheet.getSheetId());
   oldLedger = getCostCodeTotals(oldSheet, oldLedger);
+
+  // Save timestamp of the old ledger to the new ledger
+  ledger.setOldLedgerTimestamp(oldSheet.getRange("D3").getValue());
 
   // If they're equal then stop
   if (Ledger.compareLedgers(ledger, oldLedger) === true) {
