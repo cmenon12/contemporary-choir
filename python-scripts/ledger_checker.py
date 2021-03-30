@@ -96,6 +96,7 @@ class LedgerCheckerSaveFile:
             self.most_recent_ledger = None
             self.changes_ledger = None
             self.error_email_id = None
+            self.success_email_id = None
 
         self.save_data()
 
@@ -156,6 +157,21 @@ class LedgerCheckerSaveFile:
         """Gets and returns the ID of the last error email, if it exists."""
 
         return self.error_email_id
+
+    def update_success_email_id(self, email_id: str) -> None:
+        """Sets and saves the ID of the last success email.
+
+        :param email_id: the ID to save
+        :type email_id: str
+        """
+
+        self.success_email_id = email_id
+        self.save_data()
+
+    def get_success_email_id(self) -> Optional[str]:
+        """Gets and returns the ID of the last success email, if it exists."""
+
+        return self.success_email_id
 
     def get_changes(self) -> dict:
         """Gets and returns changes."""
@@ -251,12 +267,15 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
     return text, html
 
 
-def send_success_email(config: configparser.SectionProxy, changes: dict,
+def send_success_email(config: configparser.SectionProxy,
+                       save_data: LedgerCheckerSaveFile, changes: dict,
                        new_ledger: Ledger, old_ledger: Ledger) -> None:
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
     :type config: configparser.SectionProxy
+    :param save_data: the save data object
+    :type save_data: LedgerCheckerSaveFile
     :param changes: the changes made to the ledger
     :type changes: dict
     :param new_ledger: the ledger with these new changes
@@ -269,6 +288,9 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
     message["Subject"] = changes["societyName"] + " Ledger Update"
     message["To"] = config["to"]
     message["From"] = config["from"]
+    if save_data.get_changes() is not None and \
+            changes["oldLedgerTimestamp"] == save_data.get_changes()["oldLedgerTimestamp"]:
+        message["In-Reply-To"] = save_data.get_success_email_id()
 
     # Prepare the email
     if old_ledger is not None:
@@ -322,8 +344,8 @@ def send_success_email(config: configparser.SectionProxy, changes: dict,
                         "OLD %s" % old_ledger.get_pdf_filename())
         message.attach(part)
 
-    # Send the email
-    send_email(config=config, message=message)
+    # Send the email and save the ID
+    save_data.update_success_email_id(send_email(config=config, message=message))
 
 
 def send_error_email(config: configparser.SectionProxy,
@@ -503,7 +525,9 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
             format_currency(changes["grandTotal"]["totalIn"],
                             "GBP", locale="en_GB") == old_changes["grandTotal"]["totalIn"] and \
             format_currency(changes["grandTotal"]["totalOut"],
-                            "GBP", locale="en_GB") == old_changes["grandTotal"]["totalOut"]:
+                            "GBP", locale="en_GB") == old_changes["grandTotal"]["totalOut"] and \
+            format_currency(changes["grandTotal"]["balanceBroughtForward"],
+                            "GBP", locale="en_GB") == old_changes["grandTotal"]["balanceBroughtForward"]:
         print("The new changes is the same as the old.")
         LOGGER.info("The new changes is the same as the old.")
         ledger.delete_pdf()
@@ -519,7 +543,9 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
         print("We have some new changes!")
         LOGGER.info("We have some new changes.")
         ledger.update_drive_pdf()
-        send_success_email(config=parser["email"], changes=changes,
+        send_success_email(config=parser["email"],
+                           save_data=save_data,
+                           changes=changes,
                            new_ledger=ledger,
                            old_ledger=save_data.get_most_recent_ledger())
         print("Email sent successfully!")
