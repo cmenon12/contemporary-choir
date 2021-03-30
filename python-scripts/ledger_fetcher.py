@@ -730,15 +730,15 @@ class Ledger:
                     print("Your browser should open automatically.")
                     credentials = flow.run_local_server(port=0)
 
-            # Save the credentials for the next run
-            with open(TOKEN_PICKLE_FILE, "wb") as token:
-                pickle.dump(credentials, token)
-            LOGGER.info("Credentials saved to %s successfully.",
-                        TOKEN_PICKLE_FILE)
-
         # If we do have valid credentials then refresh them
         else:
             credentials.refresh(Request())
+
+        # Save the credentials for the next run
+        with open(TOKEN_PICKLE_FILE, "wb") as token:
+            pickle.dump(credentials, token)
+        LOGGER.info("Credentials saved to %s successfully.",
+                    TOKEN_PICKLE_FILE)
 
         # Build the services and return them as a tuple
         drive_service = build("drive", "v3", credentials=credentials,
