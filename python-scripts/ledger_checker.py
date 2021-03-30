@@ -43,6 +43,7 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Optional
 
 import html2text
 import timeago
@@ -94,6 +95,7 @@ class LedgerCheckerSaveFile:
             self.changes = None
             self.most_recent_ledger = None
             self.changes_ledger = None
+            self.error_email_id = None
 
         self.save_data()
 
@@ -122,6 +124,7 @@ class LedgerCheckerSaveFile:
 
         self.most_recent_ledger = new_ledger
         self.stack_traces.clear()
+        self.error_email_id = None
         self.save_data()
         LOGGER.debug("Successful check saved to %s",
                      self.save_data_filepath)
@@ -138,6 +141,21 @@ class LedgerCheckerSaveFile:
         self.save_data()
         LOGGER.debug("Failed check saved to %s",
                      self.save_data_filepath)
+
+    def update_error_email_id(self, email_id: str) -> None:
+        """Sets and saves the ID of the last error email.
+
+        :param email_id: the ID to save
+        :type email_id: str
+        """
+
+        self.error_email_id = email_id
+        self.save_data()
+
+    def get_error_email_id(self) -> Optional[str]:
+        """Gets and returns the ID of the last error email, if it exists."""
+
+        return self.error_email_id
 
     def get_changes(self) -> dict:
         """Gets and returns changes."""
@@ -331,6 +349,8 @@ def send_error_email(config: configparser.SectionProxy,
     message["To"] = config["to"]
     message["From"] = config["from"]
     message["X-Priority"] = "1"
+    if save_data.get_error_email_id() is not None:
+        message["In-Reply-To"] = save_data.get_error_email_id()
 
     # Prepare the email
     if error_count >= ATTEMPTS[-1]:
@@ -345,7 +365,11 @@ def send_error_email(config: configparser.SectionProxy,
                                    % (i, error_count))
                 break
 
-    most_recent = save_data.get_most_recent_ledger().get_timestamp().strftime("%A %d %B %Y at %H:%M:%S")
+    # Find out when the most recent successful check was (if ever)
+    if save_data.get_most_recent_ledger() is not None:
+        most_recent = save_data.get_most_recent_ledger().get_timestamp().strftime("%A %d %B %Y at %H:%M:%S")
+    else:
+        most_recent = "never"
 
     text = ("There were %d consecutive and fatal errors with ledger_checker.py! "
             "The most recent successful check was %s.\n\n"
@@ -360,22 +384,25 @@ def send_error_email(config: configparser.SectionProxy,
                                                    stack_traces))
     message.attach(MIMEText(text, "plain"))
 
-    # Send the email
-    send_email(config=config, message=message)
+    # Send the email and save the ID
+    save_data.update_error_email_id(send_email(config=config, message=message))
 
 
-def send_email(config: configparser.SectionProxy, message: MIMEMultipart) -> None:
+def send_email(config: configparser.SectionProxy, message: MIMEMultipart) -> str:
     """Sends the message using the config with SSL.
 
     :param config: the configuration for the email
     :type config: configparser.SectionProxy
     :param message: the message to send
     :type message: MIMEMultipart
+    :return: the email ID
+    :rtype: str
     """
 
     # Add a few headers to the message
     message["Date"] = email.utils.formatdate()
-    message["Message-ID"] = email.utils.make_msgid(domain=config["smtp_host"])
+    email_id = email.utils.make_msgid(domain=config["smtp_host"])
+    message["Message-ID"] = email_id
 
     # Create the SMTP connection and send the email
     LOGGER.info("Connecting to the SMTP server to send the email...")
@@ -399,6 +426,8 @@ def send_email(config: configparser.SectionProxy, message: MIMEMultipart) -> Non
                           imaplib.Time2Internaldate(time.time()),
                           message.as_string().encode("utf8"))
         LOGGER.info("Email saved successfully!")
+
+    return email_id
 
 
 def check_ledger(save_data: LedgerCheckerSaveFile,
