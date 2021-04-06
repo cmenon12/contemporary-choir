@@ -567,8 +567,10 @@ def main() -> None:
     # Check that the config file exists
     try:
         open(CONFIG_FILENAME, "rb")
+        LOGGER.info("Loaded config %s.", CONFIG_FILENAME)
     except FileNotFoundError:
         print("The config file doesn't exist!")
+        LOGGER.info("Could not find config %s, exiting.", CONFIG_FILENAME)
         time.sleep(5)
         raise FileNotFoundError("The config file doesn't exist!")
 

@@ -50,16 +50,18 @@ import random
 import time
 import webbrowser
 from datetime import datetime
-from typing import Any
+from typing import Optional, Union
 
 import pyperclip
 import requests
 from appJar import gui
 from dateutil import tz
+from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from inputimeout import inputimeout, TimeoutOccurred
 
 from custom_exceptions import *
 
@@ -86,6 +88,9 @@ CLIENT_SECRETS_FILE = "credentials.json"
 # connection.
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets",
           "https://www.googleapis.com/auth/drive"]
+
+# How long to wait for authorization (in seconds)
+AUTHORIZATION_TIMEOUT = 300
 
 # This file stores the user's access and refresh tokens and is created
 # automatically when the authorization flow completes for the first
@@ -689,14 +694,52 @@ class Ledger:
             LOGGER.info("There is no Google Sheet to hide.")
 
     @staticmethod
-    def authorize(open_browser: Any = True) -> tuple:
+    def authorize(open_browser: Optional[Union[bool, str]] = True) -> tuple:
         """Authorizes access to the user's Drive, Sheets, and Apps Script.
 
         :param open_browser: whether to open the browser
-        :type open_browser: Any, optional
+        :type open_browser: Optional[Union[bool, str]]
         :return: the authenticated services
         :rtype: tuple
         """
+
+        def authorize_in_browser():
+            """Authorize in the browser, with a timeout."""
+
+            if open_browser is False:
+                # Tell the user to go and authorize it themselves
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    CLIENT_SECRETS_FILE, SCOPES,
+                    redirect_uri="urn:ietf:wg:oauth:2.0:oob")
+                auth_url, _ = flow.authorization_url(prompt="consent")
+                print("Please visit this URL to authorize this application: %s" % auth_url)
+                pyperclip.copy(auth_url)
+                print("The URL has been copied to the clipboard.")
+
+                # Start the timer
+                try:
+                    code = inputimeout(prompt="Enter the authorization code: ",
+                                       timeout=AUTHORIZATION_TIMEOUT)
+                    flow.fetch_token(code=code)
+                    return flow.credentials
+                except TimeoutOccurred:
+                    raise TimeoutError("Waited %d seconds to authorize Google APIs." %
+                                       AUTHORIZATION_TIMEOUT)
+
+            else:
+                # Run the timer
+                try:
+                    enter = inputimeout(prompt="Press enter to open your browser: ",
+                                        timeout=AUTHORIZATION_TIMEOUT)
+                except TimeoutOccurred:
+                    raise TimeoutError("Waited %d seconds to authorize Google APIs." %
+                                       AUTHORIZATION_TIMEOUT)
+
+                # Open the browser for the user to authorize it
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    CLIENT_SECRETS_FILE, SCOPES)
+                print("Your browser should open automatically.")
+                return flow.run_local_server(port=0)
 
         LOGGER.info("Authenticating the user to access Google APIs...")
         credentials = None
@@ -708,27 +751,14 @@ class Ledger:
         if not credentials or not credentials.valid:
             LOGGER.info("There are no credentials or they are invalid.")
             if credentials and credentials.refresh_token:
-                credentials.refresh(Request())
-            else:
-                if open_browser is False:
-                    # Tell the user to go and authorize it themselves
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        CLIENT_SECRETS_FILE, SCOPES,
-                        redirect_uri="urn:ietf:wg:oauth:2.0:oob")
-                    auth_url, _ = flow.authorization_url(prompt="consent")
-                    print("Please visit this URL to authorize this application: %s" % auth_url)
-                    pyperclip.copy(auth_url)
-                    print("The URL has been copied to the clipboard.")
-                    code = input("Enter the authorization code: ")
-                    flow.fetch_token(code=code)
-                    credentials = flow.credentials
+                try:
+                    credentials.refresh(Request())
+                except RefreshError:
+                    os.remove(TOKEN_PICKLE_FILE)
+                    credentials = authorize_in_browser()
 
-                else:
-                    # Open the browser for the user to authorize it
-                    flow = InstalledAppFlow.from_client_secrets_file(
-                        CLIENT_SECRETS_FILE, SCOPES)
-                    print("Your browser should open automatically.")
-                    credentials = flow.run_local_server(port=0)
+            else:
+                credentials = authorize_in_browser()
 
         # If we do have valid credentials then refresh them
         else:
@@ -897,8 +927,10 @@ def main(app_gui: gui) -> None:
     # Check that the config file exists
     try:
         open(CONFIG_FILENAME)
+        LOGGER.info("Loaded config %s.", CONFIG_FILENAME)
     except FileNotFoundError:
         print("The config file doesn't exist!")
+        LOGGER.info("Could not find config %s, exiting.", CONFIG_FILENAME)
         time.sleep(5)
         raise FileNotFoundError("The config file doesn't exist!")
 
