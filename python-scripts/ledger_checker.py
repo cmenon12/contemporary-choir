@@ -200,7 +200,7 @@ class LedgerCheckerSaveFile:
 
 
 def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
-                       last_check: str) -> tuple:
+                       last_check: str, ledger_plurality: str = "(s)") -> tuple:
     """Prepares an email detailing the changes to the ledger.
 
     :param changes: the changes made to the ledger
@@ -211,6 +211,8 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
     :type pdf_url: str
     :param last_check: when the previous check was made
     :type last_check: str
+    :param ledger_plurality: indicates if there's multiple PDF ledgers
+    :type ledger_plurality: str
     :return: the plain-text and html
     :rtype: tuple
     """
@@ -255,7 +257,8 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
     html = template.render(changes=changes,
                            sheet_url=sheet_url,
                            pdf_url=pdf_url,
-                           last_check=last_check)
+                           last_check=last_check,
+                           ledger_plurality=ledger_plurality)
 
     # Create the plain-text version of the message
     text_maker = html2text.HTML2Text()
@@ -297,15 +300,18 @@ def send_success_email(config: configparser.SectionProxy,
         old_timestamp = old_ledger.get_timestamp()
         last_check = " since the last check %s on %s" % (timeago.format(old_timestamp.replace(tzinfo=None)),
                                                          old_timestamp.strftime("%A %d %B %Y at %H:%M:%S"))
+        ledger_plurality = "s"
     else:
         last_check = ", although we don't know how new these changes are"
+        ledger_plurality = ""
     text, html = prepare_email_body(changes=changes,
                                     sheet_url=new_ledger.get_sheets_data(convert=False,
                                                                          save=False,
                                                                          upload=False)["url"],
                                     pdf_url=new_ledger.get_drive_pdf_url(save=False,
                                                                          upload=False),
-                                    last_check=last_check)
+                                    last_check=last_check,
+                                    ledger_plurality=ledger_plurality)
 
     # Turn these into plain/html MIMEText objects
     # Add HTML/plain-text parts to MIMEMultipart message
