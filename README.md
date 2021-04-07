@@ -66,6 +66,16 @@ can be used  to download the society ledger from eXpense365 to your computer (in
 
 ## Website Custom HTML
 **[`website-custom-html/`](website-custom-html)** contains various snippets of HTML (including CSS and JavaScript) that are used on Contemporary Choir's websites. These are all incorporated using the custom HTML block in Wordpress.
+* **[`onesignal-subscribe.html`](website-custom-html/onesignal-subscribe.html)** is used to produce an in-text link for the user to subscribe and unsubscribe to OneSignal push notifications. It’s used on several different pages.
+  * It will show the text “Finally, you can also subscribe to push notifications through your web browser.”, replacing subscribe with unsubscribe if they’re already subscribed. 
+  * When the user clicks on the link, the text will change between subscribe and unsubscribe (as they subscribe and unsubscribe).
+  * The whole sentence will be completely hidden if they’re using an unsupported browser (e.g. Safari).	
+* **[`would-i-lie-to-you.html`](website-custom-html/would-i-lie-to-you.html)** was used for a WILTY social.
+* **[`pictionary-generator.html`](website-custom-html/pictionary-generator.html)** was used for a Pictionary social.
+* **[`addthis-buttons.html`](website-custom-html/addthis-buttons.html)** adds the AddThis buttons, but also customises them so that they’re bigger and aligned in the centre.
+* **[`recent-posts.html`](website-custom-html/recent-posts.html)** rearranges the information in the ‘Recent Posts’ widget above it to look nicer.
+* **[`latest-update.html`](website-custom-html/latest-update.html)** is very similar to the one above, except it’s designed for only one post (our latest update), instead of a small list of them.
+
 
 ## Wordpress Plugins 
 **[`wordpress-plugins/password-protected/`](wordpress-plugins/password-protected)** is my own customised version of [Password Protected by Ben Huson](https://wordpress.org/plugins/password-protected/). I have modified it to include a Google CAPTCHA on the password page, which is implemented using the plugin [Advanced noCaptcha & invisible Captcha (v2 & v3) by Shamim Hasan](https://wordpress.org/plugins/advanced-nocaptcha-recaptcha/). It also has a custom logo (instead of the Wordpress one) and some brief text for people arriving at the site.
