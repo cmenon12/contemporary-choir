@@ -10,3 +10,4 @@ protobuf
 python_dateutil
 pyperclip
 inputimeout
+pushbullet.py

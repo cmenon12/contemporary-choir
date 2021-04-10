@@ -49,6 +49,7 @@ import os
 import pickle
 import random
 import time
+import traceback
 import webbrowser
 from datetime import datetime
 from typing import Optional, Union
@@ -63,6 +64,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from inputimeout import inputimeout, TimeoutOccurred
+from pushbullet import InvalidKeyError, Pushbullet, PushError
 
 from custom_exceptions import *
 
@@ -146,6 +148,8 @@ class Ledger:
                                 "SubGroupID": int(expense365["subgroup_id"])}
         self.filename_prefix = config["filename_prefix"]
         self.dir_name = config["dir_name"]
+        self.pushbullet = {"access_token": config["pushbullet_access_token"],
+                           "device": config["pushbullet_device"]}
         self.pdf_filepath = None
         self.pdf_filename = None
         self.pdf_file = None
@@ -271,7 +275,8 @@ class Ledger:
                     self.get_pdf_filepath(save=save))
 
         # Authenticate and retrieve the required services
-        drive, sheets, apps_script = authorize(open_browser=self.browser_path)
+        drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
+                                               open_browser=self.browser_path)
 
         # Update the PDF copy of the ledger with a new version
         LOGGER.info("Uploading the new PDF ledger to Drive...")
@@ -305,7 +310,8 @@ class Ledger:
                     self.get_xlsx_filepath(convert=convert, save=save))
 
         # Authenticate and retrieve the required services
-        drive, sheets, apps_script = authorize(open_browser=self.browser_path)
+        drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
+                                               open_browser=self.browser_path)
 
         # Upload the ledger
         LOGGER.info("Uploading the ledger to Google Sheets")
@@ -654,7 +660,8 @@ class Ledger:
         if self.sheets_data is not None:
 
             # Authenticate and retrieve the required services
-            drive, sheets, apps_script = authorize(open_browser=self.browser_path)
+            drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
+                                                   open_browser=self.browser_path)
 
             # Delete the sheet
             body = {"requests": {"deleteSheet": {"sheetId": self.sheets_data["sheet_id"]}}}
@@ -675,7 +682,8 @@ class Ledger:
         if self.sheets_data is not None:
 
             # Authenticate and retrieve the required services
-            drive, sheets, apps_script = authorize(open_browser=self.browser_path)
+            drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
+                                                   open_browser=self.browser_path)
 
             # Hide the sheet
             body = {"requests": [{
@@ -831,9 +839,12 @@ class PDFToXLSXConverter:
         LOGGER.info(json.dumps(self.__dict__, cls=CustomEncoder))
 
 
-def authorize(open_browser: Optional[Union[bool, str]] = True) -> tuple:
+def authorize(pushbullet: dict,
+              open_browser: Optional[Union[bool, str]] = True) -> tuple:
     """Authorizes access to the user's Drive, Sheets, and Apps Script.
 
+    :param pushbullet: the configuration for Pushbullet
+    :type pushbullet: dict
     :param open_browser: whether to open the browser
     :type open_browser: Optional[Union[bool, str]]
     :return: the authenticated services
@@ -850,6 +861,7 @@ def authorize(open_browser: Optional[Union[bool, str]] = True) -> tuple:
                 redirect_uri="urn:ietf:wg:oauth:2.0:oob")
             auth_url, _ = flow.authorization_url(prompt="consent")
             print("Please visit this URL to authorize this application: %s" % auth_url)
+            push_url("Google Authorization URL", auth_url, pushbullet)
             pyperclip.copy(auth_url)
             print("The URL has been copied to the clipboard.")
 
@@ -916,6 +928,58 @@ def authorize(open_browser: Optional[Union[bool, str]] = True) -> tuple:
                                 cache_discovery=False)
     LOGGER.info("Services built successfully.")
     return drive_service, sheets_service, apps_script_service
+
+
+def push_url(title: str, url: str, config: dict):
+    """Pushes the URL to Pushbullet using the config.
+
+    This pushes the given URL to Pushbullet using the config. It will
+    catch any Pushbullet-associated exceptions.
+
+    :param title: the title of the URL
+    :type title: str
+    :param url: the URL to push
+    :type url: str
+    :param config: the configuration
+    :type config: dict
+    """
+
+    # Stop if the user doesn't want to use Pushbullet
+    if str(config["access_token"]).lower() == "false":
+        return
+
+    # Attempt to authenticate
+    try:
+        LOGGER.info("Authenticating with Pushbullet")
+        pb = Pushbullet(config["access_token"])
+        LOGGER.info("Authenticated with Pushbullet.")
+    except InvalidKeyError:
+        LOGGER.exception("InvalidKeyError raised when authenticating Pushbullet.")
+        print("InvalidKeyError raised when authenticating Pushbullet.")
+        traceback.print_exc()
+
+    # If successfully authenticated then attempt to push
+    else:
+        try:
+            if str(config["device"]).lower() == "false":
+                pb.get_device(str(config["device"])).push_link(title, url)
+                LOGGER.info("Pushed URL %s with title %s to all devices." %
+                            (url, title))
+                print("The URL has been successfully pushed to all devices.")
+            else:
+                pb.push_link(title, url)
+                LOGGER.info("Pushed URL %s with title %s to device %s." %
+                            (url, title, config["device"]))
+                print("The URL has been successfully pushed to %s." %
+                      config["device"])
+        except InvalidKeyError:
+            LOGGER.exception("InvalidKeyError raised when pushing to Pushbullet.")
+            print("InvalidKeyError raised when pushing to Pushbullet.")
+            traceback.print_exc()
+        except PushError:
+            LOGGER.exception("PushError raised when pushing to Pushbullet.")
+            print("PushError raised when pushing to Pushbullet.")
+            traceback.print_exc()
 
 
 def main(app_gui: gui) -> None:
