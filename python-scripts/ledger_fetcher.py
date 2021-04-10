@@ -11,9 +11,7 @@ it to an XLSX spreadsheet and upload it to Google Sheets & Drive, as
 well as to delete the locally saved files or Google Sheet, and refresh
 itself to a newer version (by re-downloading the original ledger). It
 also has a large range of getter methods which can invoke these
-behaviours. Finally, it has one static method (authorize()) which
-authorizes access to Google's services, this is static because it's not
-dependent on the ledger.
+behaviours.
 
 The PDFToXLSXConverter class represents a PDF to XLSX converter. Upon
 instantiation a converter is chosen (either by choice or randomly). It
@@ -25,6 +23,9 @@ a string that states "bytes object of length X not shown", and use the
 default encoder for all other types (falling back on converting it to a
 string if this fails). This is used by the other classes to save
 themselves to the log.
+
+The authorize() function is used to authorize access to Google Drive,
+Google Sheets, and Google Apps Script.
 
 When main() is run then the ledger is downloaded, and the user is
 asked if they want to open it and/or upload it to Google Sheets. This
@@ -270,7 +271,7 @@ class Ledger:
                     self.get_pdf_filepath(save=save))
 
         # Authenticate and retrieve the required services
-        drive, sheets, apps_script = Ledger.authorize(open_browser=self.browser_path)
+        drive, sheets, apps_script = authorize(open_browser=self.browser_path)
 
         # Update the PDF copy of the ledger with a new version
         LOGGER.info("Uploading the new PDF ledger to Drive...")
@@ -304,7 +305,7 @@ class Ledger:
                     self.get_xlsx_filepath(convert=convert, save=save))
 
         # Authenticate and retrieve the required services
-        drive, sheets, apps_script = Ledger.authorize(open_browser=self.browser_path)
+        drive, sheets, apps_script = authorize(open_browser=self.browser_path)
 
         # Upload the ledger
         LOGGER.info("Uploading the ledger to Google Sheets")
@@ -653,7 +654,7 @@ class Ledger:
         if self.sheets_data is not None:
 
             # Authenticate and retrieve the required services
-            drive, sheets, apps_script = Ledger.authorize(open_browser=self.browser_path)
+            drive, sheets, apps_script = authorize(open_browser=self.browser_path)
 
             # Delete the sheet
             body = {"requests": {"deleteSheet": {"sheetId": self.sheets_data["sheet_id"]}}}
@@ -674,7 +675,7 @@ class Ledger:
         if self.sheets_data is not None:
 
             # Authenticate and retrieve the required services
-            drive, sheets, apps_script = Ledger.authorize(open_browser=self.browser_path)
+            drive, sheets, apps_script = authorize(open_browser=self.browser_path)
 
             # Hide the sheet
             body = {"requests": [{
@@ -692,93 +693,6 @@ class Ledger:
                 LOGGER.info("Sheet %s has been un-hidden successfully.", self.sheets_data["sheet_id"])
         else:
             LOGGER.info("There is no Google Sheet to hide.")
-
-    @staticmethod
-    def authorize(open_browser: Optional[Union[bool, str]] = True) -> tuple:
-        """Authorizes access to the user's Drive, Sheets, and Apps Script.
-
-        :param open_browser: whether to open the browser
-        :type open_browser: Optional[Union[bool, str]]
-        :return: the authenticated services
-        :rtype: tuple
-        """
-
-        def authorize_in_browser():
-            """Authorize in the browser, with a timeout."""
-
-            if open_browser is False:
-                # Tell the user to go and authorize it themselves
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRETS_FILE, SCOPES,
-                    redirect_uri="urn:ietf:wg:oauth:2.0:oob")
-                auth_url, _ = flow.authorization_url(prompt="consent")
-                print("Please visit this URL to authorize this application: %s" % auth_url)
-                pyperclip.copy(auth_url)
-                print("The URL has been copied to the clipboard.")
-
-                # Start the timer
-                try:
-                    code = inputimeout(prompt="Enter the authorization code: ",
-                                       timeout=AUTHORIZATION_TIMEOUT)
-                    flow.fetch_token(code=code)
-                    return flow.credentials
-                except TimeoutOccurred:
-                    raise TimeoutError("Waited %d seconds to authorize Google APIs." %
-                                       AUTHORIZATION_TIMEOUT)
-
-            else:
-                # Run the timer
-                try:
-                    enter = inputimeout(prompt="Press enter to open your browser: ",
-                                        timeout=AUTHORIZATION_TIMEOUT)
-                except TimeoutOccurred:
-                    raise TimeoutError("Waited %d seconds to authorize Google APIs." %
-                                       AUTHORIZATION_TIMEOUT)
-
-                # Open the browser for the user to authorize it
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRETS_FILE, SCOPES)
-                print("Your browser should open automatically.")
-                return flow.run_local_server(port=0)
-
-        LOGGER.info("Authenticating the user to access Google APIs...")
-        credentials = None
-        if os.path.exists(TOKEN_PICKLE_FILE):
-            with open(TOKEN_PICKLE_FILE, "rb") as token:
-                credentials = pickle.load(token)
-
-        # If there are no (valid) credentials available, let the user log in.
-        if not credentials or not credentials.valid:
-            LOGGER.info("There are no credentials or they are invalid.")
-            if credentials and credentials.refresh_token:
-                try:
-                    credentials.refresh(Request())
-                except RefreshError:
-                    os.remove(TOKEN_PICKLE_FILE)
-                    credentials = authorize_in_browser()
-
-            else:
-                credentials = authorize_in_browser()
-
-        # If we do have valid credentials then refresh them
-        else:
-            credentials.refresh(Request())
-
-        # Save the credentials for the next run
-        with open(TOKEN_PICKLE_FILE, "wb") as token:
-            pickle.dump(credentials, token)
-        LOGGER.info("Credentials saved to %s successfully.",
-                    TOKEN_PICKLE_FILE)
-
-        # Build the services and return them as a tuple
-        drive_service = build("drive", "v3", credentials=credentials,
-                              cache_discovery=False)
-        sheets_service = build("sheets", "v4", credentials=credentials,
-                               cache_discovery=False)
-        apps_script_service = build("script", "v1", credentials=credentials,
-                                    cache_discovery=False)
-        LOGGER.info("Services built successfully.")
-        return drive_service, sheets_service, apps_script_service
 
     def log(self) -> None:
         """Logs the object to the log."""
@@ -915,6 +829,93 @@ class PDFToXLSXConverter:
         """Logs the object to the log."""
 
         LOGGER.info(json.dumps(self.__dict__, cls=CustomEncoder))
+
+
+def authorize(open_browser: Optional[Union[bool, str]] = True) -> tuple:
+    """Authorizes access to the user's Drive, Sheets, and Apps Script.
+
+    :param open_browser: whether to open the browser
+    :type open_browser: Optional[Union[bool, str]]
+    :return: the authenticated services
+    :rtype: tuple
+    """
+
+    def authorize_in_browser():
+        """Authorize in the browser, with a timeout."""
+
+        if open_browser is False:
+            # Tell the user to go and authorize it themselves
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CLIENT_SECRETS_FILE, SCOPES,
+                redirect_uri="urn:ietf:wg:oauth:2.0:oob")
+            auth_url, _ = flow.authorization_url(prompt="consent")
+            print("Please visit this URL to authorize this application: %s" % auth_url)
+            pyperclip.copy(auth_url)
+            print("The URL has been copied to the clipboard.")
+
+            # Start the timer
+            try:
+                code = inputimeout(prompt="Enter the authorization code: ",
+                                   timeout=AUTHORIZATION_TIMEOUT)
+                flow.fetch_token(code=code)
+                return flow.credentials
+            except TimeoutOccurred:
+                raise TimeoutError("Waited %d seconds to authorize Google APIs." %
+                                   AUTHORIZATION_TIMEOUT)
+
+        else:
+            # Run the timer
+            try:
+                inputimeout(prompt="Press enter to open your browser: ",
+                            timeout=AUTHORIZATION_TIMEOUT)
+            except TimeoutOccurred:
+                raise TimeoutError("Waited %d seconds to authorize Google APIs." %
+                                   AUTHORIZATION_TIMEOUT)
+
+            # Open the browser for the user to authorize it
+            flow = InstalledAppFlow.from_client_secrets_file(
+                CLIENT_SECRETS_FILE, SCOPES)
+            print("Your browser should open automatically.")
+            return flow.run_local_server(port=0)
+
+    LOGGER.info("Authenticating the user to access Google APIs...")
+    credentials = None
+    if os.path.exists(TOKEN_PICKLE_FILE):
+        with open(TOKEN_PICKLE_FILE, "rb") as token:
+            credentials = pickle.load(token)
+
+    # If there are no (valid) credentials available, let the user log in.
+    if not credentials or not credentials.valid:
+        LOGGER.info("There are no credentials or they are invalid.")
+        if credentials and credentials.refresh_token:
+            try:
+                credentials.refresh(Request())
+            except RefreshError:
+                os.remove(TOKEN_PICKLE_FILE)
+                credentials = authorize_in_browser()
+
+        else:
+            credentials = authorize_in_browser()
+
+    # If we do have valid credentials then refresh them
+    else:
+        credentials.refresh(Request())
+
+    # Save the credentials for the next run
+    with open(TOKEN_PICKLE_FILE, "wb") as token:
+        pickle.dump(credentials, token)
+    LOGGER.info("Credentials saved to %s successfully.",
+                TOKEN_PICKLE_FILE)
+
+    # Build the services and return them as a tuple
+    drive_service = build("drive", "v3", credentials=credentials,
+                          cache_discovery=False)
+    sheets_service = build("sheets", "v4", credentials=credentials,
+                           cache_discovery=False)
+    apps_script_service = build("script", "v1", credentials=credentials,
+                                cache_discovery=False)
+    LOGGER.info("Services built successfully.")
+    return drive_service, sheets_service, apps_script_service
 
 
 def main(app_gui: gui) -> None:
