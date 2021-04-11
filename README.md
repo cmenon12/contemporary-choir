@@ -22,22 +22,44 @@ For the Python Scripts and the Google Apps Scripts:
 
 
 ## Python Scripts
+**[`requirements.txt`](python-scripts/requirements.txt)** contains all the requirements for both of these scripts.
 
-**[`python-scripts/ledger_fetcher.py`](python-scripts/ledger_fetcher.py)** 
-can be used  to download the society ledger from eXpense365 to your computer (instead of having to use the app). 
-* It can also then convert it from a PDF to an XLSX spreadsheet (using an online converter) and then upload the newly-converted spreadsheet to a Google Sheet (as a new sheet within a pre-existing spreadsheet). 
-* Finally, it can also upload the PDF ledger to a pre-existing PDF file in Drive by adding it as a new version (and thereby preserving the old versions in the [version history](https://support.google.com/drive/answer/2409045?co=GENIE.Platform%3DDesktop&hl=en#7177508:~:text=Save%20and%20restore%20recent%20versions)). 
+### [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) 
+This can download the society ledger from eXpense365 to your computer (instead of having to use the app), convert it to an XLSX, and upload it to Google Drive.
 
-*Please note that I'm not affiliated with any PDF to XLSX converters and that use of their service is bound by their terms & privacy policy.*
+#### Classes
+* **`CustomEncoder`** is a custom JSON encoder that's used for logging. For bytes objects, it returns a string with their length instead of the actual bytes. For all other objects it uses the default JSON encoder, falling back on the built-in `str(obj)` method where needed.
+* **`Ledger`** represents a ledger, which is downloaded upon instantiation. It includes methods to convert it to an XLSX (using the `PDFtoXLSXConverter` class), upload the PDF or XLSX to Drive, save or delete the PDF or XLSX file to the local filesystem, open the PDF or uploaded Google Sheet in the web browser, and refresh the ledger to a more up-to-date version. It also has numerous getter methods that incorporate these methods as required.
+* **`PDFToXLSXConverter`** represents an online PDF-to-XLSX converter. It currently supports pdftoexcel.com and pdftoexcelconverter.net, both of which are very similar. A converter is chosen upon instantiation, either randomly or by the user. It includes methods to upload the PDF, check the conversion status, and download the resulting XLSX file.
+
+#### Functions
+* **`authorize()`** is used to authorize access to Google Drive, Sheets, and Apps Script, returning the three services in a tuple. It has an inner function, `authorize_in_browser()` that handles the authorization flow by opening the browser if requested by the user and timing out after 300 seconds.
+* **`push_url()`** is used to push a given URL via Pushbullet to the user's device(s). This is used by the `authorize()` function to send them the URL if they don't want to open the browser on the current device. Note that it catches all Pushbullet-related exceptions, because this functionality is not required for the rest of the program to function.
+* **`main()`** downloads the ledger from eXpense365 and gives the user the option to open it in the browser. It also gives the user the option to convert it to an XLSX and upload it to Google Sheets.
 
 
-**[`python-scripts/ledger_checker.py`](python-scripts/ledger_checker.py)** is designed to check the ledger and notify the user via email of any changes. 
-* It relies on [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) to download the ledger, convert it, and upload it to Google Sheets. 
-* It will then run an Apps Script function (namely `checkForNewTotals(sheetName)` in [`ledger-checker.gs`](google-apps-scripts/ledger-checker.gs)) to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself (check [here](https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/Example%20email%20from%20ledger_checker.py.jpg) for an example). 
-* The pre-existing PDF ledger in Drive is also updated to this latest version (whilst still preserving the old versions in the [version history](https://support.google.com/drive/answer/2409045?co=GENIE.Platform%3DDesktop&hl=en#7177508:~:text=Save%20and%20restore%20recent%20versions)). 
+### [`ledger_checker.py`](python-scripts/ledger_checker.py)
+This checks the ledger and notifies the user via email of any changes.
+* An example email can be found [here](https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/Example%20email%20from%20ledger_checker.py.jpg). 
 * The user is only ever notified of each change once by serialising them to a file that maintains persistence.
-* The user will also be notified via email if the program fails three times consecutively.
+* The user is also notified via email if multiple consecutive exceptions occur. 
 * The program is designed to be run multiple times via `cron` or a similar tool. It can also be run once to make an ad-hoc check.
+
+#### Classes
+* **`LedgerCheckerSaveFile`** represents the save file for this script, and is used to maintain persistence between checks. It contains the filepath to the actual file, a list of stacktraces from failed executions, the most recent new changes and the associated `Ledger`, the most recently downloaded `Ledger`, and the ID of the last success and error emails. It includes methods to save this data to a file and update itself after a successful or unsuccessful check. It also has several getter methods which are used by other functions in this script. 
+
+#### Functions
+* **`prepare_email_body()`** is used to populate the [email template](python-scripts/email-template.html) with details of the new changes. The HTML template is written with Jinja2 placeholders that this function uses.
+* **`send_success_email()`** is used to prepare and send an email about a successful check. It creates the HTML message using the `prepare_email_body()` function, attaches the new PDF ledger (as well as the one from the previous check if available), and sends the message using the `send_email()` function.
+* **`send_error_email()`** is used to prepare and send an email after a certain number of consecutive exceptions. This email contains the stacktraces and timestamps of each of these exceptions, the timestamp of the last successful check, and when a future email will be sent if these exceptions continue consecutively. It's written in plain-text instead of HTML to reduce the risk of an exception occurring within this function itself (which would prevent the user being notified). The email is sent using the `send_email()` function.
+* **`send_email()`** is used to send an email from `send_success_email()` or `send_error_email()`. It adds the date and a unique ID to the email and sends it via SMTP. It also optionally manually saves it to the Sent folder using IMAP.
+* **`check_ledger()`** is used to run a single check of the ledger. It downloads the ledger from eXpense365, converts it to a PDF, and uploads it to Google Sheets. It then executes an Apps Script function (namely `checkForNewTotals(sheetName)` in [`ledger-checker.gs`](google-apps-scripts/ledger-checker.gs)) to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself using `send_success_email()`.
+* **`main()`** runs `check_ledger()` and catches any exceptions that occur. It saves them to the save file, and emails the user if multiple consecutive exceptions occur.
+
+
+### [`custom_exceptions.py`](python-scripts/custom_exceptions.py)
+This contains a variety of custom exceptions that the above two scripts can throw.
+
 
 ## Google Apps Scripts (for Google Sheets)
 **[`google-apps-scripts/ledger-comparison.gs`](google-apps-scripts/ledger-comparison.gs)** can be used to process the ledger that has been uploaded by [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py). 
