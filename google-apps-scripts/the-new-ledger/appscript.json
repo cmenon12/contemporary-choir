@@ -1,0 +1,47 @@
+{
+  "timeZone": "Europe/London",
+  "dependencies": {
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets.currentonly",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/userinfo.email"
+  ],
+  "executionApi": {
+    "access": "ANYONE"
+  },
+  "runtimeVersion": "V8",
+  "addOns": {
+    "common": {
+      "name": "Society Ledger",
+      "logoUrl": "https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png",
+      "layoutProperties": {
+        "primaryColor": "#4AABC4",
+        "secondaryColor": "#E62073"
+      },
+      "openLinkUrlPrefixes": [
+        "https://drive.google.com/",
+        "https://docs.google.com/",
+        "https://www.flaticon.com/"
+      ]
+    },
+    "sheets": {
+      "homepageTrigger": {
+        "runFunction": "buildSheetsHomePage",
+        "enabled": true
+      },
+      "onFileScopeGrantedTrigger": {
+        "runFunction": "buildSheetsHomePage"
+      }
+    }
+  },
+  "sheets": {
+    "macros": [
+      {
+        "menuName": "Contemporary Choir (create menu)",
+        "functionName": "onOpen"
+      }
+    ]
+  }
+}
