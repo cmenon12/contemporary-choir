@@ -116,5 +116,5 @@ function onRequestFileScopeButtonClicked(e) {
   saveUserProperties(e.formInput)
 
   return CardService.newEditorFileScopeActionResponseBuilder()
-      .requestFileScopeForActiveDocument().build();
+    .requestFileScopeForActiveDocument().build();
 }

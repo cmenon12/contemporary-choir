@@ -22,16 +22,49 @@ function buildSheetsHomePage(e) {
   const card = CardService.newCardBuilder()
     .setHeader(header);
 
-  return card.addSection(getOriginalSheetSection()).build();
+  return card
+    .addSection(getOriginalSheetSection())
+    .addSection(getActionsSection())
+    .addSection(createDisclaimerSection())
+    .build();
 
 }
 
 
 /**
- * Build and return the section with the login form.
+ * Build and return the section with the selection input for the actions
+ *
+ * @returns {CardSection} A section with the selection input for the actions.
+ */
+function getActionsSection() {
+
+  const selection = CardService.newSelectionInput()
+    .setType(CardService.SelectionInputType.CHECK_BOX)
+    .setFieldName("actions")
+    .addItem("Format neatly", "format", getUserProperties().actionsFormat === "on")
+    .addItem("Highlight new entries", "highlight", getUserProperties().actionsHighlight === "on")
+    .addItem("Copy to the ledger", "copy", getUserProperties().actionsCopy === "on")
+
+  const buttons = CardService.newButtonSet()
+    .addButton(CardService.newTextButton()
+      .setText("RUN")
+      .setOnClickAction(CardService.newAction()
+        .setFunctionName("processDriveSidebarForm"))
+      .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
+    .addButton(createClearSavedDataButton());
+
+  return CardService.newCardSection()
+    .addWidget(selection)
+    .addWidget(buttons);
+
+}
+
+
+/**
+ * Build and return the section with the original sheet form.
  * This will ensure that any undefined (or unsaved) form inputs are replaced with empty strings.
  *
- * @returns {CardSection} A section with the login form.
+ * @returns {CardSection} A section with the original sheet form.
  */
 function getOriginalSheetSection() {
 
@@ -56,12 +89,10 @@ function getOriginalSheetSection() {
   }
 
   return CardService.newCardSection()
-  .addWidget(CardService.newTextParagraph()
-    .setText("<b>The Google Sheet to compare against.</b>"))
-  .addWidget(url)
-  .addWidget(name)
-  .addWidget(CardService.newTextParagraph()
-    .setText("These details will be saved for you, and for your use only."));
+    .addWidget(url)
+    .addWidget(name)
+    .addWidget(CardService.newTextParagraph()
+      .setText("These details will be saved for you, and for your use only."));
 
 }
 
