@@ -64,19 +64,42 @@ function updateWithHomepage(e) {
 
 
 /**
- * Build and return the section with the selection input for the actions
+ * Build and return the section with the form for the actions
  *
- * @returns {CardSection} A section with the selection input for the actions.
+ * @returns {CardSection} A section with the form for the actions.
  */
 function getActionsSection() {
 
-  const selection = CardService.newSelectionInput()
-    .setType(CardService.SelectionInputType.CHECK_BOX)
-    .setFieldName("actions")
-    .addItem("Format neatly", "format", getUserProperties().actionsFormat === "on")
-    .addItem("Highlight new entries", "highlight", getUserProperties().actionsHighlight === "on")
-    .addItem("Copy to the ledger", "copy", getUserProperties().actionsCopy === "on")
+  // The format option
+  const formatDT = CardService.newDecoratedText()
+    .setText("Format neatly")
+    .setWrapText(true)
+    .setSwitchControl(CardService.newSwitch()
+      .setFieldName("format")
+      .setSelected(getUserProperties().actionsFormat === "on")
+      .setValue("on")
+      .setControlType(CardService.SwitchControlType.CHECK_BOX))
 
+  // The highlight option
+  const highlightDT = CardService.newDecoratedText()
+    .setText("Compare with the sheet and highlight new entries")
+    .setWrapText(true)
+    .setSwitchControl(CardService.newSwitch()
+      .setFieldName("highlight")
+      .setSelected(getUserProperties().actionsHighlight === "on")
+      .setValue("on")
+      .setControlType(CardService.SwitchControlType.CHECK_BOX))
+
+  // The copy option
+  const copyDT = CardService.newDecoratedText()
+    .setText("Copy to the sheet")
+    .setSwitchControl(CardService.newSwitch()
+      .setFieldName("copy")
+      .setSelected(getUserProperties().actionsCopy === "on")
+      .setValue("on")
+      .setControlType(CardService.SwitchControlType.CHECK_BOX))
+
+  // The run button
   const buttons = CardService.newButtonSet()
     .addButton(CardService.newTextButton()
       .setText("RUN")
@@ -85,8 +108,11 @@ function getActionsSection() {
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
     .addButton(createClearSavedDataButton());
 
+  // Build and return the section
   return CardService.newCardSection()
-    .addWidget(selection)
+    .addWidget(formatDT)
+    .addWidget(highlightDT)
+    .addWidget(copyDT)
     .addWidget(buttons);
 
 }
@@ -174,9 +200,9 @@ function getSelectSheetSection() {
   const section = CardService.newCardSection()
   if (validURL === false) {
     section.addWidget(url)
-    .addWidget(button)
+      .addWidget(button)
   }
-    section.addWidget(selected)
+  section.addWidget(selected)
   if (validURL === true) {
     section.addWidget(name)
   }
