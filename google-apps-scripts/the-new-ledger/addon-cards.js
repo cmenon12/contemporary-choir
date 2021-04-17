@@ -32,6 +32,38 @@ function buildSheetsHomePage(e) {
 
 
 /**
+ * Produces and displays a notification.
+ *
+ * @param {String} message The message to notify.
+ * @returns {ActionResponse} The notification to display.
+ */
+function buildNotification(message) {
+  return CardService.newActionResponseBuilder()
+    .setNotification(CardService.newNotification()
+      .setText(message))
+    .build();
+}
+
+
+/**
+ * Save the formInput and update the current card with the homepage.
+ *
+ * @param {eventObject} e The event object
+ * @returns {Card} The homepage Card
+ */
+function updateWithHomepage(e) {
+
+  saveUserProperties(e.formInput);
+  const navigation = CardService.newNavigation()
+    .updateCard(buildSheetsHomePage(e));
+  return CardService.newActionResponseBuilder()
+    .setNavigation(navigation)
+    .build();
+
+}
+
+
+/**
  * Build and return the section with the selection input for the actions
  *
  * @returns {CardSection} A section with the selection input for the actions.
@@ -49,7 +81,7 @@ function getActionsSection() {
     .addButton(CardService.newTextButton()
       .setText("RUN")
       .setOnClickAction(CardService.newAction()
-        .setFunctionName("processDriveSidebarForm"))
+        .setFunctionName("processSheetsSidebarForm"))
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
     .addButton(createClearSavedDataButton());
 
@@ -62,52 +94,96 @@ function getActionsSection() {
 
 /**
  * Build and return the section with the original sheet form.
- * This will ensure that any undefined (or unsaved) form inputs are replaced with empty strings.
+ * Ensures that any undefined form inputs are replaced with empty strings.
+ * Also attempts to get the name and URL of the saved sheet.
  *
  * @returns {CardSection} A section with the original sheet form.
  */
 function getOriginalSheetSection() {
 
+  // Create the URL text input
   let url = CardService.newTextInput()
     .setFieldName("originalSheetURL")
-    .setTitle("Spreadsheet URL");
+    .setTitle("Spreadsheet URL")
+    .setOnChangeAction(CardService.newAction()
+      .setFunctionName("updateWithHomepage"));
 
+  // Fill the URL text input with the saved data
   if (getUserProperties().originalSheetURL === undefined) {
     url = url.setValue("");
   } else {
     url = url.setValue(getUserProperties().originalSheetURL);
   }
 
+  // Create the name text input
   let name = CardService.newTextInput()
     .setFieldName("originalSheetName")
-    .setTitle("Sheet Name");
+    .setTitle("Sheet Name").setOnChangeAction(CardService.newAction()
+      .setFunctionName("updateWithHomepage"));
 
+  // Fill the name text input with the saved data
   if (getUserProperties().originalSheetName === undefined) {
     name = name.setValue("");
   } else {
-    url = url.setValue(getUserProperties().originalSheetName);
+    name = name.setValue(getUserProperties().originalSheetName);
+  }
+
+  // Start to create the spreadsheet identifier
+  const selected = CardService.newDecoratedText();
+
+  // If the URL is present then attempt to get the spreadsheet name
+  if (getUserProperties().originalSheetURL !== "" &&
+    getUserProperties().originalSheetURL !== undefined) {
+    try {
+      const spreadsheet = SpreadsheetApp.openByUrl(getUserProperties()
+        .originalSheetURL);
+      selected.setText(spreadsheet.getName());
+
+      // If the name is present and valid then add that too
+      if (getUserProperties().originalSheetName !== "" &&
+        getUserProperties().originalSheetName !== undefined) {
+        if (spreadsheet.getSheetByName(getUserProperties().originalSheetName) !== null) {
+          selected.setBottomLabel(`${getUserProperties().originalSheetName} sheet`);
+          selected.setStartIcon(CardService.newIconImage()
+            .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_task_black_48dp.png"));
+
+          // Sheet not found
+        } else {
+          selected.setBottomLabel(`Sheet not found`);
+          selected.setStartIcon(CardService.newIconImage()
+            .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_error_outline_black_48dp.png"));
+          name.setHint("Invalid.");
+        }
+
+        // If no name is available
+      } else {
+        selected.setBottomLabel(`No sheet specified`);
+        selected.setStartIcon(CardService.newIconImage()
+          .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_error_outline_black_48dp.png"));
+      }
+
+      // Spreadsheet not found
+    } catch (err) {
+      selected.setText(`Spreadsheet not found`);
+      selected.setStartIcon(CardService.newIconImage()
+        .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_error_outline_black_48dp.png"));
+      url.setHint("Invalid.");
+    }
+
+    // If no URL is available
+  } else {
+    selected.setText(`No spreadsheet specified`);
+    selected.setStartIcon(CardService.newIconImage()
+      .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_error_outline_black_48dp.png"));
   }
 
   return CardService.newCardSection()
     .addWidget(url)
     .addWidget(name)
+    .addWidget(selected)
     .addWidget(CardService.newTextParagraph()
       .setText("These details will be saved for you, and for your use only."));
 
-}
-
-
-/**
- * Produces and displays a notification.
- *
- * @param {String} message The message to notify.
- * @returns {ActionResponse} The notification to display.
- */
-function buildNotification(message) {
-  return CardService.newActionResponseBuilder()
-    .setNotification(CardService.newNotification()
-      .setText(message))
-    .build();
 }
 
 
