@@ -23,7 +23,7 @@ function buildSheetsHomePage(e) {
     .setHeader(header);
 
   return card
-    .addSection(getOriginalSheetSection())
+    .addSection(getSelectSheetSection())
     .addSection(getActionsSection())
     .addSection(createDisclaimerSection())
     .build();
@@ -93,20 +93,18 @@ function getActionsSection() {
 
 
 /**
- * Build and return the section with the original sheet form.
+ * Build and return the section with the sheet form.
  * Ensures that any undefined form inputs are replaced with empty strings.
  * Also attempts to get the name and URL of the saved sheet.
  *
- * @returns {CardSection} A section with the original sheet form.
+ * @returns {CardSection} A section with the sheet form.
  */
-function getOriginalSheetSection() {
+function getSelectSheetSection() {
 
   // Create the URL text input
   let url = CardService.newTextInput()
     .setFieldName("originalSheetURL")
-    .setTitle("Spreadsheet URL")
-    .setOnChangeAction(CardService.newAction()
-      .setFunctionName("updateWithHomepage"));
+    .setTitle("Spreadsheet URL");
 
   // Fill the URL text input with the saved data
   if (getUserProperties().originalSheetURL === undefined) {
@@ -124,6 +122,13 @@ function getOriginalSheetSection() {
   // Start to create the spreadsheet identifier
   const selected = CardService.newDecoratedText();
 
+  // Create the validate URL button
+  const button = CardService.newButtonSet()
+    .addButton(CardService.newTextButton()
+      .setText("VALIDATE URL")
+      .setOnClickAction(CardService.newAction()
+        .setFunctionName("updateWithHomepage")));
+
   // If the URL is present then attempt to get the spreadsheet name
   let validURL = false;
   if (getUserProperties().originalSheetURL !== "" &&
@@ -135,7 +140,7 @@ function getOriginalSheetSection() {
       selected.setStartIcon(CardService.newIconImage()
         .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_task_black_48dp.png"));
 
-      // Add the sheet names
+      // Add the sheet names to the selection dropdown
       let sheetName;
       for (let i = 0; i < spreadsheet.getNumSheets(); i += 1) {
         sheetName = spreadsheet.getSheets()[i].getName();
@@ -164,10 +169,14 @@ function getOriginalSheetSection() {
   }
 
   // Build the section
+  // Only add the URL text input and button if the URL was invalid
   // Only add the name selection input if the URL was valid
   const section = CardService.newCardSection()
-    .addWidget(url)
-    .addWidget(selected)
+  if (validURL === false) {
+    section.addWidget(url)
+    .addWidget(button)
+  }
+    section.addWidget(selected)
   if (validURL === true) {
     section.addWidget(name)
   }
