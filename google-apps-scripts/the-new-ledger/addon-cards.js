@@ -129,19 +129,19 @@ function getSelectSheetSection() {
 
   // Create the URL text input
   let url = CardService.newTextInput()
-    .setFieldName("originalSheetURL")
+    .setFieldName("sheetURL")
     .setTitle("Spreadsheet URL");
 
   // Fill the URL text input with the saved data
-  if (getUserProperties().originalSheetURL === undefined) {
+  if (getUserProperties().sheetURL === undefined) {
     url = url.setValue("");
   } else {
-    url = url.setValue(getUserProperties().originalSheetURL);
+    url = url.setValue(getUserProperties().sheetURL);
   }
 
   // Create the sheet name selection input
   let name = CardService.newSelectionInput()
-    .setFieldName("originalSheetName")
+    .setFieldName("sheetName")
     .setTitle("Sheet Name")
     .setType(CardService.SelectionInputType.DROPDOWN)
 
@@ -157,11 +157,11 @@ function getSelectSheetSection() {
 
   // If the URL is present then attempt to get the spreadsheet name
   let validURL = false;
-  if (getUserProperties().originalSheetURL !== "" &&
-    getUserProperties().originalSheetURL !== undefined) {
+  if (getUserProperties().sheetURL !== "" &&
+    getUserProperties().sheetURL !== undefined) {
     try {
       const spreadsheet = SpreadsheetApp.openByUrl(getUserProperties()
-        .originalSheetURL);
+        .sheetURL);
       selected.setText(spreadsheet.getName());
       selected.setStartIcon(CardService.newIconImage()
         .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_task_black_48dp.png"));
@@ -170,7 +170,7 @@ function getSelectSheetSection() {
       let sheetName;
       for (let i = 0; i < spreadsheet.getNumSheets(); i += 1) {
         sheetName = spreadsheet.getSheets()[i].getName();
-        if (sheetName === getUserProperties().originalSheetName) {
+        if (sheetName === getUserProperties().sheetName) {
           name.addItem(sheetName, sheetName, true);
         } else {
           name.addItem(sheetName, sheetName, false);

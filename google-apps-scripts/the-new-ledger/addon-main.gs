@@ -21,7 +21,7 @@ function clearSavedData(e) {
 
   // Build and return an ActionResponse
   const navigation = CardService.newNavigation()
-    .updateCard(buildDriveHomePage(e));
+    .updateCard(buildSheetsHomePage(e));
   return CardService.newActionResponseBuilder()
     .setNavigation(navigation)
     .build();
@@ -58,35 +58,6 @@ function saveUserProperties(data) {
 
 
 /**
- *
- * Gets the Drive file ID from the URL.
- * Taken from https://stackoverflow.com/a/40324645.
- *
- * @param {String} url The URL to get the file ID from.
- * @returns {String} The file ID.
- */
-function getIdFrom(url) {
-  let id;
-  let parts = url.split(/^(([^:\/?#]+):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/);
-
-  if (url.indexOf('?id=') >= 0) {
-    id = (parts[6].split("=")[1]).replace("&usp", "");
-    return id;
-
-  } else {
-    id = parts[5].split("/");
-    // Using sort to get the id as it is the longest element.
-    let sortArr = id.sort(function (a, b) {
-      return b.length - a.length
-    });
-    id = sortArr[0];
-
-    return id;
-  }
-}
-
-
-/**
  * Processes the form submission from the Sheets sidebar.
  *
  * @param {eventObject} e The event object.
@@ -97,24 +68,28 @@ function processSheetsSidebarForm(e) {
 
   saveUserProperties(e.formInput);
 
-  return buildNotification(JSON.stringify(e));
+  // Save the actions that weren't selected as off
+  actions = {}
+  if (!e.formInput.hasOwnProperty("format")) {
+    actions.format = "off"
+  }
+  if (!e.formInput.hasOwnProperty("highlight")) {
+    actions.highlight = "off"
+  }
+  if (!e.formInput.hasOwnProperty("copy")) {
+    actions.copy = "off"
+  }
 
-}
+  // Attempt to get the sheet
+  try {
+    const spreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
+    const sheet = spreadsheet.getSheetByName(getUserProperties().sheetName);
+  } catch (err) {
+    Logger.log(JSON.stringify(err))
+    return updateWithHomepage(e);
+  }
+
+  return buildNotification("success");
 
 
-/**
- * Callback function for a button action. Instructs Sheets to display a
- * permissions dialog to the user, requesting `drive.file` scope for the
- * current file on behalf of this add-on.
- * Also saves the form data.
- *
- * @param {Object} e The parameters object that contains the item's ID.
- * @return {editorFileScopeActionResponse}
- */
-function onRequestFileScopeButtonClicked(e) {
-
-  saveUserProperties(e.formInput)
-
-  return CardService.newEditorFileScopeActionResponseBuilder()
-    .requestFileScopeForActiveDocument().build();
 }
