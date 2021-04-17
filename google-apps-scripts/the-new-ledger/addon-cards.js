@@ -115,52 +115,38 @@ function getOriginalSheetSection() {
     url = url.setValue(getUserProperties().originalSheetURL);
   }
 
-  // Create the name text input
-  let name = CardService.newTextInput()
+  // Create the sheet name selection input
+  let name = CardService.newSelectionInput()
     .setFieldName("originalSheetName")
-    .setTitle("Sheet Name").setOnChangeAction(CardService.newAction()
-      .setFunctionName("updateWithHomepage"));
-
-  // Fill the name text input with the saved data
-  if (getUserProperties().originalSheetName === undefined) {
-    name = name.setValue("");
-  } else {
-    name = name.setValue(getUserProperties().originalSheetName);
-  }
+    .setTitle("Sheet Name")
+    .setType(CardService.SelectionInputType.DROPDOWN)
 
   // Start to create the spreadsheet identifier
   const selected = CardService.newDecoratedText();
 
   // If the URL is present then attempt to get the spreadsheet name
+  let validURL = false;
   if (getUserProperties().originalSheetURL !== "" &&
     getUserProperties().originalSheetURL !== undefined) {
     try {
       const spreadsheet = SpreadsheetApp.openByUrl(getUserProperties()
         .originalSheetURL);
       selected.setText(spreadsheet.getName());
+      selected.setStartIcon(CardService.newIconImage()
+        .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_task_black_48dp.png"));
 
-      // If the name is present and valid then add that too
-      if (getUserProperties().originalSheetName !== "" &&
-        getUserProperties().originalSheetName !== undefined) {
-        if (spreadsheet.getSheetByName(getUserProperties().originalSheetName) !== null) {
-          selected.setBottomLabel(`${getUserProperties().originalSheetName} sheet`);
-          selected.setStartIcon(CardService.newIconImage()
-            .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_task_black_48dp.png"));
-
-          // Sheet not found
+      // Add the sheet names
+      let sheetName;
+      for (let i = 0; i < spreadsheet.getNumSheets(); i += 1) {
+        sheetName = spreadsheet.getSheets()[i].getName();
+        if (sheetName === getUserProperties().originalSheetName) {
+          name.addItem(sheetName, sheetName, true);
         } else {
-          selected.setBottomLabel(`Sheet not found`);
-          selected.setStartIcon(CardService.newIconImage()
-            .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_error_outline_black_48dp.png"));
-          name.setHint("Invalid.");
+          name.addItem(sheetName, sheetName, false);
         }
-
-        // If no name is available
-      } else {
-        selected.setBottomLabel(`No sheet specified`);
-        selected.setStartIcon(CardService.newIconImage()
-          .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_error_outline_black_48dp.png"));
       }
+
+      validURL = true;
 
       // Spreadsheet not found
     } catch (err) {
@@ -177,12 +163,16 @@ function getOriginalSheetSection() {
       .setIconUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/outline_error_outline_black_48dp.png"));
   }
 
-  return CardService.newCardSection()
+  // Build the section
+  // Only add the name selection input if the URL was valid
+  const section = CardService.newCardSection()
     .addWidget(url)
-    .addWidget(name)
     .addWidget(selected)
-    .addWidget(CardService.newTextParagraph()
-      .setText("These details will be saved for you, and for your use only."));
+  if (validURL === true) {
+    section.addWidget(name)
+  }
+  return section.addWidget(CardService.newTextParagraph()
+    .setText("These details will be saved for you, and for your use only."));
 
 }
 
