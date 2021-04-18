@@ -48,11 +48,13 @@ import logging
 import os
 import pathlib
 import pickle
+import shutil
 import time
 import traceback
 import webbrowser
 from datetime import datetime
 from typing import Optional, Union
+from pyexcel.cookbook import merge_csv_to_a_book
 
 import camelot
 import pyperclip
@@ -215,25 +217,54 @@ class Ledger:
         if save is True:
             self.save_pdf()
 
-    def convert_to_xlsx(self, save: bool = True) -> None:
-        """Converts the PDF to an Excel file and saves it.
+    def convert_to_xlsx(self) -> None:
+        """Converts the PDF to an Excel file and saves it."""
 
-        :param save: whether to save the XLSX ledger
-        :type save: bool, optional
-        :raises ConversionTimeoutError: if the conversion takes too long
-        """
-
-        # Convert the PDF to a set of CSV files
+        # Convert the PDF
         tables = camelot.read_pdf(self.get_pdf_filepath(),
-                                  columns=["88.2, 430.4, 504.6"],
-                                  table_areas=["27.4,755.4,568.6,30.2"],
+                                  columns=["88.2,430.4,504.6"],
+                                  table_areas=["27.4,810,568.6,30.2"],
+                                  split_text=True,
+                                  row_tol=15,
                                   flavor="stream",
                                   pages="1-end")
+
+        # Make a temporary folder
         path = pathlib.Path(self.dir_name, "temp-camelot")
-        path.mkdir(parents=True, exist_ok=True)
-        path = os.path.join(path, "result.csv")
-        LOGGER.info("Saving the CSV files to %s", path)
-        tables.export(path, f="csv")
+        if os.path.exists(path):
+            shutil.rmtree(path)
+        path.mkdir(parents=True)
+
+        # Save the PDF as a set of CSV files
+        filepath = os.path.join(path, "result.csv")
+        LOGGER.info("Saving the CSV files to %s", filepath)
+        tables.export(filepath, f="csv")
+
+        # Combine the CSV files into one
+        with open(os.path.join(path, "combined.csv"), "w") as combined_file:
+            table = 1
+            while True:
+                filename = "result-page-%d-table-1.csv" % table
+                if filename in os.listdir(path):
+                    with open(os.path.join(path, filename)) as table_file:
+                        combined_file.write(table_file.read())
+                        LOGGER.info("Wrote %s to %s.", os.path.join(path, filename),
+                                    os.path.join(path, "combined.csv"))
+                else:
+                    break
+                table += 1
+
+        # Convert the CSV to an XLSX and save it
+        self.xlsx_filename = self.get_pdf_filename().replace(".pdf", ".xlsx")
+        self.xlsx_filepath = self.dir_name + self.xlsx_filename
+        merge_csv_to_a_book([os.path.join(path, "combined.csv")],
+                            self.xlsx_filepath)
+        with open(self.xlsx_filepath, "rb") as xlsx_file:
+            self.xlsx_file = xlsx_file.read()
+        LOGGER.info("Saved the XLSX to %s", self.xlsx_filepath)
+
+        # Delete the temporary folder and all files
+        shutil.rmtree(path)
 
     def update_drive_pdf(self, save: bool = True) -> None:
         """Updates the PDF in Drive with the new version of the ledger.
@@ -267,18 +298,15 @@ class Ledger:
 
         self.drive_pdf_url = pdf_url
 
-    def upload_to_sheets(self, convert: bool = True,
-                         save: bool = True) -> None:
+    def upload_to_sheets(self, convert: bool = True) -> None:
         """Uploads the ledger to the specified Google Sheet.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
-        :param save: whether to save the XLSX ledger
-        :type save: bool, optional
         """
 
         LOGGER.info("Spreadsheet at %s has been opened.",
-                    self.get_xlsx_filepath(convert=convert, save=save))
+                    self.get_xlsx_filepath(convert=convert))
 
         # Authenticate and retrieve the required services
         drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
@@ -290,8 +318,7 @@ class Ledger:
                          "mimeType": "application/vnd.google-apps.spreadsheet"}
         xlsx_mimetype = ("application/vnd.openxmlformats-officedocument" +
                          ".spreadsheetml.sheet")
-        media = MediaFileUpload(self.get_xlsx_filepath(convert=convert,
-                                                       save=save),
+        media = MediaFileUpload(self.get_xlsx_filepath(convert=convert),
                                 mimetype=xlsx_mimetype,
                                 resumable=True)
         file = drive.files().create(body=file_metadata,
@@ -390,24 +417,18 @@ class Ledger:
 
         return self.pdf_file
 
-    def get_xlsx_filepath(self, convert: bool = True,
-                          save: bool = True) -> str:
+    def get_xlsx_filepath(self, convert: bool = True) -> str:
         """Returns the filepath of the XLSX spreadsheet.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
-        :param save: whether to save the XLSX ledger
-        :type save: bool, optional
         :return: the filepath of the XLSX ledger
         :rtype: str
         :raises XLSXDoesNotExistError: when convert is False
-        :raises XLSXIsNotSavedError: when save is False
         """
 
-        if self.xlsx_filepath is None and save is True:
+        if self.xlsx_filepath is None:
             self.save_xlsx(convert=convert)
-        elif self.xlsx_filepath is None and save is False:
-            raise XLSXIsNotSavedError("The XLSX isn't saved.")
 
         return self.xlsx_filepath
 
@@ -461,25 +482,22 @@ class Ledger:
             raise URLDoesNotExistError("The PDF ledger isn't in Drive.")
         return self.drive_pdf_url
 
-    def get_sheets_data(self, convert: bool = True, save: bool = True,
+    def get_sheets_data(self, convert: bool = True,
                         upload: bool = True) -> dict:
         """Returns the name and URL of the ledger in Google Sheets.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
-        :param save: whether to save the XLSX ledger
-        :type save: bool, optional
         :param upload: whether to upload the XLSX if needed
         :type upload: bool, optional
         :returns: the sheet name and url
         :rtype: dict
         :raises XLSXDoesNotExistError: when convert is False
-        :raises XLSXIsNotSavedError: when save is False
         :raises URLDoesNotExistError: when upload is False
         """
 
         if self.sheets_data is None and upload is True:
-            self.upload_to_sheets(convert=convert, save=save)
+            self.upload_to_sheets(convert=convert)
         elif self.sheets_data is None and upload is False:
             raise URLDoesNotExistError("The XLSX ledger isn't in Sheets.")
         return self.sheets_data
@@ -511,20 +529,17 @@ class Ledger:
                                 webbrowser.BackgroundBrowser(self.browser_path))
             webbrowser.get(using="my-browser").open(open_path)
 
-    def open_sheet_in_browser(self, convert: bool = True, save: bool = True,
+    def open_sheet_in_browser(self, convert: bool = True,
                               upload: bool = True) -> None:
         """Opens the ledger in Google Sheets in the designated browser.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
-        :param save: whether to save the XLSX ledger
-        :type save: bool, optional
         :param upload: whether to upload the XLSX if needed
         :type upload: bool, optional
         """
 
-        open_path = self.get_sheets_data(convert=convert, save=save,
-                                         upload=upload)["url"]
+        open_path = self.get_sheets_data(convert=convert, upload=upload)["url"]
         if self.browser_path is False:
             print("Visit the Google Sheet here: %s" % open_path)
         else:

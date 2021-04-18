@@ -13,3 +13,5 @@ inputimeout
 pushbullet.py
 camelot-py
 opencv-python
+pyexcel
+pyexcel-xlsx
