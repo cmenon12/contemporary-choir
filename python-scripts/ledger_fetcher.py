@@ -270,9 +270,9 @@ class Ledger:
         LOGGER.info("PDF at %s has been opened.",
                     self.get_pdf_filepath(save=save))
 
-        # Authenticate and retrieve the required services
-        drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
-                                               open_browser=self.browser_path)
+        # Authenticate and retrieve the drive service
+        drive, _, _ = authorize(pushbullet=self.pushbullet,
+                                open_browser=self.browser_path)
 
         # Update the PDF copy of the ledger with a new version
         LOGGER.info("Uploading the new PDF ledger to Drive...")
@@ -305,9 +305,9 @@ class Ledger:
         LOGGER.info("Spreadsheet at %s has been opened.",
                     self.get_xlsx_filepath(convert=convert, save=save))
 
-        # Authenticate and retrieve the required services
-        drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
-                                               open_browser=self.browser_path)
+        # Authenticate and retrieve the drive and sheets services
+        drive, sheets, _ = authorize(pushbullet=self.pushbullet,
+                                     open_browser=self.browser_path)
 
         # Upload the ledger
         LOGGER.info("Uploading the ledger to Google Sheets")
@@ -582,7 +582,7 @@ class Ledger:
 
             # Update the attributes to the new location
             self.pdf_filepath = pdf_file_box.name
-            head, filename = os.path.split(self.pdf_filepath)
+            _, filename = os.path.split(self.pdf_filepath)
             self.pdf_filename = filename
             self.app_gui.removeAllWidgets()
 
@@ -621,7 +621,7 @@ class Ledger:
 
             # Update the attributes to the new location
             self.xlsx_filepath = xlsx_file_box.name
-            head, filename = os.path.split(self.xlsx_filepath)
+            _, filename = os.path.split(self.xlsx_filepath)
             self.xlsx_filename = filename
             self.app_gui.removeAllWidgets()
 
@@ -655,9 +655,9 @@ class Ledger:
 
         if self.sheets_data is not None:
 
-            # Authenticate and retrieve the required services
-            drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
-                                                   open_browser=self.browser_path)
+            # Authenticate and retrieve the sheets service
+            _, sheets, _ = authorize(pushbullet=self.pushbullet,
+                                     open_browser=self.browser_path)
 
             # Delete the sheet
             body = {"requests": {"deleteSheet": {"sheetId": self.sheets_data["sheet_id"]}}}
@@ -677,9 +677,9 @@ class Ledger:
 
         if self.sheets_data is not None:
 
-            # Authenticate and retrieve the required services
-            drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
-                                                   open_browser=self.browser_path)
+            # Authenticate and retrieve the sheets service
+            _, sheets, _ = authorize(pushbullet=self.pushbullet,
+                                     open_browser=self.browser_path)
 
             # Hide the sheet
             body = {"requests": [{
@@ -692,9 +692,11 @@ class Ledger:
             sheets.spreadsheets().batchUpdate(spreadsheetId=self.sheets_data["spreadsheet_id"],
                                               body=body).execute()
             if hide:
-                LOGGER.info("Sheet %s has been hidden successfully.", self.sheets_data["sheet_id"])
+                LOGGER.info("Sheet %s has been hidden successfully.",
+                            self.sheets_data["sheet_id"])
             else:
-                LOGGER.info("Sheet %s has been un-hidden successfully.", self.sheets_data["sheet_id"])
+                LOGGER.info("Sheet %s has been un-hidden successfully.",
+                            self.sheets_data["sheet_id"])
         else:
             LOGGER.info("There is no Google Sheet to hide.")
 
@@ -824,12 +826,12 @@ def push_url(title: str, url: str, config: dict):
         try:
             if str(config["device"]).lower() == "false":
                 pb.get_device(str(config["device"])).push_link(title, url)
-                LOGGER.info("Pushed URL %s with title %s to all devices." %
+                LOGGER.info("Pushed URL %s with title %s to all devices.",
                             (url, title))
                 print("The URL has been successfully pushed to all devices.")
             else:
                 pb.push_link(title, url)
-                LOGGER.info("Pushed URL %s with title %s to device %s." %
+                LOGGER.info("Pushed URL %s with title %s to device %s.",
                             (url, title, config["device"]))
                 print("The URL has been successfully pushed to %s." %
                       config["device"])
@@ -854,11 +856,11 @@ def main(app_gui: gui) -> None:
     try:
         open(CONFIG_FILENAME)
         LOGGER.info("Loaded config %s.", CONFIG_FILENAME)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         print("The config file doesn't exist!")
         LOGGER.info("Could not find config %s, exiting.", CONFIG_FILENAME)
         time.sleep(5)
-        raise FileNotFoundError("The config file doesn't exist!")
+        raise FileNotFoundError("The config file doesn't exist!") from e
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
