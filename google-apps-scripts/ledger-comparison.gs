@@ -112,39 +112,13 @@ function formatNeatlyWithSheet(thisSheet) {
   thisSheet.setTabColor("white");
 
   // Rename the sheet
-  const dateString = "\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d \\d\\d:\\d\\d:\\d\\d";
-  let finder = thisSheet.createTextFinder(dateString)
-    .matchEntireCell(true).useRegularExpression(true);
-  let foundRange = finder.findNext();
-  foundRange.setNumberFormat("@");
-  const datetime = foundRange.getValue();
+  datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
   thisSheet.setName(datetime);
 
-  // Resize the columns
-  finder = thisSheet.createTextFinder("Please note recent transactions may not be included.");
+  // Delete the 'Please note' text at the end
+  finder = thisSheet.getRange("A:A").createTextFinder("Please note");
   foundRange = finder.findNext();
-  foundRange.setValue("");
-  thisSheet.autoResizeColumns(1, 4);
-
-  // Get all occurrences of UNIV01 (except for the first one)
-  finder = thisSheet.createTextFinder("UNIV01");
-  const matches = finder.findAll();
-  matches.shift();
-  matches.reverse(); // start at the bottom to avoid changing future ranges
-
-  // Remove each of these headers
-  // If the totals are on a new page with no entries,
-  // then we should delete one less row
-  for (let i = 0; i < matches.length; i += 1) {
-    let row = matches[i].getRow() - 2;
-    if (matches[i].offset(3, 0).getValue() !== "") {
-      thisSheet.deleteRows(row, 5);
-      Logger.log(`Deleted five rows starting at row ${row}`);
-    } else {
-      thisSheet.deleteRows(row, 6);
-      Logger.log(`Deleted six rows starting at row ${row}`);
-    }
-  }
+  thisSheet.deleteRows(foundRange.getRow(), 1);
 
   // Remove all the excess rows & columns
   try {
@@ -155,6 +129,80 @@ function formatNeatlyWithSheet(thisSheet) {
   } catch (error) {
     Logger.log(`There was an error removing the excess rows & columns: ${error.message}`);
   }
+
+  // Set the font size for all 11, but important parts to 12
+  thisSheet.getRange(`1:${thisSheet.getMaxRows()}`).setFontSize(11);
+  thisSheet.getRange(`${thisSheet.getLastRow() - 4}:${thisSheet.getLastRow()}`).setFontSize(12);
+  thisSheet.getRange("1:2").setFontSize(12);
+
+  // Replace all in-cell newlines with spaces
+  finder = thisSheet.createTextFinder("\n").useRegularExpression(true).replaceAllWith(" ");
+
+  // Resize the columns
+  thisSheet.autoResizeColumns(1, 4);
+
+  // Get all occurrences of UNIV01 (except for the first one)
+  finder = thisSheet.createTextFinder("UNIV01");
+  let matches = finder.findAll();
+  matches.shift();
+  matches.reverse(); // start at the bottom to avoid changing future ranges
+
+  // Remove each of these headers
+  // If the cost code row isn't present,
+  // then we should delete one less row
+  for (let i = 0; i < matches.length; i += 1) {
+    let row = matches[i].getRow() - 1;
+    if (matches[i].offset(3, 0).getValue() === "") {
+      thisSheet.deleteRows(row, 5);
+      Logger.log(`Deleted five rows starting at row ${row}`);
+    } else {
+      thisSheet.deleteRows(row, 4);
+      Logger.log(`Deleted four rows starting at row ${row}`);
+    }
+  }
+
+  // For each cell in the first column
+  // If it's not a date then make it bold
+  // If it's also not empty nor "Date" then
+  // append the value in the next column and merge the two cells
+  // This fixes words being split up
+  let value;
+  for (let i = 1; i <= thisSheet.getLastRow(); i += 1) {
+    value = thisSheet.getRange(`A${i}`).getValue();
+
+    if (value.match("\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d") === null) {
+      thisSheet.getRange(`${i}:${i}`).setTextStyle(SpreadsheetApp.newTextStyle().setBold(true).build());
+
+      if (value !== "" && value !== "Date") {
+        thisSheet.getRange(`A${i}`).setValue(value + thisSheet.getRange(`B${i}`).getValue());
+        thisSheet.getRange(`B${i}`).setValue("");
+        thisSheet.getRange(`A${i}:B${i}`).merge();
+      }
+    }
+  }
+
+  // Smarten up the top rows
+  thisSheet.getRange("A1").setValue(`Statement at ${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`);
+  thisSheet.getRange("C1:D3").clear({contentsOnly: true});
+
+  // Align all text vertically in the center
+  thisSheet.getRange(`1:${thisSheet.getMaxRows()}`).setVerticalAlignment("center");
+
+  // Set the amounts to be recognised as numbers
+  thisSheet.getRange(`C2:D${thisSheet.getMaxRows()}`).setNumberFormat("#,##0.00");
+
+  // Freeze the first four rows
+  thisSheet.setFrozenRows(4);
+
+  // Insert a blank row after each cost code's totals (except the grand total)
+  finder = thisSheet.createTextFinder("Total Balance - ");
+  matches = finder.findAll();
+  matches.pop();
+  matches.reverse();  // start at the bottom to avoid changing future ranges
+  for (let i = 0; i < matches; i += 1) {
+    thisSheet.insertRowAfter(matches[i].getRow());
+  }
+
 }
 
 
