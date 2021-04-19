@@ -75,12 +75,6 @@ __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
-# The number of PDF to XLSX converters in the PDFtoXLSXConverter class
-NUMBER_OF_CONVERTERS = 2
-
-# How long to wait for conversion (in seconds)
-CONVERSION_TIMEOUT = 120
-
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
 

@@ -29,8 +29,7 @@ This can download the society ledger from eXpense365 to your computer (instead o
 
 #### Classes
 * **`CustomEncoder`** is a custom JSON encoder that's used for logging. For bytes objects, it returns a string with their length instead of the actual bytes. For all other objects it uses the default JSON encoder, falling back on the built-in `str(obj)` method where needed.
-* **`Ledger`** represents a ledger, which is downloaded upon instantiation. It includes methods to convert it to an XLSX (using the `PDFtoXLSXConverter` class), upload the PDF or XLSX to Drive, save or delete the PDF or XLSX file to the local filesystem, open the PDF or uploaded Google Sheet in the web browser, and refresh the ledger to a more up-to-date version. It also has numerous getter methods that incorporate these methods as required.
-* **`PDFToXLSXConverter`** represents an online PDF-to-XLSX converter. It currently supports pdftoexcel.com and pdftoexcelconverter.net, both of which are very similar. A converter is chosen upon instantiation, either randomly or by the user. It includes methods to upload the PDF, check the conversion status, and download the resulting XLSX file.
+* **`Ledger`** represents a ledger, which is downloaded upon instantiation. It includes methods to convert it to an XLSX, upload the PDF or XLSX to Drive, save or delete the PDF or XLSX file to the local filesystem, open the PDF or uploaded Google Sheet in the web browser, and refresh the ledger to a more up-to-date version. It also has numerous getter methods that incorporate these methods as required.
 
 #### Functions
 * **`authorize()`** is used to authorize access to Google Drive, Sheets, and Apps Script, returning the three services in a tuple. It has an inner function, `authorize_in_browser()` that handles the authorization flow by opening the browser if requested by the user and timing out after 300 seconds.
@@ -59,6 +58,16 @@ This checks the ledger and notifies the user via email of any changes.
 
 ### [`custom_exceptions.py`](python-scripts/custom_exceptions.py)
 This contains a variety of custom exceptions that the above two scripts can throw.
+
+
+### [`archive.py`](python-scripts/archive.py)
+This contains code that is no longer actively used, but may be of use in
+the future. Note that its dependencies are not necessarily listed in
+[`requirements.txt`](python-scripts/requirements.txt).
+
+#### Classes
+* **`PDFToXLSXConverter`** represents an online PDF-to-XLSX converter. It currently supports [pdftoexcel.com](pdftoexcel.com) and [pdftoexcelconverter.net](pdftoexcelconverter.net), both of which are very similar. A converter is chosen upon instantiation, either randomly or by the user. It includes methods to upload the PDF, check the conversion status, and download the resulting XLSX file.
+* **`ConversionTimeoutError`** and **`ConversionRejectedError`** are both exceptions used by `PDFToXLSXConverter`.
 
 
 ## Google Apps Scripts (for Google Sheets)
