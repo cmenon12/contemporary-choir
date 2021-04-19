@@ -60,12 +60,12 @@ import pyperclip
 import requests
 from appJar import gui
 from dateutil import tz
+from func_timeout import func_set_timeout, FunctionTimedOut
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from inputimeout import inputimeout, TimeoutOccurred
 from pushbullet import InvalidKeyError, Pushbullet, PushError
 from pyexcel.cookbook import merge_csv_to_a_book
 
@@ -716,6 +716,7 @@ def authorize(pushbullet: dict,
     :rtype: tuple
     """
 
+    @func_set_timeout(AUTHORIZATION_TIMEOUT)
     def authorize_in_browser():
         """Authorize in the browser, with a timeout."""
 
@@ -730,25 +731,12 @@ def authorize(pushbullet: dict,
             pyperclip.copy(auth_url)
             print("The URL has been copied to the clipboard.")
 
-            # Start the timer
-            try:
-                code = inputimeout(prompt="Enter the authorization code: ",
-                                   timeout=AUTHORIZATION_TIMEOUT)
-                flow.fetch_token(code=code)
-                return flow.credentials
-            except TimeoutOccurred:
-                raise TimeoutError("Waited %d seconds to authorize Google APIs." %
-                                   AUTHORIZATION_TIMEOUT)
+            # Get the authorization code
+            code = input("Enter the authorization code: ")
+            flow.fetch_token(code=code)
+            return flow.credentials
 
         else:
-            # Run the timer
-            try:
-                inputimeout(prompt="Press enter to open your browser: ",
-                            timeout=AUTHORIZATION_TIMEOUT)
-            except TimeoutOccurred:
-                raise TimeoutError("Waited %d seconds to authorize Google APIs." %
-                                   AUTHORIZATION_TIMEOUT)
-
             # Open the browser for the user to authorize it
             flow = InstalledAppFlow.from_client_secrets_file(
                 CLIENT_SECRETS_FILE, SCOPES)
@@ -769,10 +757,18 @@ def authorize(pushbullet: dict,
                 credentials.refresh(Request())
             except RefreshError:
                 os.remove(TOKEN_PICKLE_FILE)
-                credentials = authorize_in_browser()
 
+                try:
+                    credentials = authorize_in_browser()
+                except FunctionTimedOut as e:
+                    raise FunctionTimedOut("Waited %d seconds to authorize Google APIs." %
+                                           AUTHORIZATION_TIMEOUT) from e
         else:
-            credentials = authorize_in_browser()
+            try:
+                credentials = authorize_in_browser()
+            except FunctionTimedOut as e:
+                raise FunctionTimedOut("Waited %d seconds to authorize Google APIs." %
+                                       AUTHORIZATION_TIMEOUT) from e
 
     # If we do have valid credentials then refresh them
     else:
