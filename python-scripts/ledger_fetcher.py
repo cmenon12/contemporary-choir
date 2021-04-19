@@ -54,7 +54,6 @@ import traceback
 import webbrowser
 from datetime import datetime
 from typing import Optional, Union
-from pyexcel.cookbook import merge_csv_to_a_book
 
 import camelot
 import pyperclip
@@ -68,6 +67,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from inputimeout import inputimeout, TimeoutOccurred
 from pushbullet import InvalidKeyError, Pushbullet, PushError
+from pyexcel.cookbook import merge_csv_to_a_book
 
 from custom_exceptions import *
 
@@ -292,15 +292,18 @@ class Ledger:
 
         self.drive_pdf_url = pdf_url
 
-    def upload_to_sheets(self, convert: bool = True) -> None:
+    def upload_to_sheets(self, convert: bool = True,
+                         save: bool = True) -> None:
         """Uploads the ledger to the specified Google Sheet.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
+        :param save: whether to save the XLSX ledger
+        :type save: bool, optional
         """
 
         LOGGER.info("Spreadsheet at %s has been opened.",
-                    self.get_xlsx_filepath(convert=convert))
+                    self.get_xlsx_filepath(convert=convert, save=save))
 
         # Authenticate and retrieve the required services
         drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
@@ -312,7 +315,8 @@ class Ledger:
                          "mimeType": "application/vnd.google-apps.spreadsheet"}
         xlsx_mimetype = ("application/vnd.openxmlformats-officedocument" +
                          ".spreadsheetml.sheet")
-        media = MediaFileUpload(self.get_xlsx_filepath(convert=convert),
+        media = MediaFileUpload(self.get_xlsx_filepath(convert=convert,
+                                                       save=save),
                                 mimetype=xlsx_mimetype,
                                 resumable=True)
         file = drive.files().create(body=file_metadata,
@@ -411,18 +415,24 @@ class Ledger:
 
         return self.pdf_file
 
-    def get_xlsx_filepath(self, convert: bool = True) -> str:
+    def get_xlsx_filepath(self, convert: bool = True,
+                          save: bool = True) -> str:
         """Returns the filepath of the XLSX spreadsheet.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
+        :param save: whether to save the XLSX ledger
+        :type save: bool, optional
         :return: the filepath of the XLSX ledger
         :rtype: str
         :raises XLSXDoesNotExistError: when convert is False
+        :raises XLSXIsNotSavedError: when save is False
         """
 
-        if self.xlsx_filepath is None:
+        if self.xlsx_filepath is None and save is True:
             self.save_xlsx(convert=convert)
+        elif self.xlsx_filepath is None and save is False:
+            raise XLSXIsNotSavedError("The XLSX isn't saved.")
 
         return self.xlsx_filepath
 
@@ -476,22 +486,25 @@ class Ledger:
             raise URLDoesNotExistError("The PDF ledger isn't in Drive.")
         return self.drive_pdf_url
 
-    def get_sheets_data(self, convert: bool = True,
+    def get_sheets_data(self, convert: bool = True, save: bool = True,
                         upload: bool = True) -> dict:
         """Returns the name and URL of the ledger in Google Sheets.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
+        :param save: whether to save the XLSX ledger
+        :type save: bool, optional
         :param upload: whether to upload the XLSX if needed
         :type upload: bool, optional
         :returns: the sheet name and url
         :rtype: dict
         :raises XLSXDoesNotExistError: when convert is False
+        :raises XLSXIsNotSavedError: when save is False
         :raises URLDoesNotExistError: when upload is False
         """
 
         if self.sheets_data is None and upload is True:
-            self.upload_to_sheets(convert=convert)
+            self.upload_to_sheets(convert=convert, save=save)
         elif self.sheets_data is None and upload is False:
             raise URLDoesNotExistError("The XLSX ledger isn't in Sheets.")
         return self.sheets_data
@@ -523,17 +536,20 @@ class Ledger:
                                 webbrowser.BackgroundBrowser(self.browser_path))
             webbrowser.get(using="my-browser").open(open_path)
 
-    def open_sheet_in_browser(self, convert: bool = True,
+    def open_sheet_in_browser(self, convert: bool = True, save: bool = True,
                               upload: bool = True) -> None:
         """Opens the ledger in Google Sheets in the designated browser.
 
         :param convert: whether to convert the PDF if needed
         :type convert: bool, optional
+        :param save: whether to save the XLSX ledger
+        :type save: bool, optional
         :param upload: whether to upload the XLSX if needed
         :type upload: bool, optional
         """
 
-        open_path = self.get_sheets_data(convert=convert, upload=upload)["url"]
+        open_path = self.get_sheets_data(convert=convert, save=save,
+                                         upload=upload)["url"]
         if self.browser_path is False:
             print("Visit the Google Sheet here: %s" % open_path)
         else:
