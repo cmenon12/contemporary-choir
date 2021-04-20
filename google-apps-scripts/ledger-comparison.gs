@@ -105,6 +105,11 @@ function showPrompt() {
  */
 function formatNeatlyWithSheet(thisSheet) {
 
+  // Don't re-run if it's already been done
+  if (thisSheet.getRange("A1").getValue() === "Income/Expense Statement") {
+    return;
+  }
+
   // Convert the first column to text
   thisSheet.getRange(1, 1, thisSheet.getLastRow()).setNumberFormat("@");
 
@@ -133,7 +138,7 @@ function formatNeatlyWithSheet(thisSheet) {
   // Set the font size for all 11, but important parts to 12
   thisSheet.getRange(`1:${thisSheet.getMaxRows()}`).setFontSize(11);
   thisSheet.getRange(`${thisSheet.getLastRow() - 4}:${thisSheet.getLastRow()}`).setFontSize(12);
-  thisSheet.getRange("1:2").setFontSize(12);
+  thisSheet.getRange("1:4").setFontSize(12);
 
   // Replace all in-cell newlines with spaces
   finder = thisSheet.createTextFinder("\n").useRegularExpression(true).replaceAllWith(" ");
@@ -167,11 +172,12 @@ function formatNeatlyWithSheet(thisSheet) {
   // append the value in the next column and merge the two cells
   // This fixes words being split up
   let value;
+  const boldOn = SpreadsheetApp.newTextStyle().setBold(true).build();
   for (let i = 1; i <= thisSheet.getLastRow(); i += 1) {
     value = thisSheet.getRange(`A${i}`).getValue();
 
     if (value.match("\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d") === null) {
-      thisSheet.getRange(`${i}:${i}`).setTextStyle(SpreadsheetApp.newTextStyle().setBold(true).build());
+      thisSheet.getRange(`${i}:${i}`).setTextStyle(boldOn);
 
       if (value !== "" && value !== "Date") {
         thisSheet.getRange(`A${i}`).setValue(value + thisSheet.getRange(`B${i}`).getValue());
@@ -182,7 +188,8 @@ function formatNeatlyWithSheet(thisSheet) {
   }
 
   // Smarten up the top rows
-  thisSheet.getRange("A1").setValue(`Statement at ${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`);
+  thisSheet.getRange("A3").setValue(`${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`);
+  thisSheet.insertRowAfter(3);
   thisSheet.getRange("C1:D3").clear({contentsOnly: true});
 
   // Align all text vertically in the center
@@ -191,17 +198,20 @@ function formatNeatlyWithSheet(thisSheet) {
   // Set the amounts to be recognised as numbers
   thisSheet.getRange(`C2:D${thisSheet.getMaxRows()}`).setNumberFormat("#,##0.00");
 
-  // Freeze the first four rows
-  thisSheet.setFrozenRows(4);
+  // Freeze the first five rows
+  thisSheet.setFrozenRows(5);
 
   // Insert a blank row after each cost code's totals (except the grand total)
   finder = thisSheet.createTextFinder("Total Balance - ");
   matches = finder.findAll();
   matches.pop();
   matches.reverse();  // start at the bottom to avoid changing future ranges
-  for (let i = 0; i < matches; i += 1) {
+  for (let i = 0; i < matches.length; i += 1) {
     thisSheet.insertRowAfter(matches[i].getRow());
   }
+
+  // Finish - this is a flag to indicate that formatting is done
+  thisSheet.getRange("A1").setValue("Income/Expense Statement");
 
 }
 
