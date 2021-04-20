@@ -176,7 +176,7 @@ function formatNeatlyWithSheet(thisSheet) {
   for (let i = 1; i <= thisSheet.getLastRow(); i += 1) {
     value = thisSheet.getRange(`A${i}`).getValue();
 
-    if (value.match("\\d\\d\\/\\d\\d\\/\\d\\d\\d\\d") === null) {
+    if (isADate(value) === false) {
       thisSheet.getRange(`${i}:${i}`).setTextStyle(boldOn);
 
       if (value !== "" && value !== "Date") {
