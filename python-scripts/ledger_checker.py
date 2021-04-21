@@ -509,8 +509,8 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
         raise AppsScriptApiError(response["error"])
 
     # Otherwise save the data that the Apps Script returns
-    LOGGER.info(response["response"].get("result"))
-    changes = json.loads(response["response"].get("result"))
+    changes = response["response"].get("result")
+    LOGGER.info(changes)
     print("The Apps Script function executed successfully!")
     LOGGER.info("The Apps Script function executed successfully.")
 
@@ -518,7 +518,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     old_changes = save_data.get_changes()
 
     # If there were no changes then do nothing
-    if changes == "False":
+    if changes is False or changes.lower() == "false":
         print("Changes is False, so we'll do nothing.")
         LOGGER.info("Changes is False, so we'll do nothing.")
         ledger.delete_pdf()
@@ -526,41 +526,44 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
         ledger.delete_sheet()
         save_data.new_check_success(new_ledger=ledger)
 
-    # If the returned changes aren't actually new to us then
-    # just delete the new sheet we just made
-    # This compares the total income & expenditure
-    elif old_changes is not None and \
-            format_currency(changes["grandTotal"]["totalIn"], "GBP", locale="en_GB") == \
-            old_changes["grandTotal"]["totalIn"] and \
-            format_currency(changes["grandTotal"]["totalOut"], "GBP", locale="en_GB") == \
-            old_changes["grandTotal"]["totalOut"] and \
-            format_currency(changes["grandTotal"]["balanceBroughtForward"], "GBP", locale="en_GB") \
-            == old_changes["grandTotal"]["balanceBroughtForward"]:
-        print("The new changes is the same as the old.")
-        LOGGER.info("The new changes is the same as the old.")
-        ledger.delete_pdf()
-        ledger.delete_xlsx()
-        ledger.delete_sheet()
-        save_data.new_check_success(new_ledger=ledger)
-
-    # Otherwise these changes are new
-    # Update the PDF ledger in the user's Google Drive
-    # Notify the user (via email) and hide the old sheet
-    # Save the new data to the save file
     else:
-        print("We have some new changes!")
-        LOGGER.info("We have some new changes.")
-        ledger.update_drive_pdf()
-        send_success_email(config=parser["email"],
-                           save_data=save_data,
-                           changes=changes,
-                           new_ledger=ledger,
-                           old_ledger=save_data.get_most_recent_ledger())
-        print("Email sent successfully!")
-        LOGGER.info("Hiding the old sheet...")
-        if save_data.get_changes_ledger() is not None:
-            save_data.get_changes_ledger().hide_sheet()
-        save_data.new_check_success(new_ledger=ledger, changes=changes)
+        json.loads(response["response"].get("result"))
+
+        # If the returned changes aren't actually new to us then
+        # just delete the new sheet we just made
+        # This compares the total income & expenditure
+        if old_changes is not None and \
+                format_currency(changes["grandTotal"]["totalIn"], "GBP", locale="en_GB") == \
+                old_changes["grandTotal"]["totalIn"] and \
+                format_currency(changes["grandTotal"]["totalOut"], "GBP", locale="en_GB") == \
+                old_changes["grandTotal"]["totalOut"] and \
+                format_currency(changes["grandTotal"]["balanceBroughtForward"], "GBP", locale="en_GB") \
+                == old_changes["grandTotal"]["balanceBroughtForward"]:
+            print("The new changes is the same as the old.")
+            LOGGER.info("The new changes is the same as the old.")
+            ledger.delete_pdf()
+            ledger.delete_xlsx()
+            ledger.delete_sheet()
+            save_data.new_check_success(new_ledger=ledger)
+
+        # Otherwise these changes are new
+        # Update the PDF ledger in the user's Google Drive
+        # Notify the user (via email) and hide the old sheet
+        # Save the new data to the save file
+        else:
+            print("We have some new changes!")
+            LOGGER.info("We have some new changes.")
+            ledger.update_drive_pdf()
+            send_success_email(config=parser["email"],
+                               save_data=save_data,
+                               changes=changes,
+                               new_ledger=ledger,
+                               old_ledger=save_data.get_most_recent_ledger())
+            print("Email sent successfully!")
+            LOGGER.info("Hiding the old sheet...")
+            if save_data.get_changes_ledger() is not None:
+                save_data.get_changes_ledger().hide_sheet()
+            save_data.new_check_success(new_ledger=ledger, changes=changes)
 
 
 def main() -> None:
