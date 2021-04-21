@@ -171,15 +171,19 @@ function compareWithOld(row, oldSheetValues, newSheet) {
 
 
 /**
- * Compares the new sheet with the old sheet, and highlights anything different or new in the new sheet
+ * Compares the new sheet with the old sheet, and highlights anything
+ * different or new in the new sheet.
  * Note that any differences in whitespace will be recognised as a difference.
+ * newLedger must have the cost codes saved to it.
  *
  * @param {Sheet} newSheet the new sheet with the new changes.
  * @param {Sheet} oldSheet the old sheet to compare against.
  * @param {boolean} colourCountdown whether to show the comparison working downwards.
- * @param {String} newRowColour the colour of the new row
+ * @param {String} newRowColour the colour of the new row.
+ * @param {Ledger|null} newLedger the ledger object to save the entries to, optional.
+ * @returns {Ledger|null} the updated ledger object if one was supplied.
  */
-function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour) {
+function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLedger = null) {
 
   // Fetch the old sheet and it's values
   // This saves making multiple requests, which is slow
@@ -188,6 +192,10 @@ function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour) {
   let passedHeader = false;
   let cell;
   let cellValue;
+  if (newLedger !== null) {
+    const costCodeRows = newLedger.getCostCodeRows();
+  }
+
   for (let row = 1; row <= newSheet.getLastRow(); row += 1) {
     cell = newSheet.getRange(row, 1);
     cellValue = String(cell.getValue());
@@ -202,15 +210,31 @@ function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour) {
       }
 
 
-      // Compare it with the original/old sheet
-      // Comparing all rows allows us to identify changes in the totals too
     } else {
+
+      // Compare it with the original/old sheet
       const isNew = compareWithOld(row, oldSheetValues, newSheet);
 
       // If it is a new row then colour it
       if (isNew) {
-        newSheet.getRange(row, 1, 1, 4).setBackground(newRowColour);
         Logger.log(`Row ${row} is a new row!`);
+        newSheet.getRange(row, 1, 1, 4).setBackground(newRowColour);
+
+        // If we are using the ledger object and it's not a date
+        if (newLedger !== null && isADate(newSheet.getRange(row, 1).getValue())) {
+
+          // Identify the relevant cost code and save the entry
+          for (let i = 0; i < costCodeRows.length; i++) {
+            if (row < costCodeRows[i][1]) {
+              newLedger.addEntry(costCodeRows[i][0],
+                newSheet.getRange(row, 1).getValue(),
+                newSheet.getRange(row, 2).getValue(),
+                Number(newSheet.getRange(row, 3).getValue()),
+                Number(newSheet.getRange(row, 4).getValue()));
+              break;
+            }
+          }
+        }
 
         // Otherwise just reset it
       } else if (colourCountdown === true) {
@@ -219,6 +243,10 @@ function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour) {
     }
   }
   Logger.log("Finished comparing sheets!");
+  if (newLedger !== null) {
+    newLedger.log();
+    return newLedger;
+  }
 }
 
 
