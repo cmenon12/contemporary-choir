@@ -54,6 +54,7 @@ function saveUserProperties(data) {
       userProperties.setProperty(prop, data[prop]);
     }
   }
+
 }
 
 
@@ -67,18 +68,6 @@ function saveUserProperties(data) {
 function processSheetsSidebarForm(e) {
 
   saveUserProperties(e.formInput);
-
-  // Save the actions that weren't selected as off
-  actions = {}
-  if (!e.formInput.hasOwnProperty("format")) {
-    actions.format = "off"
-  }
-  if (!e.formInput.hasOwnProperty("highlight")) {
-    actions.highlight = "off"
-  }
-  if (!e.formInput.hasOwnProperty("copy")) {
-    actions.copy = "off"
-  }
 
   // Attempt to get the sheet
   try {

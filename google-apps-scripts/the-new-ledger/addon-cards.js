@@ -54,6 +54,20 @@ function buildNotification(message) {
 function updateWithHomepage(e) {
 
   saveUserProperties(e.formInput);
+
+  // Save the actions that weren't selected as off
+  actions = {}
+  if (!e.formInput.hasOwnProperty("format")) {
+    actions.format = "off"
+  }
+  if (!e.formInput.hasOwnProperty("highlight")) {
+    actions.highlight = "off"
+  }
+  if (!e.formInput.hasOwnProperty("copy")) {
+    actions.copy = "off"
+  }
+  saveUserProperties(actions);
+
   const navigation = CardService.newNavigation()
     .updateCard(buildSheetsHomePage(e));
   return CardService.newActionResponseBuilder()
@@ -72,32 +86,56 @@ function getActionsSection() {
 
   // The format option
   const formatDT = CardService.newDecoratedText()
-    .setText("Format neatly")
+    .setText("Format this sheet neatly")
     .setWrapText(true)
     .setSwitchControl(CardService.newSwitch()
       .setFieldName("format")
-      .setSelected(getUserProperties().actionsFormat === "on")
+      .setSelected(getUserProperties().format === "on")
       .setValue("on")
-      .setControlType(CardService.SwitchControlType.CHECK_BOX))
+      .setControlType(CardService.SwitchControlType.CHECK_BOX)
+      .setOnChangeAction(CardService.newAction()
+        .setFunctionName("updateWithHomepage")));
+
+  // Format sheetName parameter
+  const formatSheetName = CardService.newTextInput()
+    .setFieldName("formatSheetName")
+    .setTitle("The new name of the sheet")
+    .setHint("Use {{datetime}} for the date and time of the ledger.");
 
   // The highlight option
   const highlightDT = CardService.newDecoratedText()
-    .setText("Compare with the sheet and highlight new entries")
+    .setText("Compare this sheet with the sheet above and highlight new entries in this sheet")
     .setWrapText(true)
     .setSwitchControl(CardService.newSwitch()
       .setFieldName("highlight")
-      .setSelected(getUserProperties().actionsHighlight === "on")
+      .setSelected(getUserProperties().highlight === "on")
       .setValue("on")
-      .setControlType(CardService.SwitchControlType.CHECK_BOX))
+      .setControlType(CardService.SwitchControlType.CHECK_BOX)
+      .setOnChangeAction(CardService.newAction()
+        .setFunctionName("updateWithHomepage")));
+
+  // Highlight newRowColour parameter
+  const highlightNewRowColour = CardService.newTextInput()
+    .setFieldName("highlightNewRowColour")
+    .setTitle("The colour to highlight new entries")
+    .setHint("A color code in CSS notation (such as '#E62073' or 'red')");
 
   // The copy option
   const copyDT = CardService.newDecoratedText()
-    .setText("Copy to the sheet")
+    .setText("Copy this sheet to the sheet above")
     .setSwitchControl(CardService.newSwitch()
       .setFieldName("copy")
-      .setSelected(getUserProperties().actionsCopy === "on")
+      .setSelected(getUserProperties().copy === "on")
       .setValue("on")
-      .setControlType(CardService.SwitchControlType.CHECK_BOX))
+      .setControlType(CardService.SwitchControlType.CHECK_BOX)
+      .setOnChangeAction(CardService.newAction()
+        .setFunctionName("updateWithHomepage")));
+
+  // Copy new sheet name/overwrite option
+  const copyNewSheetName = CardService.newTextInput()
+    .setFieldName("copyNewSheetName")
+    .setTitle("The name of the copied sheet (optional)")
+    .setHint("Leave blank to overwrite the sheet above. Use {{datetime}} for the date and time of the ledger.");
 
   // The run button
   const buttons = CardService.newButtonSet()
@@ -109,11 +147,26 @@ function getActionsSection() {
     .addButton(createClearSavedDataButton());
 
   // Build and return the section
-  return CardService.newCardSection()
+  const section = CardService.newCardSection()
+    .addWidget(CardService.newTextParagraph().setText("<b>ACTIONS TO TAKE</b>"))
     .addWidget(formatDT)
-    .addWidget(highlightDT)
-    .addWidget(copyDT)
-    .addWidget(buttons);
+  if (getUserProperties().format === "on") {
+    section.addWidget(formatSheetName)
+  }
+
+  section.addWidget(highlightDT)
+  if (getUserProperties().highlight === "on") {
+    section.addWidget(highlightNewRowColour)
+  }
+
+  section.addWidget(copyDT)
+  if (getUserProperties().copy === "on") {
+    section.addWidget(copyNewSheetName)
+  }
+
+  section.addWidget(buttons);
+
+  return section;
 
 }
 
@@ -198,6 +251,7 @@ function getSelectSheetSection() {
   // Only add the URL text input and button if the URL was invalid
   // Only add the name selection input if the URL was valid
   const section = CardService.newCardSection()
+  section.addWidget(CardService.newTextParagraph().setText("<b>LEDGER TO COMPARE</b>"))
   if (validURL === false) {
     section.addWidget(url)
       .addWidget(button)

@@ -25,7 +25,7 @@ function isADate(value) {
  *
  * @param {Sheet} thisSheet the sheet to format.
  * @param {String} sheetName the name of the sheet, with {{datetime}}
- * as the date and time
+ * as the date and time.
  *
  */
 function formatNeatlyWithSheet(thisSheet, sheetName) {
@@ -42,7 +42,7 @@ function formatNeatlyWithSheet(thisSheet, sheetName) {
   thisSheet.setTabColor("white");
 
   // Rename the sheet
-  datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
+  const datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
   thisSheet.setName(sheetName.replaceAll("{{datetime}}", datetime));
 
   // Delete the 'Please note' text at the end
@@ -259,7 +259,7 @@ function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLe
  * @param {Spreadsheet} destSpreadsheet the destination spreadsheet to copy to.
  * @param {Sheet} destSpreadsheet the destination sheet to overwrite, or null.
  * @param {String|Sheet} newSheet the name of the new sheet or the sheet to
- * overwrite.
+ * overwrite. If the former then with {{datetime}} as the date and time.
  */
 function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
 
@@ -286,6 +286,8 @@ function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
 
     // Just copy it over and set the name
     const copiedSheet = thisSheet.copyTo(destSpreadsheet);
+    datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
+    thisSheet.setName(sheetName.replaceAll("{{datetime}}", datetime));
     copiedSheet.setName(newSheet)
   }
 }
