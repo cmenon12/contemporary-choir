@@ -909,7 +909,7 @@ if __name__ == "__main__":
     logging.basicConfig(filename="ledger_fetcher.log",
                         filemode="a",
                         format="%(asctime)s | %(levelname)s : %(message)s",
-                        level=logging.DEBUG)
+                        level=logging.INFO)
     LOGGER = logging.getLogger(__name__)
 
     # Create the GUI

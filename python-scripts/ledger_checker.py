@@ -127,8 +127,8 @@ class LedgerCheckerSaveFile:
         self.stack_traces.clear()
         self.error_email_id = None
         self.save_data()
-        LOGGER.debug("Successful check saved to %s",
-                     self.save_data_filepath)
+        LOGGER.info("Successful check saved to %s",
+                    self.save_data_filepath)
 
     def new_check_fail(self, stack_trace: str) -> None:
         """Runs when a check failed.
@@ -140,8 +140,8 @@ class LedgerCheckerSaveFile:
         date = datetime.now().strftime("%A %d %B %Y AT %H:%M:%S")
         self.stack_traces.append(("ERROR ON %s\n%s" % (date.upper(), stack_trace)))
         self.save_data()
-        LOGGER.debug("Failed check saved to %s",
-                     self.save_data_filepath)
+        LOGGER.info("Failed check saved to %s",
+                    self.save_data_filepath)
 
     def update_error_email_id(self, email_id: str) -> None:
         """Sets and saves the ID of the last error email.
@@ -509,8 +509,8 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
         raise AppsScriptApiError(response["error"])
 
     # Otherwise save the data that the Apps Script returns
-    changes = response["response"].get("result")
-    LOGGER.debug(changes)
+    LOGGER.info(response["response"].get("result"))
+    changes = json.loads(response["response"].get("result"))
     print("The Apps Script function executed successfully!")
     LOGGER.info("The Apps Script function executed successfully.")
 
@@ -612,7 +612,7 @@ if __name__ == "__main__":
     logging.basicConfig(filename="ledger_checker.log",
                         filemode="a",
                         format="%(asctime)s | %(levelname)s : %(message)s",
-                        level=logging.DEBUG)
+                        level=logging.INFO)
     LOGGER = logging.getLogger(__name__)
 
     main()

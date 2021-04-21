@@ -212,6 +212,7 @@ function formatNeatlyWithSheet(thisSheet) {
 
   // Finish - this is a flag to indicate that formatting is done
   thisSheet.getRange("A1").setValue("Income/Expense Statement");
+  SpreadsheetApp.flush();
 
 }
 
