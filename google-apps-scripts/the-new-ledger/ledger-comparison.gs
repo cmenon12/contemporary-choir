@@ -7,9 +7,6 @@
   =============================================================================
  */
 
-const spreadsheet = SpreadsheetApp.getActive();
-const sheet = spreadsheet.getActiveSheet();
-
 
 /**
  * Just tests if the String value is a date in the form (DD/MM/YYYY).
@@ -24,86 +21,14 @@ function isADate(value) {
 
 
 /**
- * Get the range with the name from the spreadsheet.
- *
- * @param {String} name the name of the range.
- * @param {Spreadsheet} spreadsheet the spreadsheet to search.
- * @return {Range|undefined} the named range if found, otherwise undefined.
- */
-function getNamedRange(name, spreadsheet) {
-
-  const namedRanges = spreadsheet.getNamedRanges();
-  let range;
-  for (let i = 0; i < namedRanges.length; i++) {
-    if (namedRanges[i].getName() === name) {
-      range = namedRanges[i].getRange();
-      break;
-    }
-  }
-  return range;
-}
-
-
-/**
- * Open a URL in a new tab using the openUrl.html HTML template.
- *
- * @param {String} url the URL to open.
- */
-function openUrl(url) {
-
-  // Create the HTML template and incorporate the URL
-  const html = HtmlService.createTemplateFromFile("openUrl");
-  html.url = url;
-
-  // Create and show the dialog
-  const dialog = html.evaluate().setWidth(90).setHeight(1);
-  SpreadsheetApp.getUi().showModalDialog(dialog, "Opening ...");
-
-}
-
-
-/**
- * Prompts the user to enter the URL of the Google Sheet with the Original
- * sheet to compare with.
- * They can choose not to enter a URL and use the default one.
- *
- * @return {String|Boolean} the entered URL or false.
- */
-function showPrompt() {
-
-  // Create the prompt and save the result
-  const ui = SpreadsheetApp.getUi();
-  const result = ui.prompt(
-    "Do you want to use the default URL?",
-    "If No then enter a new one, otherwise the default will be used. " +
-    "Click Cancel to abort.", ui.ButtonSet.YES_NO_CANCEL);
-
-  // Process the user's response
-  const button = result.getSelectedButton();
-  let url = result.getResponseText();
-
-  // If the user wants to use a different URL
-  if (button === ui.Button.NO) {
-    return url;
-
-    // If the user wants to use the default URL
-  } else if (button === ui.Button.YES) {
-    url = spreadsheet.getNamedRanges()[0].getRange().getValue();  // There's only one named range.
-    return url;
-  } else {
-    return false;
-  }
-}
-
-
-/**
  * Formats the ledger neatly.
- * This function renames the sheet, resizes the columns,
- * removes unnecessary headers, and removes excess columns & rows.
  *
  * @param {Sheet} thisSheet the sheet to format.
+ * @param {String} sheetName the name of the sheet, with {{datetime}}
+ * as the date and time
+ *
  */
-function formatNeatlyWithSheet(thisSheet) {
+function formatNeatlyWithSheet(thisSheet, sheetName) {
 
   // Don't re-run if it's already been done
   if (thisSheet.getRange("A1").getValue() === "Income/Expense Statement") {
@@ -118,7 +43,7 @@ function formatNeatlyWithSheet(thisSheet) {
 
   // Rename the sheet
   datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
-  thisSheet.setName(datetime);
+  thisSheet.setName(sheetName.replaceAll("{{datetime}}", datetime));
 
   // Delete the 'Please note' text at the end
   finder = thisSheet.getRange("A:A").createTextFinder("Please note");
@@ -137,11 +62,13 @@ function formatNeatlyWithSheet(thisSheet) {
 
   // Set the font size for all 11, but important parts to 12
   thisSheet.getRange(`1:${thisSheet.getMaxRows()}`).setFontSize(11);
-  thisSheet.getRange(`${thisSheet.getLastRow() - 4}:${thisSheet.getLastRow()}`).setFontSize(12);
+  thisSheet.getRange(`${thisSheet.getLastRow() - 3}:${thisSheet.getLastRow()}`).setFontSize(12);
   thisSheet.getRange("1:4").setFontSize(12);
 
   // Replace all in-cell newlines with spaces
-  finder = thisSheet.createTextFinder("\n").useRegularExpression(true).replaceAllWith(" ");
+  finder = thisSheet.createTextFinder("\n")
+    .useRegularExpression(true)
+    .replaceAllWith(" ");
 
   // Resize the columns
   thisSheet.autoResizeColumns(1, 4);
@@ -228,14 +155,11 @@ function formatNeatlyWithSheet(thisSheet) {
  */
 function compareWithOld(row, oldSheetValues, newSheet) {
 
-  // If newSheet has been supplied then use it, otherwise use the default
-  let rowValues;
-  if (newSheet === undefined) {
-    rowValues = sheet.getSheetValues(row, 1, 1, 4)[0];
-  } else {
-    rowValues = newSheet.getSheetValues(row, 1, 1, 4)[0];
-  }
+  // Get the values in this row
+  const rowValues = newSheet.getSheetValues(row, 1, 1, 4)[0];
   let newRow = true;
+
+  // Check for this row in the old sheet's values
   for (let i = 0; i < oldSheetValues.length; i += 1) {
     if (rowValues.toString() === oldSheetValues[i].toString()) {
       newRow = false;
@@ -247,54 +171,50 @@ function compareWithOld(row, oldSheetValues, newSheet) {
 
 
 /**
- * Compares the sheet with the sheet from another spreadsheet and highlights
- * differences in this sheet.
- * The sheet in the other spreadsheet must be called Original.
- * The sheet in this sheet must be the newer version. The Original sheet is
- * not modified.
- * This will highlight all the rows, and un-highlight them as it progresses.
- * Changed rows will be highlighted in red.
+ * Compares the new sheet with the old sheet, and highlights anything different or new in the new sheet
  * Note that any differences in whitespace will be recognised as a difference.
  *
- * @param {String} url the URL of the spreadsheet with a sheet named Original.
+ * @param {Sheet} newSheet the new sheet with the new changes.
+ * @param {Sheet} oldSheet the old sheet to compare against.
+ * @param {boolean} colourCountdown whether to show the comparison working downwards.
+ * @param {String} newRowColour the colour of the new row
  */
-function compareLedgers(url) {
+function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour) {
 
   // Fetch the old sheet and it's values
   // This saves making multiple requests, which is slow
-  const originalSpreadsheet = SpreadsheetApp.openByUrl(url);
-  Logger.log(`Script has opened spreadsheet ${url}`);
-  const originalSheet = originalSpreadsheet.getSheetByName("Original");
-  const originalSheetValues = originalSheet.getSheetValues(1, 1, originalSheet.getLastRow(), 4);
+  const oldSheetValues = oldSheet.getSheetValues(1, 1, oldSheet.getLastRow(), 4);
 
   let passedHeader = false;
   let cell;
   let cellValue;
-  for (let row = 1; row <= sheet.getLastRow(); row += 1) {
-    cell = sheet.getRange(row, 1);
+  for (let row = 1; row <= newSheet.getLastRow(); row += 1) {
+    cell = newSheet.getRange(row, 1);
     cellValue = String(cell.getValue());
 
     // If we still haven't passed the first header row then skip it
     if (passedHeader === false) {
       if (cellValue === "Date") {
         passedHeader = true;
-        sheet.getRange(row + 1, 1, sheet.getLastRow() - row - 1).setBackground("green");
+        if (colourCountdown === true) {
+          newSheet.getRange(row + 1, 1, newSheet.getLastRow() - row - 1).setBackground("green");
+        }
       }
 
 
       // Compare it with the original/old sheet
       // Comparing all rows allows us to identify changes in the totals too
     } else {
-      const isNew = compareWithOld(row, originalSheetValues, sheet);
+      const isNew = compareWithOld(row, oldSheetValues, newSheet);
 
       // If it is a new row then colour it
       if (isNew) {
-        sheet.getRange(row, 1, 1, 4).setBackground("red");
+        newSheet.getRange(row, 1, 1, 4).setBackground(newRowColour);
         Logger.log(`Row ${row} is a new row!`);
 
         // Otherwise just reset it
-      } else {
-        sheet.getRange(row, 1).setBackground("white");
+      } else if (colourCountdown === true) {
+        newSheet.getRange(row, 1).setBackground("white");
       }
     }
   }
@@ -304,109 +224,41 @@ function compareLedgers(url) {
 
 /**
  * Copies the sheet to another spreadsheet file.
- * This is normally the one with the ledger in it.
- * The script then deletes the old Original, and renames the new
- * Original and sets protections on it.
+ * Either overwrites an existing sheet (but retains protections), or copies it
+ * and sets a custom name.
  *
- * @param url the URL of the spreadsheet with the sheet to replace.
+ * @param {Sheet} thisSheet the sheet to copy.
+ * @param {Spreadsheet} destSpreadsheet the destination spreadsheet to copy to.
+ * @param {Sheet} destSpreadsheet the destination sheet to overwrite, or null.
+ * @param {String|Sheet} newSheet the name of the new sheet or the sheet to
+ * overwrite.
  */
-function copyToLedger(url) {
+function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
 
-  // Gets the ledger spreadsheet
-  const ledgerSpreadsheet = SpreadsheetApp.openByUrl(url);
-  Logger.log(`Script has opened spreadsheet ${url}`);
+  // If they gave a sheet then overwrite it
+  if (newSheet instanceof Sheet) {
 
-  // Copies to the ledger spreadsheet
-  const newSheet = sheet.copyTo(ledgerSpreadsheet);
+    // Get the name and protections
+    const newSheetProtections = newSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET)[0];
+    const newSheetName = newSheet.getName();
 
-  // Remove protections from the old Original sheet and delete it
-  const oldOriginalSheet = ledgerSpreadsheet.getSheetByName("Original");
-  oldOriginalSheet.protect().remove();
-  ledgerSpreadsheet.deleteSheet(oldOriginalSheet);
+    // Copy it, and set the same protections
+    const copiedSheet = thisSheet.copyTo(destSpreadsheet);
+    newSheetProtections.setRange(copiedSheet.getRange(`1:${copiedSheet.getMaxRows()}`));
 
-  // Rename the new Original sheet and protect it
-  newSheet.setName("Original");
-  newSheet.protect().setWarningOnly(true);
+    // Unprotect and delete the old sheet
+    newSheet.protect().remove();
+    destSpreadsheet.deleteSheet(newSheet);
 
-  Logger.log("Finished copying the sheet to the ledger spreadsheet.");
+    // Set the name
+    copiedSheet.setName(newSheetName);
 
-  // Ask the user if they want to open the new sheet
-  const ui = SpreadsheetApp.getUi();
-  const result = ui.alert(
-    "Do you want to open the ledger?",
-    "This will open the ledger in a new tab.",
-    ui.ButtonSet.YES_NO);
 
-  // Open it if the user want to
-  if (result === ui.Button.YES) {
-    const sheetUrl = `${url}#gid=${newSheet.getSheetId()}`;
-    openUrl(sheetUrl);
+  } else {
+
+    // Just copy it over and set the name
+    const copiedSheet = thisSheet.copyTo(destSpreadsheet);
+    copiedSheet.setName(newSheet)
   }
 }
 
-
-/**
- * Prompt the user for a URL and then run compareLedgers(url).
- */
-function compareLedgersGetUrl() {
-  const url = showPrompt();
-  if (url === false) {
-    return;
-  }
-  compareLedgers(url);
-}
-
-
-/**
- * Runs formatNeatlyWithSheet() with the active sheet.
- */
-function formatNeatly() {
-  formatNeatlyWithSheet(sheet);
-}
-
-
-/**
- * Prompt the user for a URL and then run copyToLedger(url).
- */
-function copyToLedgerGetUrl() {
-  const url = showPrompt();
-  if (url === false) {
-    return;
-  }
-  copyToLedger(url);
-}
-
-
-/**
- * Does everything at once: the formatting and the comparison.
- * This uses the URL at the named range called DefaultUrl
- * The user is alerted when it is completed (so that
- * they know it hasn't stalled).
- */
-function processWithDefaultUrl() {
-
-  formatNeatly();
-  const url = getNamedRange("DefaultUrl",
-    SpreadsheetApp.getActiveSpreadsheet()).getValue()
-
-  compareLedgers(url);
-  copyToLedger(url);
-  const ui = SpreadsheetApp.getUi();
-  ui.alert("Complete!",
-    "The process completed successfully. You can view the logs here: " +
-    "https://script.google.com/home/projects/1ycYC3ziL1kmxVl-RlqJhO-4UXZXjHw0Nljnal1IIfkWNDG-MPooyufqr/executions",
-    ui.ButtonSet.OK);
-}
-
-
-/**
- * Creates the menu.
- */
-function onOpen() {
-  SpreadsheetApp.getUi().createMenu("Scripts")
-    .addItem("Format neatly", "formatNeatly")
-    .addItem("Highlight new entries", "compareLedgersGetUrl")
-    .addItem("Copy to the ledger", "copyToLedgerGetUrl")
-    .addItem("Process entirely with the default URL", "processWithDefaultUrl")
-    .addToUi();
-}
