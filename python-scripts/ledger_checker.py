@@ -127,8 +127,8 @@ class LedgerCheckerSaveFile:
         self.stack_traces.clear()
         self.error_email_id = None
         self.save_data()
-        LOGGER.debug("Successful check saved to %s",
-                     self.save_data_filepath)
+        LOGGER.info("Successful check saved to %s",
+                    self.save_data_filepath)
 
     def new_check_fail(self, stack_trace: str) -> None:
         """Runs when a check failed.
@@ -140,8 +140,8 @@ class LedgerCheckerSaveFile:
         date = datetime.now().strftime("%A %d %B %Y AT %H:%M:%S")
         self.stack_traces.append(("ERROR ON %s\n%s" % (date.upper(), stack_trace)))
         self.save_data()
-        LOGGER.debug("Failed check saved to %s",
-                     self.save_data_filepath)
+        LOGGER.info("Failed check saved to %s",
+                    self.save_data_filepath)
 
     def update_error_email_id(self, email_id: str) -> None:
         """Sets and saves the ID of the last error email.
@@ -395,7 +395,8 @@ def send_error_email(config: configparser.SectionProxy,
 
     # Find out when the most recent successful check was (if ever)
     if save_data.get_most_recent_ledger() is not None:
-        most_recent = save_data.get_most_recent_ledger().get_timestamp().strftime("%A %d %B %Y at %H:%M:%S")
+        most_recent = save_data.get_most_recent_ledger() \
+            .get_timestamp().strftime("%A %d %B %Y at %H:%M:%S")
     else:
         most_recent = "never"
 
@@ -484,8 +485,8 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
 
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
-    drive, sheets, apps_script = authorize(pushbullet=ledger.pushbullet,
-                                           open_browser=ledger.browser_path)
+    _, _, apps_script = authorize(pushbullet=ledger.pushbullet,
+                                  open_browser=ledger.browser_path)
     print("Executing the Apps Script function (this may take some time)...")
     LOGGER.info("Starting the Apps Script function...")
     body = {"function": config["function"], "parameters": sheets_data["name"]}
@@ -508,8 +509,8 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
         raise AppsScriptApiError(response["error"])
 
     # Otherwise save the data that the Apps Script returns
-    changes = response["response"].get("result")
-    LOGGER.debug(changes)
+    LOGGER.info(response["response"].get("result"))
+    changes = json.loads(response["response"].get("result"))
     print("The Apps Script function executed successfully!")
     LOGGER.info("The Apps Script function executed successfully.")
 
@@ -529,12 +530,12 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     # just delete the new sheet we just made
     # This compares the total income & expenditure
     elif old_changes is not None and \
-            format_currency(changes["grandTotal"]["totalIn"],
-                            "GBP", locale="en_GB") == old_changes["grandTotal"]["totalIn"] and \
-            format_currency(changes["grandTotal"]["totalOut"],
-                            "GBP", locale="en_GB") == old_changes["grandTotal"]["totalOut"] and \
-            format_currency(changes["grandTotal"]["balanceBroughtForward"],
-                            "GBP", locale="en_GB") == old_changes["grandTotal"]["balanceBroughtForward"]:
+            format_currency(changes["grandTotal"]["totalIn"], "GBP", locale="en_GB") == \
+            old_changes["grandTotal"]["totalIn"] and \
+            format_currency(changes["grandTotal"]["totalOut"], "GBP", locale="en_GB") == \
+            old_changes["grandTotal"]["totalOut"] and \
+            format_currency(changes["grandTotal"]["balanceBroughtForward"], "GBP", locale="en_GB") \
+            == old_changes["grandTotal"]["balanceBroughtForward"]:
         print("The new changes is the same as the old.")
         LOGGER.info("The new changes is the same as the old.")
         ledger.delete_pdf()
@@ -575,11 +576,11 @@ def main() -> None:
     try:
         open(CONFIG_FILENAME, "rb")
         LOGGER.info("Loaded config %s.", CONFIG_FILENAME)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         print("The config file doesn't exist!")
         LOGGER.info("Could not find config %s, exiting.", CONFIG_FILENAME)
         time.sleep(5)
-        raise FileNotFoundError("The config file doesn't exist!")
+        raise FileNotFoundError("The config file doesn't exist!") from e
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
@@ -611,7 +612,7 @@ if __name__ == "__main__":
     logging.basicConfig(filename="ledger_checker.log",
                         filemode="a",
                         format="%(asctime)s | %(levelname)s : %(message)s",
-                        level=logging.DEBUG)
+                        level=logging.INFO)
     LOGGER = logging.getLogger(__name__)
 
     main()
