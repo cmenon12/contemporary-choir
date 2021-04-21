@@ -46,37 +46,34 @@ import configparser
 import json
 import logging
 import os
+import pathlib
 import pickle
-import random
+import shutil
 import time
 import traceback
 import webbrowser
 from datetime import datetime
 from typing import Optional, Union
 
+import camelot
 import pyperclip
 import requests
 from appJar import gui
 from dateutil import tz
+from func_timeout import func_set_timeout, FunctionTimedOut
 from google.auth.exceptions import RefreshError
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-from inputimeout import inputimeout, TimeoutOccurred
 from pushbullet import InvalidKeyError, Pushbullet, PushError
+from pyexcel.cookbook import merge_csv_to_a_book
 
 from custom_exceptions import *
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
-
-# The number of PDF to XLSX converters in the PDFtoXLSXConverter class
-NUMBER_OF_CONVERTERS = 2
-
-# How long to wait for conversion (in seconds)
-CONVERSION_TIMEOUT = 120
 
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
@@ -214,55 +211,54 @@ class Ledger:
         if save is True:
             self.save_pdf()
 
-    def convert_to_xlsx(self, save: bool = True) -> None:
-        """Converts the PDF to an Excel file and saves it.
+    def convert_to_xlsx(self) -> None:
+        """Converts the PDF to an Excel file and saves it."""
 
-        :param save: whether to save the XLSX ledger
-        :type save: bool, optional
-        :raises ConversionTimeoutError: if the conversion takes too long
-        """
+        # Convert the PDF
+        tables = camelot.read_pdf(self.get_pdf_filepath(),
+                                  columns=["88.2,430.4,504.6"],
+                                  table_areas=["27.4,810,568.6,30.2"],
+                                  split_text=True,
+                                  row_tol=15,
+                                  flavor="stream",
+                                  pages="1-end")
 
-        # Prepare for the request
-        converter = PDFToXLSXConverter(self)
+        # Make a temporary folder
+        path = pathlib.Path(self.dir_name, "temp-camelot")
+        if os.path.exists(path):
+            shutil.rmtree(path)
+        path.mkdir(parents=True)
 
-        # Make the request and check that it was successful
-        LOGGER.info("Sending the PDF for conversion to %s...",
-                    converter.get_name())
-        job_id = converter.upload_pdf()
-        LOGGER.info("The request was successful with no HTTP errors.")
-        LOGGER.info("The jobId is %s.", job_id)
+        # Save the PDF as a set of CSV files
+        filepath = os.path.join(path, "result.csv")
+        LOGGER.info("Saving the CSV files to %s", filepath)
+        tables.export(filepath, f="csv")
 
-        # Prepare to keep checking the status of the conversion
-        download_url = ""
+        # Combine the CSV files into one
+        with open(os.path.join(path, "combined.csv"), "w") as combined_file:
+            table = 1
+            while True:
+                filename = "result-page-%d-table-1.csv" % table
+                if filename in os.listdir(path):
+                    with open(os.path.join(path, filename)) as table_file:
+                        combined_file.write(table_file.read())
+                        LOGGER.info("Wrote %s to %s.", os.path.join(path, filename),
+                                    os.path.join(path, "combined.csv"))
+                else:
+                    break
+                table += 1
 
-        # Whilst it is still being converted
-        check_count = 0
-        while download_url == "":
-
-            # Prepare and make the request
-            LOGGER.info("Checking if the conversion is complete...")
-            download_url = converter.check_conversion_status(job_id=job_id)
-
-            # Wait before checking again
-            if download_url == "":
-                check_count += 1
-
-                # Stop if we've been waiting for 2 minutes
-                if check_count == (CONVERSION_TIMEOUT / 2):
-                    raise ConversionTimeoutError(converter.get_name(),
-                                                 CONVERSION_TIMEOUT)
-                time.sleep(2)
-
-        # Prepare and make the request to download the file
-        LOGGER.info("Downloading the converted file...")
-        xlsx_content = converter.download_xlsx(job_id=job_id,
-                                               download_url=download_url)
-
-        # Save the file
+        # Convert the CSV to an XLSX and save it
         self.xlsx_filename = self.get_pdf_filename().replace(".pdf", ".xlsx")
-        self.xlsx_file = xlsx_content
-        if save is True:
-            self.save_xlsx()
+        self.xlsx_filepath = self.dir_name + self.xlsx_filename
+        merge_csv_to_a_book([os.path.join(path, "combined.csv")],
+                            self.xlsx_filepath)
+        with open(self.xlsx_filepath, "rb") as xlsx_file:
+            self.xlsx_file = xlsx_file.read()
+        LOGGER.info("Saved the XLSX to %s", self.xlsx_filepath)
+
+        # Delete the temporary folder and all files
+        shutil.rmtree(path)
 
     def update_drive_pdf(self, save: bool = True) -> None:
         """Updates the PDF in Drive with the new version of the ledger.
@@ -274,9 +270,9 @@ class Ledger:
         LOGGER.info("PDF at %s has been opened.",
                     self.get_pdf_filepath(save=save))
 
-        # Authenticate and retrieve the required services
-        drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
-                                               open_browser=self.browser_path)
+        # Authenticate and retrieve the drive service
+        drive, _, _ = authorize(pushbullet=self.pushbullet,
+                                open_browser=self.browser_path)
 
         # Update the PDF copy of the ledger with a new version
         LOGGER.info("Uploading the new PDF ledger to Drive...")
@@ -309,9 +305,9 @@ class Ledger:
         LOGGER.info("Spreadsheet at %s has been opened.",
                     self.get_xlsx_filepath(convert=convert, save=save))
 
-        # Authenticate and retrieve the required services
-        drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
-                                               open_browser=self.browser_path)
+        # Authenticate and retrieve the drive and sheets services
+        drive, sheets, _ = authorize(pushbullet=self.pushbullet,
+                                     open_browser=self.browser_path)
 
         # Upload the ledger
         LOGGER.info("Uploading the ledger to Google Sheets")
@@ -586,7 +582,7 @@ class Ledger:
 
             # Update the attributes to the new location
             self.pdf_filepath = pdf_file_box.name
-            head, filename = os.path.split(self.pdf_filepath)
+            _, filename = os.path.split(self.pdf_filepath)
             self.pdf_filename = filename
             self.app_gui.removeAllWidgets()
 
@@ -625,7 +621,7 @@ class Ledger:
 
             # Update the attributes to the new location
             self.xlsx_filepath = xlsx_file_box.name
-            head, filename = os.path.split(self.xlsx_filepath)
+            _, filename = os.path.split(self.xlsx_filepath)
             self.xlsx_filename = filename
             self.app_gui.removeAllWidgets()
 
@@ -659,9 +655,9 @@ class Ledger:
 
         if self.sheets_data is not None:
 
-            # Authenticate and retrieve the required services
-            drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
-                                                   open_browser=self.browser_path)
+            # Authenticate and retrieve the sheets service
+            _, sheets, _ = authorize(pushbullet=self.pushbullet,
+                                     open_browser=self.browser_path)
 
             # Delete the sheet
             body = {"requests": {"deleteSheet": {"sheetId": self.sheets_data["sheet_id"]}}}
@@ -681,9 +677,9 @@ class Ledger:
 
         if self.sheets_data is not None:
 
-            # Authenticate and retrieve the required services
-            drive, sheets, apps_script = authorize(pushbullet=self.pushbullet,
-                                                   open_browser=self.browser_path)
+            # Authenticate and retrieve the sheets service
+            _, sheets, _ = authorize(pushbullet=self.pushbullet,
+                                     open_browser=self.browser_path)
 
             # Hide the sheet
             body = {"requests": [{
@@ -696,142 +692,13 @@ class Ledger:
             sheets.spreadsheets().batchUpdate(spreadsheetId=self.sheets_data["spreadsheet_id"],
                                               body=body).execute()
             if hide:
-                LOGGER.info("Sheet %s has been hidden successfully.", self.sheets_data["sheet_id"])
+                LOGGER.info("Sheet %s has been hidden successfully.",
+                            self.sheets_data["sheet_id"])
             else:
-                LOGGER.info("Sheet %s has been un-hidden successfully.", self.sheets_data["sheet_id"])
+                LOGGER.info("Sheet %s has been un-hidden successfully.",
+                            self.sheets_data["sheet_id"])
         else:
             LOGGER.info("There is no Google Sheet to hide.")
-
-    def log(self) -> None:
-        """Logs the object to the log."""
-
-        LOGGER.info(json.dumps(self.__dict__, cls=CustomEncoder))
-
-
-class PDFToXLSXConverter:
-    """Represents a PDF to XLSX converter."""
-
-    def __init__(self, ledger: Ledger, converter_number: int = 0):
-        """Creates the converter.
-
-        :param ledger: the ledger to convert
-        :type ledger: Ledger
-        :param converter_number: the chosen converter
-        :type converter_number: int, optional
-        """
-
-        # Define the user agent, which doesn't change
-        user_agent = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75")
-
-        # Define the fixed headers
-        headers = {
-            "Connection": "keep-alive",
-            "X-Requested-With": "XMLHttpRequest",
-            "DNT": "1",
-            "User-Agent": user_agent,
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Dest": "empty",
-            "Accept-Language": "en-GB,en;q=0.9",
-        }
-
-        # If no valid number was specified then choose randomly
-        if converter_number not in range(1, NUMBER_OF_CONVERTERS + 1):
-            converter_number = random.randint(1, NUMBER_OF_CONVERTERS)
-
-        # Use pdftoexcel.com
-        if converter_number == 1:
-            self.name = "pdftoexcel.com"
-            self.request_url = "https://www.pdftoexcel.com/upload.instant.php"
-            headers["Accept"] = "*/*"
-            headers["Origin"] = "https://www.pdftoexcel.com"
-            headers["Referer"] = "https://www.pdftoexcel.com/"
-            self.files = {"Filedata": open(ledger.get_pdf_filepath(), "rb")}
-            self.status_url = "https://www.pdftoexcel.com/status"
-            self.download_url = "https://www.pdftoexcel.com"
-
-        # Use pdftoexcelconverter.net
-        else:
-            self.name = "pdftoexcelconverter.net"
-            self.request_url = "https://www.pdftoexcelconverter.net/upload.instant.php"
-            headers["Accept"] = "application/json"
-            headers["Origin"] = "https://www.pdftoexcelconverter.net"
-            headers["Referer"] = "https://www.pdftoexcelconverter.net/"
-            self.files = {"file[0]": open(ledger.get_pdf_filepath(), "rb")}
-            self.status_url = "https://www.pdftoexcelconverter.net/getIsConverted.php"
-            self.download_url = "https://www.pdftoexcelconverter.net"
-
-        # Create the session that'll be used to make all the requests
-        self.session = requests.Session()
-        self.session.headers.update(headers)
-
-        self.log()
-
-    def upload_pdf(self, raise_for_status: bool = True) -> str:
-        """Make the conversion request and upload the PDF.
-
-        :param raise_for_status: whether to raise_for_status()
-        :type raise_for_status: bool, optional
-        :return: the conversion job ID
-        :rtype: str
-        :raises HTTPError: if a bad HTTP status code is returned
-        :raises ConversionRejectedError: if server rejects the PDF
-        """
-
-        response = self.session.post(url=self.request_url, files=self.files)
-        if raise_for_status:
-            response.raise_for_status()
-        if "jobId" not in response.json().keys():
-            raise ConversionRejectedError(self.get_name())
-        return response.json()["jobId"]
-
-    def check_conversion_status(self, job_id: str,
-                                raise_for_status: bool = True) \
-            -> str:
-        """Check the status of the request and get the download URL.
-
-        :param job_id: the ID of the conversion job
-        :type job_id: str
-        :param raise_for_status: whether to raise_for_status()
-        :type raise_for_status: bool, optional
-        :return: the download URL (which might be empty)
-        :rtype: str
-        :raises HTTPError: if a bad HTTP status code is returned
-        :raises JSONDecodeError: if the response can't be decoded
-        """
-
-        response = self.session.get(url=self.status_url,
-                                    params=(("jobId", job_id), ("rand", "16")))
-        if raise_for_status:
-            response.raise_for_status()
-        return response.json()["download_url"]
-
-    def download_xlsx(self, job_id: str, download_url: str,
-                      raise_for_status: bool = True) -> bytes:
-        """Download the XLSX file.
-
-        :param job_id: the ID of the conversion job
-        :type job_id: str
-        :param download_url: the download URL
-        :type download_url: str
-        :param raise_for_status: whether to raise_for_status()
-        :type raise_for_status: bool, optional
-        :return: the XLSX file
-        :rtype: bytes
-        :raises HTTPError: if a bad HTTP status code is returned
-        """
-
-        response = self.session.get(url=self.download_url + download_url,
-                                    params={"id": job_id})
-        if raise_for_status:
-            response.raise_for_status()
-        return response.content
-
-    def get_name(self) -> str:
-        """Return the name of the converter."""
-        return self.name
 
     def log(self) -> None:
         """Logs the object to the log."""
@@ -851,6 +718,7 @@ def authorize(pushbullet: dict,
     :rtype: tuple
     """
 
+    @func_set_timeout(AUTHORIZATION_TIMEOUT)
     def authorize_in_browser():
         """Authorize in the browser, with a timeout."""
 
@@ -865,25 +733,12 @@ def authorize(pushbullet: dict,
             pyperclip.copy(auth_url)
             print("The URL has been copied to the clipboard.")
 
-            # Start the timer
-            try:
-                code = inputimeout(prompt="Enter the authorization code: ",
-                                   timeout=AUTHORIZATION_TIMEOUT)
-                flow.fetch_token(code=code)
-                return flow.credentials
-            except TimeoutOccurred:
-                raise TimeoutError("Waited %d seconds to authorize Google APIs." %
-                                   AUTHORIZATION_TIMEOUT)
+            # Get the authorization code
+            code = input("Enter the authorization code: ")
+            flow.fetch_token(code=code)
+            return flow.credentials
 
         else:
-            # Run the timer
-            try:
-                inputimeout(prompt="Press enter to open your browser: ",
-                            timeout=AUTHORIZATION_TIMEOUT)
-            except TimeoutOccurred:
-                raise TimeoutError("Waited %d seconds to authorize Google APIs." %
-                                   AUTHORIZATION_TIMEOUT)
-
             # Open the browser for the user to authorize it
             flow = InstalledAppFlow.from_client_secrets_file(
                 CLIENT_SECRETS_FILE, SCOPES)
@@ -904,10 +759,18 @@ def authorize(pushbullet: dict,
                 credentials.refresh(Request())
             except RefreshError:
                 os.remove(TOKEN_PICKLE_FILE)
-                credentials = authorize_in_browser()
 
+                try:
+                    credentials = authorize_in_browser()
+                except FunctionTimedOut as e:
+                    raise FunctionTimedOut("Waited %d seconds to authorize Google APIs." %
+                                           AUTHORIZATION_TIMEOUT) from e
         else:
-            credentials = authorize_in_browser()
+            try:
+                credentials = authorize_in_browser()
+            except FunctionTimedOut as e:
+                raise FunctionTimedOut("Waited %d seconds to authorize Google APIs." %
+                                       AUTHORIZATION_TIMEOUT) from e
 
     # If we do have valid credentials then refresh them
     else:
@@ -963,12 +826,12 @@ def push_url(title: str, url: str, config: dict):
         try:
             if str(config["device"]).lower() == "false":
                 pb.get_device(str(config["device"])).push_link(title, url)
-                LOGGER.info("Pushed URL %s with title %s to all devices." %
+                LOGGER.info("Pushed URL %s with title %s to all devices.",
                             (url, title))
                 print("The URL has been successfully pushed to all devices.")
             else:
                 pb.push_link(title, url)
-                LOGGER.info("Pushed URL %s with title %s to device %s." %
+                LOGGER.info("Pushed URL %s with title %s to device %s.",
                             (url, title, config["device"]))
                 print("The URL has been successfully pushed to %s." %
                       config["device"])
@@ -993,11 +856,11 @@ def main(app_gui: gui) -> None:
     try:
         open(CONFIG_FILENAME)
         LOGGER.info("Loaded config %s.", CONFIG_FILENAME)
-    except FileNotFoundError:
+    except FileNotFoundError as e:
         print("The config file doesn't exist!")
         LOGGER.info("Could not find config %s, exiting.", CONFIG_FILENAME)
         time.sleep(5)
-        raise FileNotFoundError("The config file doesn't exist!")
+        raise FileNotFoundError("The config file doesn't exist!") from e
 
     # Fetch info from the config
     parser = configparser.ConfigParser()
@@ -1046,7 +909,7 @@ if __name__ == "__main__":
     logging.basicConfig(filename="ledger_fetcher.log",
                         filemode="a",
                         format="%(asctime)s | %(levelname)s : %(message)s",
-                        level=logging.DEBUG)
+                        level=logging.INFO)
     LOGGER = logging.getLogger(__name__)
 
     # Create the GUI

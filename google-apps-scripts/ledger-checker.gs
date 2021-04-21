@@ -58,7 +58,7 @@ class CostCode {
    */
   addEntry(entry) {
     this.entries.push(entry);
-    this.changeInBalance = this.changeInBalance+entry.money;
+    this.changeInBalance = this.changeInBalance + entry.money;
 
   }
 
@@ -207,7 +207,7 @@ class Ledger {
    *
    * @param {String} timestamp
    */
-  setOldLedgerTimestamp(timestamp){
+  setOldLedgerTimestamp(timestamp) {
     this.oldLedgerTimestamp = timestamp;
   }
 
@@ -240,7 +240,7 @@ class Ledger {
 
 /**
  * Checks for any new entries in the sheet compared to Original, and
- * returns these as a Ledger object.
+ * returns these as a JSON Ledger object.
  *
  * @param {String} sheetName the name of the newer sheet.
  * @return {Ledger|String} the Ledger object, or "False" if no changes
@@ -256,12 +256,12 @@ function checkForNewTotals(sheetName) {
   // Create the ledger
   let ledger = new Ledger(newSheet.getSheetId());
 
-  // Find the income & expenditure for each cost code
-  ledger = getCostCodeTotals(newSheet, ledger);
-
   // Format the sheet neatly, and rename it to reflect that this is automated
   formatNeatlyWithSheet(newSheet);
   newSheet.setName(`${newSheet.getName()} auto`);
+
+  // Find the income & expenditure for each cost code
+  ledger = getCostCodeTotals(newSheet, ledger);
 
   // Locate the named range with the URL to the old sheet
   const namedRanges = spreadsheet.getNamedRanges();
@@ -280,7 +280,7 @@ function checkForNewTotals(sheetName) {
   oldLedger = getCostCodeTotals(oldSheet, oldLedger);
 
   // Save timestamp of the old ledger to the new ledger
-  ledger.setOldLedgerTimestamp(oldSheet.getRange("D3").getValue());
+  ledger.setOldLedgerTimestamp(oldSheet.getRange("A3").getValue());
 
   // If they're equal then stop
   if (Ledger.compareLedgers(ledger, oldLedger) === true) {
@@ -291,7 +291,7 @@ function checkForNewTotals(sheetName) {
   // If there is a difference then find the new entries and return the Ledger
   Logger.log("There is a difference in the total income and/or expenditure!");
   ledger = findNewEntries(newSheet, oldSheet, ledger);
-  return ledger;
+  return JSON.stringify(ledger);
 
 }
 
@@ -396,7 +396,7 @@ function getCostCodeTotals(sheet, ledger) {
     foundRanges[foundRanges.length - 1].getRow());
 
   // Save the society name
-  ledger.setSocietyName(String(foundRanges[foundRanges.length - 1].getValue()).replace("Totals for ", ""));
+  ledger.setSocietyName(sheet.getRange("A2").getValue());
 
   ledger.log();
   return ledger;
