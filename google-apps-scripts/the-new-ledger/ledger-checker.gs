@@ -9,14 +9,16 @@
 
 
 /**
- * Checks for any new entries in the sheet compared to Original, and
- * returns these as a JSON Ledger object.
+ * Checks for any new entries in sheetName compared to the other sheet,
+ * and returns these as a JSON Ledger object.
  *
  * @param {String} sheetName the name of the newer sheet.
+ * @param {String} compareSheetId the ID of the sheet to compare with
+ * @param {String} compareSheetName the name of the sheet to compare with
  * @return {Ledger|String} the Ledger object, or "False" if no changes
  * were found.
  */
-function checkForNewTotals(sheetName) {
+function checkForNewTotals(sheetName, compareSheetId, compareSheetName) {
 
   // Get the spreadsheet & sheet
   const spreadsheet = SpreadsheetApp.getActive();
@@ -32,19 +34,10 @@ function checkForNewTotals(sheetName) {
   // Find the income & expenditure for each cost code
   ledger = getCostCodeTotals(newSheet, ledger);
 
-  // Locate the named range with the URL to the old sheet
-  const namedRanges = spreadsheet.getNamedRanges();
-  let url;
-  for (let i = 0; i < namedRanges.length; i++) {
-    if (namedRanges[i].getName() === "DefaultUrl") {
-      url = namedRanges[i].getRange().getValue();
-    }
-  }
-
-  // Find the totals in the Original (the one that we are comparing against)
-  const oldSpreadsheet = SpreadsheetApp.openByUrl(url);
-  Logger.log(`Script has opened spreadsheet ${url}`);
-  const oldSheet = oldSpreadsheet.getSheetByName("Original");
+  // Find the totals in the sheet that we are comparing against
+  const oldSpreadsheet = SpreadsheetApp.openById(compareSheetId);
+  Logger.log(`Script has opened spreadsheet ${compareSheetId}`);
+  const oldSheet = oldSpreadsheet.getSheetByName(compareSheetName);
   let oldLedger = new Ledger(oldSheet.getSheetId());
   oldLedger = getCostCodeTotals(oldSheet, oldLedger);
 

@@ -489,7 +489,8 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
                                   open_browser=ledger.browser_path)
     print("Executing the Apps Script function (this may take some time)...")
     LOGGER.info("Starting the Apps Script function...")
-    body = {"function": config["function"], "parameters": sheets_data["name"]}
+    body = {"function": config["function"],
+            "parameters": [sheets_data["name"], config["compare_sheet_id"], config["compare_sheet_name"]]}
     response = apps_script.scripts().run(body=body,
                                          scriptId=config["script_id"]).execute()
 
