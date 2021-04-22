@@ -72,26 +72,119 @@ function saveUserProperties(data) {
 
 
 /**
+ * Returns an array of CSS colour names.
+ *
+ * @returns {String[]} an array of colour names.
+ */
+function getColourNames() {
+  return ["aliceblue", "antiquewhite", "aqua", "aquamarine", "azure", "beige", "bisque", "black", "blanchedalmond", "blue", "blueviolet", "brown", "burlywood", "cadetblue", "chartreuse", "chocolate", "coral", "cornflowerblue", "cornsilk", "crimson", "cyan", "darkblue", "darkcyan", "darkgoldenrod", "darkgray", "darkgreen", "darkgrey", "darkkhaki", "darkmagenta", "darkolivegreen", "darkorange", "darkorchid", "darkred", "darksalmon", "darkseagreen", "darkslateblue", "darkslategray", "darkslategrey", "darkturquoise", "darkviolet", "deeppink", "deepskyblue", "dimgray", "dimgrey", "dodgerblue", "firebrick", "floralwhite", "forestgreen", "fuchsia", "gainsboro", "ghostwhite", "gold", "goldenrod", "gray", "green", "greenyellow", "grey", "honeydew", "hotpink", "indianred", "indigo", "ivory", "khaki", "lavender", "lavenderblush", "lawngreen", "lemonchiffon", "lightblue", "lightcoral", "lightcyan", "lightgoldenrodyellow", "lightgray", "lightgreen", "lightgrey", "lightpink", "lightsalmon", "lightseagreen", "lightskyblue", "lightslategray", "lightslategrey", "lightsteelblue", "lightyellow", "lime", "limegreen", "linen", "magenta", "maroon", "mediumaquamarine", "mediumblue", "mediumorchid", "mediumpurple", "mediumseagreen", "mediumslateblue", "mediumspringgreen", "mediumturquoise", "mediumvioletred", "midnightblue", "mintcream", "mistyrose", "moccasin", "navajowhite", "navy", "oldlace", "olive", "olivedrab", "orange", "orangered", "orchid", "palegoldenrod", "palegreen", "paleturquoise", "palevioletred", "papayawhip", "peachpuff", "peru", "pink", "plum", "powderblue", "purple", "red", "rosybrown", "royalblue", "saddlebrown", "salmon", "sandybrown", "seagreen", "seashell", "sienna", "silver", "skyblue", "slateblue", "slategray", "slategrey", "snow", "springgreen", "steelblue", "tan", "teal", "thistle", "tomato", "turquoise", "violet", "wheat", "white", "whitesmoke", "yellow", "yellowgreen"];
+}
+
+
+/**
+ * Validate the supplied saved preferences for the actions.
+ *
+ * @param {Object} data the preferences
+ * @returns {boolean|String} true for valid, otherwise string of errors.
+ */
+function validatePreferences(data) {
+
+  let errors = "";
+
+  // Attempt to get the spreadsheet
+  let compareSpreadsheet;
+  let compareSheet;
+  try {
+    Logger.log(data.sheetURL)
+    compareSpreadsheet = SpreadsheetApp.openByUrl(data.sheetURL);
+
+    // Attempt to get the sheet within the spreadsheet
+    try {
+      compareSheetId = compareSpreadsheet.getSheetByName(data.sheetName).getSheetId();
+    } catch (err) {
+      Logger.log(err.stack);
+      errors = errors.concat("<br>That sheet name isn't valid. Make sure you validate the URL.")
+    }
+
+  } catch (err) {
+    Logger.log(err.stack);
+    errors = errors.concat("<br>That spreadsheet URL isn't valid.")
+  }
+
+  // Check that the colour is valid
+  if (data.highlightNewRowColour === undefined || ((data.highlightNewRowColour.match(/^#(?:[0-9a-fA-F]{3}){1,2}$/) === null ||
+    data.highlightNewRowColour.match(/^#(?:[0-9a-fA-F]{3}){1,2}$/).length !== 0) &&
+    !getColourNames().includes(data.highlightNewRowColour))) {
+    errors = errors.concat("<br>You must specify a valid colour.")
+  }
+
+  if (errors === "") {
+    Logger.log("No errors found.")
+    return true;
+  } else {
+    Logger.log(`Errors were found: ${JSON.stringify(errors)}`)
+    return errors;
+  }
+
+}
+
+
+/**
  * Processes the form submission from the Sheets sidebar.
  *
  * @param {eventObject} e The event object.
- * @returns {ActionResponse} The response, either a link that opens in
- * a new tab or an error notification.
+ * @returns {ActionResponse} The response, either the homepage or a notification
  */
 function processSheetsSidebarForm(e) {
 
-  saveUserProperties(e.formInput);
-
-  // Attempt to get the sheet
-  try {
-    const spreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
-    const sheet = spreadsheet.getSheetByName(getUserProperties().sheetName);
-  } catch (err) {
-    Logger.log(JSON.stringify(err))
-    return updateWithHomepage(e);
+  let errors;
+  let sheetURL;
+  if ("sheetURL" in e.formInput) {
+    sheetURL = e.formInput.sheetURL;
+    errors = validatePreferences(e.formInput);
+  } else {
+    sheetURL = getUserProperties().sheetURL;
+    Logger.log(JSON.stringify(getUserProperties()))
+    let url = {"sheetURL": getUserProperties().sheetURL}
+    data = Object.assign(url, e.formInput)
+    Logger.log(data);
+    errors = validatePreferences(data);
   }
 
-  return buildNotification("success");
+  if (errors !== true) {
+
+    // Format the errors in red
+    errors = `<font color="#ff0000"><b>Uh oh!</b>${errors}</font>`;
+
+  } else {
+
+    // Only save if they're valid
+    saveUserProperties(e.formInput);
+
+    // Create a success message
+    const spreadsheet = SpreadsheetApp.openByUrl(sheetURL);
+    const sheetUrl = `${spreadsheet.getUrl()}#gid=${spreadsheet.getSheetByName(e.formInput.sheetName).getSheetId()}`
+    errors = `<font color="#008000"><b>Success!</b><br>All values have been validated and saved. You can now run the actions via the 'Scripts' menu.</font><br><a href="${sheetUrl}">Open the spreadsheet.</a>`;
+
+    // Create the menu
+    createMenu();
+
+  }
+
+  // Build the homepage
+  const header = CardService.newCardHeader()
+    .setTitle("Process your Society Ledger")
+    .setImageUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png");
+  const card = CardService.newCardBuilder()
+    .setHeader(header);
+
+  return card
+    .addSection(CardService.newCardSection().addWidget(CardService.newTextParagraph().setText(errors)))
+    .addSection(getSelectSheetSection())
+    .addSection(getActionsSection())
+    .addSection(createButtonsSection())
+    .addSection(createDisclaimerSection())
+    .build();
 
 
 }

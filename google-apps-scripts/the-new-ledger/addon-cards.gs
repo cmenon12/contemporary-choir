@@ -22,9 +22,18 @@ function buildSheetsHomePage(e) {
   const card = CardService.newCardBuilder()
     .setHeader(header);
 
+  // Let the user know if they're already valid
+  if (validatePreferences(getUserProperties())) {
+    const spreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
+    const sheetUrl = `${spreadsheet.getUrl()}#gid=${spreadsheet.getSheetByName(getUserProperties().sheetName).getSheetId()}`
+    const message = `<font color="#008000"><b>Success!</b><br>All values have been validated and saved. You can now run the actions via the 'Scripts' menu.</font><br><a href="${sheetUrl}">Open the spreadsheet.</a>`;
+    card.addSection(CardService.newCardSection().addWidget(CardService.newTextParagraph().setText(message)));
+  }
+
   return card
     .addSection(getSelectSheetSection())
     .addSection(getActionsSection())
+    .addSection(createButtonsSection())
     .addSection(createDisclaimerSection())
     .build();
 
@@ -46,14 +55,16 @@ function buildNotification(message) {
 
 
 /**
- * Save the formInput and update the current card with the homepage.
+ * Validate the sheet URL.
  *
  * @param {eventObject} e The event object
  * @returns {Card} The homepage Card
  */
-function updateWithHomepage(e) {
+function validateSheetURL(e) {
 
-  saveUserProperties(e.formInput);
+  saveUserProperties({"sheetURL": e.formInput.sheetURL});
+  Logger.log(e.formInput);
+  Logger.log(JSON.stringify(getUserProperties()))
 
   const navigation = CardService.newNavigation()
     .updateCard(buildSheetsHomePage(e));
@@ -78,21 +89,25 @@ function getActionsSection() {
   const formatSheetName = CardService.newTextInput()
     .setFieldName("formatSheetName")
     .setTitle("The new name of this sheet")
-    .setHint("Use {{datetime}} for the date and time of the ledger.");
+    .setHint("Leave blank to keep the existing name. Use {{datetime}} for the date and time of the ledger.")
+    .setValue(getUserProperties().formatSheetName === undefined ? "" : getUserProperties().formatSheetName);
   section.addWidget(formatSheetName);
 
   // Highlighting options
   const highlightNewRowColour = CardService.newTextInput()
     .setFieldName("highlightNewRowColour")
     .setTitle("The colour to highlight new entries")
-    .setHint("A color code in CSS notation (such as '#E62073' or 'red')");
+    .setHint("A color code in CSS notation (such as '#E62073' or 'red')")
+    .setSuggestions(CardService.newSuggestions().addSuggestions(getColourNames()))
+    .setValue(getUserProperties().highlightNewRowColour === undefined ? "" : getUserProperties().highlightNewRowColour);
   section.addWidget(highlightNewRowColour);
 
   // Copying options
   const copyNewSheetName = CardService.newTextInput()
     .setFieldName("copyNewSheetName")
     .setTitle("The name of the copied sheet (optional)")
-    .setHint("Leave blank to overwrite the sheet above. Use {{datetime}} for the date and time of the ledger.");
+    .setHint("Leave blank to overwrite the sheet above. Use {{datetime}} for the date and time of the ledger.")
+    .setValue(getUserProperties().copyNewSheetName === undefined ? "" : getUserProperties().copyNewSheetName);
   section.addWidget(copyNewSheetName);
 
   return section;
@@ -125,7 +140,7 @@ function getSelectSheetSection() {
   let name = CardService.newSelectionInput()
     .setFieldName("sheetName")
     .setTitle("Sheet Name")
-    .setType(CardService.SelectionInputType.DROPDOWN)
+    .setType(CardService.SelectionInputType.DROPDOWN);
 
   // Start to create the spreadsheet identifier
   const selected = CardService.newDecoratedText();
@@ -135,7 +150,7 @@ function getSelectSheetSection() {
     .addButton(CardService.newTextButton()
       .setText("VALIDATE URL")
       .setOnClickAction(CardService.newAction()
-        .setFunctionName("updateWithHomepage")));
+        .setFunctionName("validateSheetURL")));
 
   // If the URL is present then attempt to get the spreadsheet name
   let validURL = false;
@@ -189,21 +204,30 @@ function getSelectSheetSection() {
   if (validURL === true) {
     section.addWidget(name)
   }
-  return section.addWidget(CardService.newTextParagraph()
-    .setText("These details will be saved for you, and for your use only."));
+  return section;
 
 }
 
 
 /**
- * Creates a text button for Cards that clears the saved data.
- * @returns {TextButton} The button.
+ * Creates the buttons.
+ * @returns {Section} the buttons section.
  */
-function createClearSavedDataButton() {
-  return CardService.newTextButton()
-    .setText("Clear saved data")
-    .setOnClickAction(CardService.newAction()
-      .setFunctionName("clearSavedData"))
+function createButtonsSection() {
+
+  return CardService.newCardSection()
+    .addWidget(CardService.newTextParagraph()
+      .setText("These details will be saved for you, and for your use only."))
+    .addWidget(CardService.newButtonSet()
+      .addButton(CardService.newTextButton()
+        .setText("SAVE")
+        .setOnClickAction(CardService.newAction()
+          .setFunctionName("processSheetsSidebarForm"))
+        .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
+      .addButton(CardService.newTextButton()
+        .setText("Clear saved data")
+        .setOnClickAction(CardService.newAction()
+          .setFunctionName("clearSavedData"))));
 }
 
 
