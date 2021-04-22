@@ -55,6 +55,19 @@ function saveUserProperties(data) {
     }
   }
 
+  // Ensure that empty items are saved as empty
+  actions = {}
+  if (!data.hasOwnProperty("copyNewSheetName") && data.hasOwnProperty("copy")) {
+    actions.copyNewSheetName = ""
+  }
+
+  // Save them
+  for (let prop in actions) {
+    if (Object.prototype.hasOwnProperty.call(actions, prop)) {
+      userProperties.setProperty(prop, actions[prop]);
+    }
+  }
+
 }
 
 

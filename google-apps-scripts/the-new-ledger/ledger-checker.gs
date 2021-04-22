@@ -27,7 +27,7 @@ function checkForNewTotals(sheetName) {
   let ledger = new Ledger(newSheet.getSheetId());
 
   // Format the sheet neatly
-  formatNeatlyWithSheet(newSheet, "{{datetime}} auto");
+  formatNeatly(newSheet, "{{datetime}} auto");
 
   // Find the income & expenditure for each cost code
   ledger = getCostCodeTotals(newSheet, ledger);

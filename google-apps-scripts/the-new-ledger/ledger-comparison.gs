@@ -28,7 +28,7 @@ function isADate(value) {
  * as the date and time.
  *
  */
-function formatNeatlyWithSheet(thisSheet, sheetName) {
+function formatNeatly(thisSheet, sheetName) {
 
   // Don't re-run if it's already been done
   if (thisSheet.getRange("A1").getValue() === "Income/Expense Statement") {
@@ -43,7 +43,7 @@ function formatNeatlyWithSheet(thisSheet, sheetName) {
 
   // Rename the sheet
   const datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
-  thisSheet.setName(sheetName.replaceAll("{{datetime}}", datetime));
+  thisSheet.setName(sheetName.replace(/{{datetime}}/g, datetime));
 
   // Delete the 'Please note' text at the end
   finder = thisSheet.getRange("A:A").createTextFinder("Please note");
@@ -287,7 +287,7 @@ function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
     // Just copy it over and set the name
     const copiedSheet = thisSheet.copyTo(destSpreadsheet);
     datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
-    thisSheet.setName(sheetName.replaceAll("{{datetime}}", datetime));
+    thisSheet.setName(sheetName.replace(/{{datetime}}/g, datetime));
     copiedSheet.setName(newSheet)
   }
 }
