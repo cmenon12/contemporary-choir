@@ -29,7 +29,9 @@ function clearSavedData(e) {
 
 
 /**
- * Gets and returns the user properties
+ * Gets and returns the user properties.
+ *
+ * @returns {Object} the user properties
  */
 function getUserProperties() {
   return PropertiesService.getUserProperties().getProperties();
@@ -40,7 +42,7 @@ function getUserProperties() {
  * Saves the user data specified as key-value pairs. These are saved to
  * the user's properties, so they're unique to them.
  *
- * @param {eventObject.formInput} data The data to be saved as key-value
+ * @param {Object} data The data to be saved as key-value
  * pairs.
  */
 function saveUserProperties(data) {
@@ -56,7 +58,7 @@ function saveUserProperties(data) {
   }
 
   // Ensure that empty items are saved as empty
-  actions = {}
+  let actions = {}
   if (!data.hasOwnProperty("copyNewSheetName") && data.hasOwnProperty("copy")) {
     actions.copyNewSheetName = ""
   }
@@ -93,13 +95,12 @@ function validatePreferences(data) {
 
   // Attempt to get the spreadsheet
   let compareSpreadsheet;
-  let compareSheet;
   try {
     compareSpreadsheet = SpreadsheetApp.openByUrl(data.sheetURL);
 
     // Attempt to get the sheet within the spreadsheet
     try {
-      compareSheetId = compareSpreadsheet.getSheetByName(data.sheetName).getSheetId();
+      let compareSheetId = compareSpreadsheet.getSheetByName(data.sheetName).getSheetId();
     } catch (err) {
       Logger.log(err.stack);
       errors = errors.concat("<br>That sheet name isn't valid. Make sure you validate the URL.")
@@ -144,7 +145,7 @@ function processSheetsSidebarForm(e) {
   } else {
     sheetURL = getUserProperties().sheetURL;
     let url = {"sheetURL": getUserProperties().sheetURL}
-    data = Object.assign(url, e.formInput)
+    let data = Object.assign(url, e.formInput)
     errors = validatePreferences(data);
   }
 
@@ -161,7 +162,7 @@ function processSheetsSidebarForm(e) {
     // Create a success message
     const spreadsheet = SpreadsheetApp.openByUrl(sheetURL);
     const sheetUrl = `${spreadsheet.getUrl()}#gid=${spreadsheet.getSheetByName(e.formInput.sheetName).getSheetId()}`
-    errors = `<font color="#008000"><b>Success!</b><br>All values have been validated and saved. You can now run the actions via the 'Scripts' menu.</font><br><a href="${sheetUrl}">Open the spreadsheet.</a>`;
+    errors = `<font color="#008000"><b>Success!</b><br>All values have been validated and saved. Refresh the page to run the actions via the 'Scripts' menu.</font><br><a href="${sheetUrl}">Open the spreadsheet.</a>`;
 
   }
 

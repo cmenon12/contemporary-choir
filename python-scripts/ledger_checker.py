@@ -527,7 +527,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
         save_data.new_check_success(new_ledger=ledger)
 
     else:
-        json.loads(response["response"].get("result"))
+        changes = json.loads(response["response"].get("result"))
 
         # If the returned changes aren't actually new to us then
         # just delete the new sheet we just made

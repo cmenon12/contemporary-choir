@@ -48,8 +48,8 @@ function formatNeatly(thisSheet, sheetName) {
   }
 
   // Delete the 'Please note' text at the end
-  finder = thisSheet.getRange("A:A").createTextFinder("Please note");
-  foundRange = finder.findNext();
+  let finder = thisSheet.getRange("A:A").createTextFinder("Please note");
+  const foundRange = finder.findNext();
   thisSheet.deleteRows(foundRange.getRow(), 1);
 
   // Remove all the excess rows & columns
@@ -194,8 +194,9 @@ function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLe
   let passedHeader = false;
   let cell;
   let cellValue;
+  let costCodeRows;
   if (newLedger !== null) {
-    const costCodeRows = newLedger.getCostCodeRows();
+    costCodeRows = newLedger.getCostCodeRows();
   }
 
   for (let row = 1; row <= newSheet.getLastRow(); row += 1) {
@@ -307,7 +308,7 @@ function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
 
     // Just copy it over and set the name
     const copiedSheet = thisSheet.copyTo(destSpreadsheet);
-    datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
+    const datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
     copiedSheet.setName(newSheet.replace(/{{datetime}}/g, datetime));
   }
 }

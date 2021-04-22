@@ -74,7 +74,7 @@ function validateSheetURL(e) {
 
 
 /**
- * Build and return the section with the form for the actions
+ * Build and return the section with the form for the actions.
  *
  * @returns {CardSection} A section with the form for the actions.
  */

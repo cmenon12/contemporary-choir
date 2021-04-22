@@ -9,7 +9,7 @@
 
 
 /**
- * Run formatNeatly() with the saved data.
+ * Run formatNeatly() with the saved data, validating it first.
  */
 function formatNeatlyMenu() {
   if (validatePreferences(getUserProperties())) {
@@ -24,7 +24,7 @@ function formatNeatlyMenu() {
 
 
 /**
- * Run compareLedgers() with the saved data.
+ * Run compareLedgers() with the saved data, validating it first.
  */
 function compareLedgersMenu() {
 
@@ -46,7 +46,7 @@ function compareLedgersMenu() {
 
 
 /**
- * Run copyToLedger with the saved data.
+ * Run copyToLedger with the saved data, validating it first.
  */
 function copyToLedgerMenu() {
 
