@@ -42,8 +42,10 @@ function formatNeatly(thisSheet, sheetName) {
   thisSheet.setTabColor("white");
 
   // Rename the sheet
-  const datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
-  thisSheet.setName(sheetName.replace(/{{datetime}}/g, datetime));
+  if (sheetName !== "") {
+    const datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
+    thisSheet.setName(sheetName.replace(/{{datetime}}/g, datetime));
+  }
 
   // Delete the 'Please note' text at the end
   finder = thisSheet.getRange("A:A").createTextFinder("Please note");
@@ -202,9 +204,19 @@ function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLe
 
     // If we still haven't passed the first header row then skip it
     if (passedHeader === false) {
+
+      // Header row is indicated by Date
       if (cellValue === "Date") {
         passedHeader = true;
+
+        // Colour all the rows after this
         if (colourCountdown === true) {
+
+          // Don't use the same colour as to highlight
+          let bgColour = "green";
+          if (newRowColour === "green" || newRowColour === "#008000") {
+            bgColour = "lightblue";
+          }
           newSheet.getRange(row + 1, 1, newSheet.getLastRow() - row - 1).setBackground("green");
         }
       }
@@ -263,8 +275,17 @@ function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLe
  */
 function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
 
+  // Test if newSheet is a sheet or a string
+  let isNewSheetASheet;
+  try {
+    newSheet.getName();
+    isNewSheetASheet = true;
+  } catch (err) {
+    isNewSheetASheet = false;
+  }
+
   // If they gave a sheet then overwrite it
-  if (newSheet instanceof Sheet) {
+  if (isNewSheetASheet) {
 
     // Get the name and protections
     const newSheetProtections = newSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET)[0];
@@ -287,8 +308,7 @@ function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
     // Just copy it over and set the name
     const copiedSheet = thisSheet.copyTo(destSpreadsheet);
     datetime = `${thisSheet.getRange("C1").getValue()}${thisSheet.getRange("D1").getValue()}`;
-    thisSheet.setName(sheetName.replace(/{{datetime}}/g, datetime));
-    copiedSheet.setName(newSheet)
+    copiedSheet.setName(newSheet.replace(/{{datetime}}/g, datetime));
   }
 }
 

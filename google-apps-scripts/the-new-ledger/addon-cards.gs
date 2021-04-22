@@ -63,8 +63,6 @@ function buildNotification(message) {
 function validateSheetURL(e) {
 
   saveUserProperties({"sheetURL": e.formInput.sheetURL});
-  Logger.log(e.formInput);
-  Logger.log(JSON.stringify(getUserProperties()))
 
   const navigation = CardService.newNavigation()
     .updateCard(buildSheetsHomePage(e));

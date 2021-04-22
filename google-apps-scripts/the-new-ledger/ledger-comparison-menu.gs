@@ -1,11 +1,25 @@
+/*
+  =============================================================================
+  Project Page: https://github.com/cmenon12/contemporary-choir
+  Copyright:    (c) 2020 by Christopher Menon
+  License:      GNU General Public License, version 3 (GPL-3.0)
+                http://www.opensource.org/licenses/gpl-3.0.html
+  =============================================================================
+ */
+
+
 /**
  * Run formatNeatly() with the saved data.
  */
 function formatNeatlyMenu() {
-  formatNeatly(SpreadsheetApp.getActiveSheet(),
-    getUserProperties().formatSheetName);
+  if (validatePreferences(getUserProperties())) {
+    formatNeatly(SpreadsheetApp.getActiveSheet(),
+      getUserProperties().formatSheetName);
 
-  SpreadsheetApp.getActiveSpreadsheet().toast("Formatting complete!");
+    SpreadsheetApp.getActiveSpreadsheet().toast("Formatting complete!");
+  } else {
+    SpreadsheetApp.getActiveSpreadsheet().toast("You need to set your preferences in the add-on first.");
+  }
 }
 
 
@@ -14,15 +28,20 @@ function formatNeatlyMenu() {
  */
 function compareLedgersMenu() {
 
-  const compareSpreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
+  if (validatePreferences(getUserProperties())) {
+    const compareSpreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
 
-  compareLedgers(SpreadsheetApp.getActiveSheet(),
-    compareSpreadsheet.getSheetByName(getUserProperties().sheetName),
-    true,
-    getUserProperties().highlightNewRowColour,
-    null);
+    compareLedgers(SpreadsheetApp.getActiveSheet(),
+      compareSpreadsheet.getSheetByName(getUserProperties().sheetName),
+      true,
+      getUserProperties().highlightNewRowColour,
+      null);
 
-  SpreadsheetApp.getActiveSpreadsheet().toast("Highlighting complete!");
+    SpreadsheetApp.getActiveSpreadsheet().toast("Highlighting complete!");
+
+  } else {
+    SpreadsheetApp.getActiveSpreadsheet().toast("You need to set your preferences in the add-on first.");
+  }
 }
 
 
@@ -31,20 +50,26 @@ function compareLedgersMenu() {
  */
 function copyToLedgerMenu() {
 
-  const compareSpreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
+  if (validatePreferences(getUserProperties())) {
 
-  if (getUserProperties().copyNewSheetName === "") {
-    copyToLedger(SpreadsheetApp.getActiveSheet(),
-      compareSpreadsheet,
-      compareSpreadsheet.getSheetByName(getUserProperties().sheetName));
+    const compareSpreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
+
+    if (getUserProperties().copyNewSheetName === "") {
+      copyToLedger(SpreadsheetApp.getActiveSheet(),
+        compareSpreadsheet,
+        compareSpreadsheet.getSheetByName(getUserProperties().sheetName));
+
+    } else {
+      copyToLedger(SpreadsheetApp.getActiveSheet(),
+        compareSpreadsheet,
+        getUserProperties().copyNewSheetName);
+    }
+
+    SpreadsheetApp.getActiveSpreadsheet().toast("Formatting complete!");
 
   } else {
-    copyToLedger(SpreadsheetApp.getActiveSheet(),
-      compareSpreadsheet,
-      getUserProperties().copyNewSheetName);
+    SpreadsheetApp.getActiveSpreadsheet().toast("You need to set your preferences in the add-on first.");
   }
-
-  SpreadsheetApp.getActiveSpreadsheet().toast("Formatting complete!");
 
 }
 

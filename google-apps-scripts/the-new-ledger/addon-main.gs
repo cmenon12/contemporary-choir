@@ -95,7 +95,6 @@ function validatePreferences(data) {
   let compareSpreadsheet;
   let compareSheet;
   try {
-    Logger.log(data.sheetURL)
     compareSpreadsheet = SpreadsheetApp.openByUrl(data.sheetURL);
 
     // Attempt to get the sheet within the spreadsheet
@@ -144,10 +143,8 @@ function processSheetsSidebarForm(e) {
     errors = validatePreferences(e.formInput);
   } else {
     sheetURL = getUserProperties().sheetURL;
-    Logger.log(JSON.stringify(getUserProperties()))
     let url = {"sheetURL": getUserProperties().sheetURL}
     data = Object.assign(url, e.formInput)
-    Logger.log(data);
     errors = validatePreferences(data);
   }
 
@@ -166,9 +163,6 @@ function processSheetsSidebarForm(e) {
     const sheetUrl = `${spreadsheet.getUrl()}#gid=${spreadsheet.getSheetByName(e.formInput.sheetName).getSheetId()}`
     errors = `<font color="#008000"><b>Success!</b><br>All values have been validated and saved. You can now run the actions via the 'Scripts' menu.</font><br><a href="${sheetUrl}">Open the spreadsheet.</a>`;
 
-    // Create the menu
-    createMenu();
-
   }
 
   // Build the homepage
@@ -178,13 +172,16 @@ function processSheetsSidebarForm(e) {
   const card = CardService.newCardBuilder()
     .setHeader(header);
 
-  return card
-    .addSection(CardService.newCardSection().addWidget(CardService.newTextParagraph().setText(errors)))
+  card.addSection(CardService.newCardSection().addWidget(CardService.newTextParagraph().setText(errors)))
     .addSection(getSelectSheetSection())
     .addSection(getActionsSection())
     .addSection(createButtonsSection())
-    .addSection(createDisclaimerSection())
-    .build();
+    .addSection(createDisclaimerSection());
 
+  const navigation = CardService.newNavigation()
+    .updateCard(card.build());
+  return CardService.newActionResponseBuilder()
+    .setNavigation(navigation)
+    .build()
 
 }
