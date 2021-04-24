@@ -156,8 +156,8 @@ class Ledger:
         # Prepare for future use
         self.pdf_ledger_id = config["pdf_ledger_id"]
         self.pdf_ledger_name = config["pdf_ledger_name"]
-        self.destination_sheet_name = config["destination_sheet_name"]
-        self.destination_sheet_id = config["destination_sheet_id"]
+        self.destination_spreadsheet_name = config["destination_spreadsheet_name"]
+        self.destination_spreadsheet_id = config["destination_spreadsheet_id"]
         if str(config["browser_path"]).lower() == "false":
             self.browser_path = False
         else:
@@ -336,8 +336,8 @@ class Ledger:
 
         # Copy the uploader ledger to the sheet with the macro
         LOGGER.info("Copying the sheet to the spreadsheet with ID %s...",
-                    self.destination_sheet_id)
-        body = {"destinationSpreadsheetId": self.destination_sheet_id}
+                    self.destination_spreadsheet_id)
+        body = {"destinationSpreadsheetId": self.destination_spreadsheet_id}
         response = sheets.spreadsheets().sheets() \
             .copyTo(spreadsheetId=latest_ledger_id,
                     sheetId=sheet_id,
@@ -355,7 +355,7 @@ class Ledger:
                 "fields": "title"
             }
         }], "includeSpreadsheetInResponse": False}
-        sheets.spreadsheets().batchUpdate(spreadsheetId=self.destination_sheet_id,
+        sheets.spreadsheets().batchUpdate(spreadsheetId=self.destination_spreadsheet_id,
                                           body=body).execute()
         LOGGER.info("Sheet renamed successfully. Sheet has ID %s and title %s.",
                     new_sheet_id, new_sheet_title)
@@ -366,10 +366,10 @@ class Ledger:
         LOGGER.info("Original uploaded ledger deleted successfully.")
 
         self.sheets_data = {"name": new_sheet_title,
-                            "spreadsheet_id": self.destination_sheet_id,
+                            "spreadsheet_id": self.destination_spreadsheet_id,
                             "sheet_id": str(new_sheet_id),
                             "url": ("https://docs.google.com/spreadsheets/d/" +
-                                    self.destination_sheet_id +
+                                    self.destination_spreadsheet_id +
                                     "/edit#gid=" + str(new_sheet_id))}
 
     def get_timestamp(self) -> datetime:
@@ -881,7 +881,7 @@ def main(app_gui: gui) -> None:
     if app_gui.yesNoBox("Convert to XLSX?",
                         ("Do you want to convert the PDF ledger to an XLSX " +
                          "spreadsheet, and then upload it to %s?" %
-                         config["destination_sheet_name"])) is True:
+                         config["destination_spreadsheet_name"])) is True:
 
         # If so then convert it and upload it
         LOGGER.info("User chose to convert and upload the ledger.")
@@ -893,7 +893,7 @@ def main(app_gui: gui) -> None:
               "Find it in the sheet named %s." % sheets_data["name"])
 
         # Ask the user if they want to open the new ledger in Google Sheets
-        if app_gui.yesNoBox("Open %s?" % config["destination_sheet_name"],
+        if app_gui.yesNoBox("Open %s?" % config["destination_spreadsheet_name"],
                             ("Do you want to open the uploaded ledger in " +
                              "Google Sheets?")) is True:
             # If so then open it in the prescribed browser

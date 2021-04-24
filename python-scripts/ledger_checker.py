@@ -446,7 +446,7 @@ def send_email(config: configparser.SectionProxy, message: MIMEMultipart) -> str
     LOGGER.info("Email sent successfully!")
 
     # If asked then manually save it to the Sent folder
-    if config["save_to_sent"] == "True":
+    if config["save_to_sent"].lower() == "true":
         LOGGER.info("Connecting to the IMAP server to save the email...")
         with imaplib.IMAP4_SSL(config["imap_host"],
                                int(config["imap_port"])) as server:
@@ -489,8 +489,8 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
                                   open_browser=ledger.browser_path)
     print("Executing the Apps Script function (this may take some time)...")
     LOGGER.info("Starting the Apps Script function...")
-    body = {"function": config["function"],
-            "parameters": [sheets_data["name"], config["compare_sheet_id"], config["compare_sheet_name"]]}
+    body = {"function": "checkForNewTotals",
+            "parameters": [sheets_data["name"], config["compare_spreadsheet_id"], config["compare_sheet_name"]]}
     response = apps_script.scripts().run(body=body,
                                          scriptId=config["deployment_id"]).execute()
 
