@@ -1,11 +1,10 @@
 # Contemporary Choir
 
-As the Treasurer of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. 
-<br><br>In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com),
-during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such
-as domain management and SEO) too. This repository currently contains some custom HTML that's used on the website, as
-well as a plugin that I've tweaked myself especially for our website.
-<br><br>*Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
+As the Treasurer of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. 
+
+This repository currently contains scripts that I've written to automatially download and process our society ledger, and notify me of any new changes via email. It's also got some custom HTML that's used on the website, as well as a plugin that I've tweaked myself for our website.
+
+*Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
 *Icon made by [photo3idea_studio](https://www.flaticon.com/authors/photo3idea-studio)
 from [www.flaticon.com](https://www.flaticon.com/).*
@@ -13,41 +12,7 @@ from [www.flaticon.com](https://www.flaticon.com/).*
 [![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
 [![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
 
-## Getting Started
-Note that you can use the same Google Cloud Platform Project throughout.
-
-
-### Python Scripts
-1. Clone this repository to your local computer.
-2. Download and install Python. This was built on Python 3.7, but may work on other versions.
-3. Open a terminal window within the `python-scripts` folder of this repository.
-4. Install the required packages using `pip install -r requirements.txt`.
-5. Rename [`python-scripts/config-template.ini`](python-scripts/config-template.ini) to `python-scripts/config.ini` and update the values within it with your own data.
-  * You don't need to fill out the `[ledger_checker]` and `[email]` sections if you're only using [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py).
-6. Create your own Google Cloud Platform Project, enable the Apps Script, Drive, and Sheets APIs, and create & download some OAuth 2.0 Client ID credentials as `credentials.json`.
-  * You mustn't share `credentials.json` or the generated tokens with anyone.
-  * Use of these APIs is (at the time of writing) completely free.
-
-Additionally, for [`ledger_checker.py`](python-scripts/ledger_checker.py):
-7. Enable the Apps Script API in step 6 above.
-8. Create/open a Google Sheet, and open the script editor by going to Tools --> Script editor, which will open in a new tab.
-9. Create script files for [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs), [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs), and [`ledger-checker-classes.gs`](google-apps-scripts/the-new-ledger/ledger-checker-classes.gs) in the editor.
-10. Click `Project Settings` on the left and check `Show "appsscript.json" manifest file in editor`.
-11. Scroll down. Change the GCP Project from the default to the project you created in step 6 using the project number (found on its homepage).
-12. Replace the content of the default `appsscript.json` file with that from [`appsscript.json`](google-apps-scripts/the-new-ledger/appsscript.json).
-13. Save it.
-14. Click the blue `DEPLOY` button top-right, and click `New deployment`.
-15. Click the cog next to `Select type` and make sure only `API executable` is ticked. Enter a brief description, allow anyone with a Google Account to use it, and click `Deploy`. Copy the deployment ID and paste it into `config.ini`.
-
-
-### Google Apps Scripts
-To use the scripts in [`google-apps-scripts/the-new-ledger`](google-apps-scripts/the-new-ledger) to format the ledger
-neatly, highlight new entries, and copy it to another sheet:
-
-1. Follow steps 6 to 8 above. You can re-use the same Google Sheet and same Apps Script project.
-2. Create script files for [`addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs), [`addon-main.gs`](google-apps-scripts/the-new-ledger/addon-main.gs), [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs), and [`ledger-comparison-menu.gs`](google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs) in the editor.
-3. Follow steps 10 to 14 above, again, you can reuse the same Google Sheet and Apps Script project.
-4. Click the cog next to `Select type` and make sure only `Add-on` is ticked. Enter a brief description and click `Deploy`. TBC
+## You can find instructions for getting started in [`INSTRUCTIONS.md`](INSTRUCTIONS.md).
 
 
 ## Python Scripts
@@ -119,7 +84,7 @@ created in an Apps Script project that's bound to the relevant Google Sheet.
 * **`compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLedger = null)`** is used to compare the ledger in `newSheet` with that in `oldSheet`. Any new or differing entries in the newer version will be highlighted in `newRowColour`. It can optionally save the changes to the `newLedger` object (which is used by [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs)).
 * **`copyToLedger(thisSheet, destSpreadsheet, newSheet)`** is used to copy `thisSheet` to the `destSpreadsheet`, either replacing `newSheet` or renaming it to `newSheet` (if it's a Sheet or String respectively).
 
-**[`google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs`](google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs)**is used to create the menu within Google Sheets for the user to trigger the functions in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs). It includes a function to create the menu, as well as functions that the menu items trigger to call the functions in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs) using the saved data.
+**[`google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs`](google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs)** is used to create the menu within Google Sheets for the user to trigger the functions in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs). It includes a function to create the menu, as well as functions that the menu items trigger to call the functions in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs) using the saved data.
 
 **[`google-apps-scripts/the-new-ledger/addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs)** is used to build the Google Workspace add-on for the user to set their preferences for the functions in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs). It includes functions to build the homepage card and its constituent sections.
 
@@ -129,15 +94,15 @@ created in an Apps Script project that's bound to the relevant Google Sheet.
 * **`checkForNewTotals(sheetName, compareSheetId, compareSheetName)`** is used to check the named sheet in the linked spreadsheet for any new changes compared the other sheet. If any are found then it will return them along with the current total for each cost code and the grand total, otherwise it will return `"False"`.
 * **`getCostCodeTotals(sheet, ledger)`** is used to retrieve the total income, expenditure, and balance for each cost code, as well as the grand total for the entire ledger from `sheet`. It'll add these to `ledger` and return it.
 
-**[`google-apps-scripts/the-new-ledger/ledger-checker-classes.gs`](google-apps-scripts/the-new-ledger/ledger-checker-classes.gs)**contains classes used by [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs). `Ledger`, `CostCode`, `Entry`, and `GrandTotal` are classes used to represent the ledger, each cost code, each entry within each cost code, and the grand total respectively. Using these classes makes it much easier to handle and process this data, both by the Apps Script and by the Python Script.
+**[`google-apps-scripts/the-new-ledger/ledger-checker-classes.gs`](google-apps-scripts/the-new-ledger/ledger-checker-classes.gs)** contains classes used by [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs). `Ledger`, `CostCode`, `Entry`, and `GrandTotal` are classes used to represent the ledger, each cost code, each entry within each cost code, and the grand total respectively. Using these classes makes it much easier to handle and process this data, both by the Apps Script and by the Python Script.
 
 
-### Society Ledger Downloader Apps Script Add-On
-**[`google-apps-scripts/society-ledger-downloader/`](google-apps-scripts/society-ledger-downloader)** is a Google Workspace add-on that allows you to download your society ledger and save it straight to Drive. *Note that all of these files should have a `.gs` file extension instead of `.js`but [`clasp`](https://developers.google.com/apps-script/guides/clasp) changes this for me.*
+### [Society Ledger Downloader Apps Script Add-On](google-apps-scripts/society-ledger-downloader)
+This is a Google Workspace add-on that allows you to download your society ledger and save it straight to Drive. *Note that all of these files should have a `.gs` file extension instead of `.js`but [`clasp`](https://developers.google.com/apps-script/guides/clasp) changes this for me.*
 
 ## Website Custom HTML
-**[`website-custom-html/`](website-custom-html)** contains various snippets of HTML (including CSS and JavaScript) that are used on Contemporary Choir's websites. These are all incorporated using the custom HTML block in Wordpress.
-* **[`onesignal-subscribe.html`](website-custom-html/onesignal-subscribe.html)** is used to produce an in-text link for the user to subscribe and unsubscribe to OneSignal push notifications. It’s used on several different pages.
+**[`website-custom-html/`](website-custom-html)** contains various snippets of HTML (including CSS and JavaScript) that are used on Contemporary Choir's websites. These are all incorporated using the custom HTML block in WordPress.
+* **[`onesignal-subscribe.html`](website-custom-html/onesignal-subscribe.html)** is used to produce an in-text link for the user to subscribe and unsubscribe to OneSignal push notifications. It’s used on several pages.
   * It will show the text “Finally, you can also subscribe to push notifications through your web browser.”, replacing subscribe with unsubscribe if they’re already subscribed. 
   * When the user clicks on the link, the text will change between subscribe and unsubscribe (as they subscribe and unsubscribe).
   * The whole sentence will be completely hidden if they’re using an unsupported browser (e.g. Safari).	
