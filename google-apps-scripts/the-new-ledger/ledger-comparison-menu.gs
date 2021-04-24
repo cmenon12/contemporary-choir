@@ -12,7 +12,7 @@
  * Run formatNeatly() with the saved data, validating it first.
  */
 function formatNeatlyMenu() {
-  if (validatePreferences(getUserProperties())) {
+  if (validatePreferences(getUserProperties()) === true) {
     formatNeatly(SpreadsheetApp.getActiveSheet(),
       getUserProperties().formatSheetName);
 
@@ -28,7 +28,7 @@ function formatNeatlyMenu() {
  */
 function compareLedgersMenu() {
 
-  if (validatePreferences(getUserProperties())) {
+  if (validatePreferences(getUserProperties()) === true) {
     const compareSpreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
 
     compareLedgers(SpreadsheetApp.getActiveSheet(),
@@ -50,7 +50,7 @@ function compareLedgersMenu() {
  */
 function copyToLedgerMenu() {
 
-  if (validatePreferences(getUserProperties())) {
+  if (validatePreferences(getUserProperties()) === true) {
 
     const compareSpreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
 

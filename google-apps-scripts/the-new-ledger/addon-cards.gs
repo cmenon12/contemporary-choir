@@ -23,7 +23,7 @@ function buildSheetsHomePage(e) {
     .setHeader(header);
 
   // Let the user know if they're already valid
-  if (validatePreferences(getUserProperties())) {
+  if (validatePreferences(getUserProperties()) === true) {
     const spreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
     const sheetUrl = `${spreadsheet.getUrl()}#gid=${spreadsheet.getSheetByName(getUserProperties().sheetName).getSheetId()}`
     const message = `<font color="#008000"><b>Success!</b><br>All values have been validated and saved. You can now run the actions via the 'Scripts' menu.</font><br><a href="${sheetUrl}">Open the spreadsheet.</a>`;
