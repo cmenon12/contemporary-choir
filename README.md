@@ -1,34 +1,83 @@
 # Contemporary Choir
 
 As the Treasurer of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. 
-<br><br>In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. This repository currently contains some custom HTML that's used on the website, as well as a plugin that I've tweaked myself especially for our website.
+<br><br>In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com),
+during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such
+as domain management and SEO) too. This repository currently contains some custom HTML that's used on the website, as
+well as a plugin that I've tweaked myself especially for our website.
 <br><br>*Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
-*Icon made by [photo3idea_studio](https://www.flaticon.com/authors/photo3idea-studio) from [www.flaticon.com](https://www.flaticon.com/).*
+*Icon made by [photo3idea_studio](https://www.flaticon.com/authors/photo3idea-studio)
+from [www.flaticon.com](https://www.flaticon.com/).*
 
 [![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
 [![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
 
-
 ## Getting Started
-For the Python Scripts and the Google Apps Scripts:
-* Rename [`python-scripts/config-template.ini`](python-scripts/config-template.ini) to `python-scripts/config.ini` and update the values within it with your own data.
-* Install the required packages using `pip install -r requirements.txt`.
-* Create your own Google Cloud Platform Project, enable the Apps Script, Drive, and Sheets APIs, and create & download some OAuth 2.0 Client ID credentials as `credentials.json`. 
-  * You mustn't share `credentials.json` or the generated tokens with anyone.
-  * Use of these APIs is (at the time of writing) free.
-* Add the Apps Scripts to an Apps Script project created within Google Sheets.
-  * Follow steps 1 to 3 of [these instructions](https://developers.google.com/apps-script/api/how-tos/execute#general_procedure) to allow the functions to be executed by the API. This is only necessary to run `ledger_checker.py`.
 
+Note that you can use the same Google Cloud Platform Project throughout.
+
+### Python Scripts
+
+1. Clone this repository to your local computer.
+2. Download and install Python. This was built on Python 3.7, but may work on other versions.
+3. Open a terminal window within the `python-scripts` folder of this repository.
+4. Install the required packages using `pip install -r requirements.txt`.
+5. Rename [`python-scripts/config-template.ini`](python-scripts/config-template.ini) to `python-scripts/config.ini` and
+   update the values within it with your own data.
+  * You don't need to fill out the `[ledger_checker]` and `[email]` sections if you're only
+    using [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py).
+6. Create your own Google Cloud Platform Project, enable the Apps Script, Drive, and Sheets APIs, and create & download
+   some OAuth 2.0 Client ID credentials as `credentials.json`.
+  * You mustn't share `credentials.json` or the generated tokens with anyone.
+  * Use of these APIs is (at the time of writing) completely free.
+
+Additionally, for [`ledger_checker.py`](python-scripts/ledger_checker.py):
+
+7. Enable the Apps Script API in step 6 above.
+8. Create/open a Google Sheet, and open the script editor by going to Tools --> Script editor, which will open in a new
+   tab.
+9. Create script files for [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs)
+   , [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs),
+   and [`ledger-checker-classes.gs`](google-apps-scripts/the-new-ledger/ledger-checker-classes.gs) in the editor.
+10. Click `Project Settings` on the left and check `Show "appsscript.json" manifest file in editor`.
+11. Scroll down. Change the GCP Project from the default to the project you created in step 6 using the project number (
+    found on its homepage).
+12. Replace the content of the default `appsscript.json` file with that
+    from [`appsscript.json`](google-apps-scripts/the-new-ledger/appsscript.json).
+13. Save it.
+14. Click the blue `DEPLOY` button top-right, and click `New deployment`.
+15. Click the cog next to `Select type` and make sure only `API executable` is ticked. Enter a brief description, allow
+    anyone with a Google Account to use it, and click `Deploy`. Copy the deployment ID and paste it into `config.ini`.
+
+### Google Apps Scripts
+
+To use the scripts in [`google-apps-scripts/the-new-ledger`](google-apps-scripts/the-new-ledger) to format the ledger
+neatly, highlight new entries, and copy it to another sheet:
+
+1. Follow steps 6 to 8 above. You can re-use the same Google Sheet and same Apps Script project.
+2. Create script files for [`addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs)
+   , [`addon-main.gs`](google-apps-scripts/the-new-ledger/addon-main.gs)
+   , [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs),
+   and [`ledger-comparison-menu.gs`](google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs) in the editor.
+3. Follow steps 10 to 14 above, again, you can reuse the same Google Sheet and Apps Script project.
+4. Click the cog next to `Select type` and make sure only `Add-on` is ticked. Enter a brief description and
+   click `Deploy`. TBC
 
 ## Python Scripts
+
 **[`requirements.txt`](python-scripts/requirements.txt)** contains all the requirements for both of these scripts.
 
-### [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py) 
-This can download the society ledger from eXpense365 to your computer (instead of having to use the app), convert it to an XLSX, and upload it to Google Drive.
+### [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py)
+
+This can download the society ledger from eXpense365 to your computer (instead of having to use the app), convert it to
+an XLSX, and upload it to Google Drive.
 
 #### Classes
-* **`CustomEncoder`** is a custom JSON encoder that's used for logging. For bytes objects, it returns a string with their length instead of the actual bytes. For all other objects it uses the default JSON encoder, falling back on the built-in `str(obj)` method where needed.
+
+* **`CustomEncoder`** is a custom JSON encoder that's used for logging. For bytes objects, it returns a string with
+  their length instead of the actual bytes. For all other objects it uses the default JSON encoder, falling back on the
+  built-in `str(obj)` method where needed.
 * **`Ledger`** represents a ledger, which is downloaded upon instantiation. It includes methods to convert it to an XLSX, upload the PDF or XLSX to Drive, save or delete the PDF or XLSX file to the local filesystem, open the PDF or uploaded Google Sheet in the web browser, and refresh the ledger to a more up-to-date version. It also has numerous getter methods that incorporate these methods as required.
 
 #### Functions
@@ -75,8 +124,7 @@ the future. Note that its dependencies are not necessarily listed in
 * **`PDFToXLSXConverter`** represents an online PDF-to-XLSX converter. It currently supports [pdftoexcel.com](pdftoexcel.com) and [pdftoexcelconverter.net](pdftoexcelconverter.net), both of which are very similar. A converter is chosen upon instantiation, either randomly or by the user. It includes methods to upload the PDF, check the conversion status, and download the resulting XLSX file.
 * **`ConversionTimeoutError`** and **`ConversionRejectedError`** are both exceptions used by `PDFToXLSXConverter`.
 
-
-## Google Apps Scripts (for Google Sheets)
+## Google Apps Scripts
 
 All of these (except for the [Society Ledger Downloader](#society-ledger-downloader-apps-script-add-on)) are for Google
 Sheets, and should therefore be created in

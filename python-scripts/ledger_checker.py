@@ -492,7 +492,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     body = {"function": config["function"],
             "parameters": [sheets_data["name"], config["compare_sheet_id"], config["compare_sheet_name"]]}
     response = apps_script.scripts().run(body=body,
-                                         scriptId=config["script_id"]).execute()
+                                         scriptId=config["deployment_id"]).execute()
 
     # Catch and then raise an error during execution
     if "error" in response:
