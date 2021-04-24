@@ -14,70 +14,50 @@ from [www.flaticon.com](https://www.flaticon.com/).*
 [![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
 
 ## Getting Started
-
 Note that you can use the same Google Cloud Platform Project throughout.
 
-### Python Scripts
 
+### Python Scripts
 1. Clone this repository to your local computer.
 2. Download and install Python. This was built on Python 3.7, but may work on other versions.
 3. Open a terminal window within the `python-scripts` folder of this repository.
 4. Install the required packages using `pip install -r requirements.txt`.
-5. Rename [`python-scripts/config-template.ini`](python-scripts/config-template.ini) to `python-scripts/config.ini` and
-   update the values within it with your own data.
-  * You don't need to fill out the `[ledger_checker]` and `[email]` sections if you're only
-    using [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py).
-6. Create your own Google Cloud Platform Project, enable the Apps Script, Drive, and Sheets APIs, and create & download
-   some OAuth 2.0 Client ID credentials as `credentials.json`.
+5. Rename [`python-scripts/config-template.ini`](python-scripts/config-template.ini) to `python-scripts/config.ini` and update the values within it with your own data.
+  * You don't need to fill out the `[ledger_checker]` and `[email]` sections if you're only using [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py).
+6. Create your own Google Cloud Platform Project, enable the Apps Script, Drive, and Sheets APIs, and create & download some OAuth 2.0 Client ID credentials as `credentials.json`.
   * You mustn't share `credentials.json` or the generated tokens with anyone.
   * Use of these APIs is (at the time of writing) completely free.
 
 Additionally, for [`ledger_checker.py`](python-scripts/ledger_checker.py):
-
 7. Enable the Apps Script API in step 6 above.
-8. Create/open a Google Sheet, and open the script editor by going to Tools --> Script editor, which will open in a new
-   tab.
-9. Create script files for [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs)
-   , [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs),
-   and [`ledger-checker-classes.gs`](google-apps-scripts/the-new-ledger/ledger-checker-classes.gs) in the editor.
+8. Create/open a Google Sheet, and open the script editor by going to Tools --> Script editor, which will open in a new tab.
+9. Create script files for [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs), [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs), and [`ledger-checker-classes.gs`](google-apps-scripts/the-new-ledger/ledger-checker-classes.gs) in the editor.
 10. Click `Project Settings` on the left and check `Show "appsscript.json" manifest file in editor`.
-11. Scroll down. Change the GCP Project from the default to the project you created in step 6 using the project number (
-    found on its homepage).
-12. Replace the content of the default `appsscript.json` file with that
-    from [`appsscript.json`](google-apps-scripts/the-new-ledger/appsscript.json).
+11. Scroll down. Change the GCP Project from the default to the project you created in step 6 using the project number (found on its homepage).
+12. Replace the content of the default `appsscript.json` file with that from [`appsscript.json`](google-apps-scripts/the-new-ledger/appsscript.json).
 13. Save it.
 14. Click the blue `DEPLOY` button top-right, and click `New deployment`.
-15. Click the cog next to `Select type` and make sure only `API executable` is ticked. Enter a brief description, allow
-    anyone with a Google Account to use it, and click `Deploy`. Copy the deployment ID and paste it into `config.ini`.
+15. Click the cog next to `Select type` and make sure only `API executable` is ticked. Enter a brief description, allow anyone with a Google Account to use it, and click `Deploy`. Copy the deployment ID and paste it into `config.ini`.
+
 
 ### Google Apps Scripts
-
 To use the scripts in [`google-apps-scripts/the-new-ledger`](google-apps-scripts/the-new-ledger) to format the ledger
 neatly, highlight new entries, and copy it to another sheet:
 
 1. Follow steps 6 to 8 above. You can re-use the same Google Sheet and same Apps Script project.
-2. Create script files for [`addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs)
-   , [`addon-main.gs`](google-apps-scripts/the-new-ledger/addon-main.gs)
-   , [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs),
-   and [`ledger-comparison-menu.gs`](google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs) in the editor.
+2. Create script files for [`addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs), [`addon-main.gs`](google-apps-scripts/the-new-ledger/addon-main.gs), [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs), and [`ledger-comparison-menu.gs`](google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs) in the editor.
 3. Follow steps 10 to 14 above, again, you can reuse the same Google Sheet and Apps Script project.
-4. Click the cog next to `Select type` and make sure only `Add-on` is ticked. Enter a brief description and
-   click `Deploy`. TBC
+4. Click the cog next to `Select type` and make sure only `Add-on` is ticked. Enter a brief description and click `Deploy`. TBC
+
 
 ## Python Scripts
-
 **[`requirements.txt`](python-scripts/requirements.txt)** contains all the requirements for both of these scripts.
 
 ### [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py)
-
-This can download the society ledger from eXpense365 to your computer (instead of having to use the app), convert it to
-an XLSX, and upload it to Google Drive.
+This can download the society ledger from eXpense365 to your computer (instead of having to use the app), convert it to an XLSX, and upload it to Google Drive.
 
 #### Classes
-
-* **`CustomEncoder`** is a custom JSON encoder that's used for logging. For bytes objects, it returns a string with
-  their length instead of the actual bytes. For all other objects it uses the default JSON encoder, falling back on the
-  built-in `str(obj)` method where needed.
+* **`CustomEncoder`** is a custom JSON encoder that's used for logging. For bytes objects, it returns a string with their length instead of the actual bytes. For all other objects it uses the default JSON encoder, falling back on the built-in `str(obj)` method where needed.
 * **`Ledger`** represents a ledger, which is downloaded upon instantiation. It includes methods to convert it to an XLSX, upload the PDF or XLSX to Drive, save or delete the PDF or XLSX file to the local filesystem, open the PDF or uploaded Google Sheet in the web browser, and refresh the ledger to a more up-to-date version. It also has numerous getter methods that incorporate these methods as required.
 
 #### Functions
@@ -100,15 +80,9 @@ This checks the ledger and notifies the user via email of any changes.
 * **`prepare_email_body()`** is used to populate the [email template](python-scripts/email-template.html) with details of the new changes. The HTML template is written with Jinja2 placeholders that this function uses.
 * **`send_success_email()`** is used to prepare and send an email about a successful check. It creates the HTML message using the `prepare_email_body()` function, attaches the new PDF ledger (as well as the one from the previous check if available), and sends the message using the `send_email()` function.
 * **`send_error_email()`** is used to prepare and send an email after a certain number of consecutive exceptions. This email contains the stacktraces and timestamps of each of these exceptions, the timestamp of the last successful check, and when a future email will be sent if these exceptions continue consecutively. It's written in plain-text instead of HTML to reduce the risk of an exception occurring within this function itself (which would prevent the user being notified). The email is sent using the `send_email()` function.
-* **`send_email()`** is used to send an email from `send_success_email()` or `send_error_email()`. It adds the date and
-  a unique ID to the email and sends it via SMTP. It also optionally manually saves it to the Sent folder using IMAP.
-* **`check_ledger()`** is used to run a single check of the ledger. It downloads the ledger from eXpense365, converts it
-  to a PDF, and uploads it to Google Sheets. It then executes an Apps Script function (
-  namely `checkForNewTotals(sheetName)` in [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs))
-  to identify any changes. If it does identify any changes then it will email these to the user along with the PDF
-  ledger itself using `send_success_email()`.
-* **`main()`** runs `check_ledger()` and catches any exceptions that occur. It saves them to the save file, and emails
-  the user if multiple consecutive exceptions occur.
+* **`send_email()`** is used to send an email from `send_success_email()` or `send_error_email()`. It adds the date and a unique ID to the email and sends it via SMTP. It also optionally manually saves it to the Sent folder using IMAP.
+* **`check_ledger()`** is used to run a single check of the ledger. It downloads the ledger from eXpense365, converts it to a PDF, and uploads it to Google Sheets. It then executes an Apps Script function (namely `checkForNewTotals(sheetName)` in [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs))to identify any changes. If it does identify any changes then it will email these to the user along with the PDF ledger itself using `send_success_email()`.
+* **`main()`** runs `check_ledger()` and catches any exceptions that occur. It saves them to the save file, and emails the user if multiple consecutive exceptions occur.
 
 
 ### [`custom_exceptions.py`](python-scripts/custom_exceptions.py)
@@ -116,19 +90,16 @@ This contains a variety of custom exceptions that the above two scripts can thro
 
 
 ### [`archive.py`](python-scripts/archive.py)
-This contains code that is no longer actively used, but may be of use in
-the future. Note that its dependencies are not necessarily listed in
+This contains code that is no longer actively used, but may be of use in the future. Note that its dependencies are not necessarily listed in
 [`requirements.txt`](python-scripts/requirements.txt).
 
 #### Classes
 * **`PDFToXLSXConverter`** represents an online PDF-to-XLSX converter. It currently supports [pdftoexcel.com](pdftoexcel.com) and [pdftoexcelconverter.net](pdftoexcelconverter.net), both of which are very similar. A converter is chosen upon instantiation, either randomly or by the user. It includes methods to upload the PDF, check the conversion status, and download the resulting XLSX file.
 * **`ConversionTimeoutError`** and **`ConversionRejectedError`** are both exceptions used by `PDFToXLSXConverter`.
 
-## Google Apps Scripts
 
-All of these (except for the [Society Ledger Downloader](#society-ledger-downloader-apps-script-add-on)) are for Google
-Sheets, and should therefore be created in
-a [bound Apps Script project](https://developers.google.com/apps-script/guides/bound).
+## Google Apps Scripts
+All of these (except for the [Society Ledger Downloader](#society-ledger-downloader-apps-script-add-on)) are for Google Sheets, and should therefore be created in a [bound Apps Script project](https://developers.google.com/apps-script/guides/bound).
 
 **[`google-apps-scripts/macmillan-fundraising.gs`](google-apps-scripts/macmillan-fundraising.gs)** updates how much has been fundraised for Macmillan from a GoFundMe page. It fetches the page, extracts the total fundraised and the total number of donors, applies a reduction due to payment processor fees & postage, and then updates a pre-defined named range in the sheet with the total.
 
@@ -138,63 +109,31 @@ a [bound Apps Script project](https://developers.google.com/apps-script/guides/b
 * `EnthuseFundraisingSource` is a class used to represent an Enthuse fundraising source (which can consist of one or more pages). 
   * Each source has an amount, number of donors, and fees, as well as it's named range. 
 
-### [The New Ledger](google-apps-scripts/the-new-ledger)
 
+### [The New Ledger](google-apps-scripts/the-new-ledger)
 This folder contains scripts that process the ledger in Google Sheets once it's been uploaded. The scripts must be
 created in an Apps Script project that's bound to the relevant Google Sheet.
 
-**[`google-apps-scripts/the-new-ledger/ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs)**
-is used to process the ledger that has been uploaded by [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py). It's
-preferences are set using the Google Workspace add-on defined
-in [`addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs)
-and [`addon-main.gs`](google-apps-scripts/the-new-ledger/addon-main.gs).
+**[`google-apps-scripts/the-new-ledger/ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs)** is used to process the ledger that has been uploaded by [`ledger_fetcher.py`](python-scripts/ledger_fetcher.py). It's preferences are set using the Google Workspace add-on defined in [`addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs) and [`addon-main.gs`](google-apps-scripts/the-new-ledger/addon-main.gs).
+* **`formatNeatly(thisSheet, sheetName)`** is used to format the ledger neatly by renaming the sheet, resizing the columns, removing unnecessary headers, and removing excess columns & rows.
+* **`compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLedger = null)`** is used to compare the ledger in `newSheet` with that in `oldSheet`. Any new or differing entries in the newer version will be highlighted in `newRowColour`. It can optionally save the changes to the `newLedger` object (which is used by [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs)).
+* **`copyToLedger(thisSheet, destSpreadsheet, newSheet)`** is used to copy `thisSheet` to the `destSpreadsheet`, either replacing `newSheet` or renaming it to `newSheet` (if it's a Sheet or String respectively).
 
-* **`formatNeatly(thisSheet, sheetName)`** is used to format the ledger neatly by renaming the sheet, resizing the
-  columns, removing unnecessary headers, and removing excess columns & rows.
-* **`compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLedger = null)`** is used to compare the
-  ledger in `newSheet` with that in `oldSheet`. Any new or differing entries in the newer version will be highlighted
-  in `newRowColour`. It can optionally save the changes to the `newLedger` object (which is used
-  by [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs)).
-* **`copyToLedger(thisSheet, destSpreadsheet, newSheet)`** is used to copy `thisSheet` to the `destSpreadsheet`, either
-  replacing `newSheet` or renaming it to `newSheet` (if it's a Sheet or String respectively).
+**[`google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs`](google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs)**is used to create the menu within Google Sheets for the user to trigger the functions in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs). It includes a function to create the menu, as well as functions that the menu items trigger to call the functions in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs) using the saved data.
 
-**[`google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs`](google-apps-scripts/the-new-ledger/ledger-comparison-menu.gs)**
-is used to create the menu within Google Sheets for the user to trigger the functions
-in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs). It includes a function to create
-the menu, as well as functions that the menu items trigger to call the functions
-in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs) using the saved data.
+**[`google-apps-scripts/the-new-ledger/addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs)** is used to build the Google Workspace add-on for the user to set their preferences for the functions in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs). It includes functions to build the homepage card and its constituent sections.
 
-**[`google-apps-scripts/the-new-ledger/addon-cards.gs`](google-apps-scripts/the-new-ledger/addon-cards.gs)** is used to
-build the Google Workspace add-on for the user to set their preferences for the functions
-in [`ledger-comparison.gs`](google-apps-scripts/the-new-ledger/ledger-comparison.gs). It includes functions to build the
-homepage card and its constituent sections.
+**[`google-apps-scripts/the-new-ledger/addon-main.gs`](google-apps-scripts/the-new-ledger/addon-main.gs)** is used as the backend for the Google Workspace add-on. It includes functions to process the submitted form and manage the user's saved data.
 
-**[`google-apps-scripts/the-new-ledger/addon-main.gs`](google-apps-scripts/the-new-ledger/addon-main.gs)** is used as
-the backend for the Google Workspace add-on. It includes functions to process the submitted form and manage the user's
-saved data.
+**[`google-apps-scripts/the-new-ledger/ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs)** is used by [`ledger_checker.py`](python-scripts/ledger_checker.py) to identify any changes in the uploaded ledger. It's designed to be executed by the API and is therefore not reliant on determining the active sheet.
+* **`checkForNewTotals(sheetName, compareSheetId, compareSheetName)`** is used to check the named sheet in the linked spreadsheet for any new changes compared the other sheet. If any are found then it will return them along with the current total for each cost code and the grand total, otherwise it will return `"False"`.
+* **`getCostCodeTotals(sheet, ledger)`** is used to retrieve the total income, expenditure, and balance for each cost code, as well as the grand total for the entire ledger from `sheet`. It'll add these to `ledger` and return it.
 
-**[`google-apps-scripts/the-new-ledger/ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs)** is
-used by [`ledger_checker.py`](python-scripts/ledger_checker.py) to identify any changes in the uploaded ledger. It's
-designed to be executed by the API and is therefore not reliant on determining the active sheet.
+**[`google-apps-scripts/the-new-ledger/ledger-checker-classes.gs`](google-apps-scripts/the-new-ledger/ledger-checker-classes.gs)**contains classes used by [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs). `Ledger`, `CostCode`, `Entry`, and `GrandTotal` are classes used to represent the ledger, each cost code, each entry within each cost code, and the grand total respectively. Using these classes makes it much easier to handle and process this data, both by the Apps Script and by the Python Script.
 
-* **`checkForNewTotals(sheetName, compareSheetId, compareSheetName)`** is used to check the named sheet in the linked
-  spreadsheet for any new changes compared the other sheet. If any are found then it will return them along with the
-  current total for each cost code and the grand total, otherwise it will return `"False"`.
-* **`getCostCodeTotals(sheet, ledger)`** is used to retrieve the total income, expenditure, and balance for each cost
-  code, as well as the grand total for the entire ledger from `sheet`. It'll add these to `ledger` and return it.
-
-**[`google-apps-scripts/the-new-ledger/ledger-checker-classes.gs`](google-apps-scripts/the-new-ledger/ledger-checker-classes.gs)**
-contains classes used by [`ledger-checker.gs`](google-apps-scripts/the-new-ledger/ledger-checker.gs). `Ledger`
-, `CostCode`, `Entry`, and `GrandTotal` are classes used to represent the ledger, each cost code, each entry within each
-cost code, and the grand total respectively. Using these classes makes it much easier to handle and process this data,
-both by the Apps Script and by the Python Script.
 
 ### Society Ledger Downloader Apps Script Add-On
-
-**[`google-apps-scripts/society-ledger-downloader/`](google-apps-scripts/society-ledger-downloader)** is a Google
-Workspace add-on that allows you to download your society ledger and save it straight to Drive. *Note that all of these
-files should have a `.gs` file extension instead of `.js`
-but [`clasp`](https://developers.google.com/apps-script/guides/clasp) changes this for me.*
+**[`google-apps-scripts/society-ledger-downloader/`](google-apps-scripts/society-ledger-downloader)** is a Google Workspace add-on that allows you to download your society ledger and save it straight to Drive. *Note that all of these files should have a `.gs` file extension instead of `.js`but [`clasp`](https://developers.google.com/apps-script/guides/clasp) changes this for me.*
 
 ## Website Custom HTML
 **[`website-custom-html/`](website-custom-html)** contains various snippets of HTML (including CSS and JavaScript) that are used on Contemporary Choir's websites. These are all incorporated using the custom HTML block in Wordpress.
@@ -210,12 +149,7 @@ but [`clasp`](https://developers.google.com/apps-script/guides/clasp) changes th
 
 
 ## WordPress Plugins
-
-**[`wordpress-plugins/password-protected/`](wordpress-plugins/password-protected)** is my own customised version
-of [Password Protected by Ben Huson](https://wordpress.org/plugins/password-protected/). I have modified it to include a
-Google CAPTCHA on the password page, which is implemented using the
-plugin [Advanced noCaptcha & invisible Captcha (v2 & v3) by Shamim Hasan](https://wordpress.org/plugins/advanced-nocaptcha-recaptcha/)
-. It also has a custom logo (instead of the WordPress one) and some brief text for people arriving at the site.
+**[`wordpress-plugins/password-protected/`](wordpress-plugins/password-protected)** is my own customised version of [Password Protected by Ben Huson](https://wordpress.org/plugins/password-protected/). I have modified it to include a Google CAPTCHA on the password page, which is implemented using the plugin [Advanced noCaptcha & invisible Captcha (v2 & v3) by Shamim Hasan](https://wordpress.org/plugins/advanced-nocaptcha-recaptcha/). It also has a custom logo (instead of the WordPress one) and some brief text for people arriving at the site.
 
 ## License
 [GNU GPLv3](https://choosealicense.com/licenses/gpl-3.0/)
