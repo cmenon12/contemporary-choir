@@ -446,7 +446,7 @@ def send_email(config: configparser.SectionProxy, message: MIMEMultipart) -> str
     LOGGER.info("Email sent successfully!")
 
     # If asked then manually save it to the Sent folder
-    if config["save_to_sent"] == "True":
+    if config["save_to_sent"].lower() == "true":
         LOGGER.info("Connecting to the IMAP server to save the email...")
         with imaplib.IMAP4_SSL(config["imap_host"],
                                int(config["imap_port"])) as server:
@@ -489,9 +489,10 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
                                   open_browser=ledger.browser_path)
     print("Executing the Apps Script function (this may take some time)...")
     LOGGER.info("Starting the Apps Script function...")
-    body = {"function": config["function"], "parameters": sheets_data["name"]}
+    body = {"function": "checkForNewTotals",
+            "parameters": [sheets_data["name"], config["compare_spreadsheet_id"], config["compare_sheet_name"]]}
     response = apps_script.scripts().run(body=body,
-                                         scriptId=config["script_id"]).execute()
+                                         scriptId=config["deployment_id"]).execute()
 
     # Catch and then raise an error during execution
     if "error" in response:
@@ -527,7 +528,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
         save_data.new_check_success(new_ledger=ledger)
 
     else:
-        json.loads(response["response"].get("result"))
+        changes = json.loads(response["response"].get("result"))
 
         # If the returned changes aren't actually new to us then
         # just delete the new sheet we just made
