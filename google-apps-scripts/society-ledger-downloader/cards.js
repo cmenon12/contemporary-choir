@@ -9,59 +9,9 @@
 
 
 /**
- * Builds the homepage Card common to all non-Drive add-ons.
- * This has been disabled in the manifest and isn't used.
- *
- * @param {eventObject} e The event object.
- * @returns {Card} The homepage Card.
- */
-function buildCommonHomePage(e) {
-
-  const header = CardService.newCardHeader()
-    .setTitle("Download your Society Ledger")
-    .setImageUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png");
-  const card = CardService.newCardBuilder()
-    .setHeader(header);
-
-  const saveMethod = CardService.newSelectionInput()
-    .setType(CardService.SelectionInputType.RADIO_BUTTON)
-    .setTitle("How do you want to save the PDF ledger?")
-    .setFieldName("saveMethod")
-    .addItem("Save to this folder", "folder", getUserProperties().saveMethod === "folder")
-    .addItem("Rename this existing PDF", "rename", getUserProperties().saveMethod === "rename")
-    .addItem("Keep the current filename", "keep", getUserProperties().saveMethod === "keep");
-
-  const url = CardService.newTextInput()
-    .setFieldName("url")
-    .setTitle("URL of folder or PDF file in Drive")
-    .setValue("");
-
-  const buttons = CardService.newButtonSet()
-    .addButton(CardService.newTextButton()
-      .setText("DOWNLOAD")
-      .setOnClickAction(CardService.newAction()
-        .setFunctionName("processSidebarForm"))
-      .setTextButtonStyle(CardService.TextButtonStyle.FILLED))
-    .addButton(createClearSavedDataButton());
-
-  const form = CardService.newCardSection()
-    .addWidget(saveMethod)
-    .addWidget(url)
-    .addWidget(buttons);
-
-  card.addSection(getLoginSection())
-    .addSection(form)
-    .addSection(createDisclaimerSection());
-
-  return card.build();
-
-}
-
-
-/**
  * Builds the homepage Card specifically for Drive.
  * If the user has selected a folder they'll be prompted to save the
- * ledger to it. If they'vd selected a PDF they'll be prompted to update
+ * ledger to it. If they've selected a PDF they'll be prompted to update
  * it. Otherwise they'll be asked to select a folder or PDF.
  *
  * @param {eventObject} e The event object
@@ -75,6 +25,15 @@ function buildDriveHomePage(e) {
     .setImageUrl("https://raw.githubusercontent.com/cmenon12/contemporary-choir/main/assets/icon.png");
   const card = CardService.newCardBuilder()
     .setHeader(header);
+
+  // If we have a previous result then display and clear it
+  if (getUserProperties().resultMessage !== undefined) {
+    const result = CardService.newCardSection()
+      .addWidget(CardService.newTextParagraph()
+        .setText(getUserProperties().resultMessage));
+    card.addSection(result);
+    PropertiesService.getUserProperties().deleteProperty("resultMessage");
+  }
 
   // If they haven't selected anything yet
   // Or they've selected something that isn't a PDF nor a folder
@@ -176,45 +135,51 @@ function buildDriveHomePage(e) {
  */
 function getLoginSection() {
 
-  let groupId = CardService.newTextInput()
+  const section = CardService.newCardSection();
+
+  const groupId = CardService.newTextInput()
     .setFieldName("groupId")
     .setTitle("Society Group ID")
-    .setHint("You can find this from your society admin URL (e.g. 12345 in exeterguild.org/organisation/admin/12345).");
+    .setHint("You can find this from your society admin URL (e.g. 12345 in exeterguild.org/organisation/admin/12345).")
+    .setValue("");
 
   if (getUserProperties().groupId === undefined) {
-    groupId = groupId.setValue("");
+    groupId.setValue("");
   } else {
-    groupId = groupId.setValue(getUserProperties().groupId);
+    groupId.setValue(getUserProperties().groupId);
   }
 
-  let email = CardService.newTextInput()
-    .setFieldName("email")
-    .setTitle("eXpense365 Email");
 
-  if (getUserProperties().email === undefined) {
-    email = email.setValue("");
+  section.addWidget(groupId);
+
+  // If we don't have all the login details
+  if (getUserProperties().email === undefined ||
+    getUserProperties().password === undefined) {
+
+    const email = CardService.newTextInput()
+      .setFieldName("email")
+      .setTitle("eXpense365 Email")
+      .setValue("");
+
+    const password = CardService.newTextInput()
+      .setFieldName("password")
+      .setTitle("eXpense365 Password")
+      .setValue("");
+
+    section.addWidget(email).addWidget(password);
+
   } else {
-    email = email.setValue(getUserProperties().email);
-  }
-
-  let password = CardService.newTextInput()
-    .setFieldName("password")
-    .setTitle("eXpense365 Password");
-
-  if (getUserProperties().password === undefined) {
-    password = password.setValue("");
-  } else {
-    password = password.setValue(getUserProperties().password);
+    const message = CardService.newTextParagraph().setText("To change your login details, clear your saved data.");
+    section.addWidget(message);
   }
 
   const saveDetails = CardService.newTextParagraph()
     .setText("Your details will be saved for you, and for your use only.");
 
-  return CardService.newCardSection()
-    .addWidget(groupId)
-    .addWidget(email)
-    .addWidget(password)
-    .addWidget(saveDetails);
+  section.addWidget(saveDetails);
+
+  return section;
+
 
 }
 

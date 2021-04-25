@@ -19,15 +19,9 @@ function clearSavedData(e) {
 
   PropertiesService.getUserProperties().deleteAllProperties();
 
-  // Determine if they're looking at Drive or any other app
-  let navigation;
-  if (e.commonEventObject.hostApp === "DRIVE") {
-    navigation = CardService.newNavigation()
-      .updateCard(buildDriveHomePage(e));
-  } else {
-    navigation = CardService.newNavigation()
-      .updateCard(buildCommonHomePage(e));
-  }
+  // Create the navigation
+  const navigation = CardService.newNavigation()
+    .updateCard(buildDriveHomePage(e));
 
   // Build and return an ActionResponse
   return CardService.newActionResponseBuilder()
@@ -96,12 +90,11 @@ function getIdFrom(url) {
 
 /**
  * Processes the form submission from the Drive sidebar.
- * This will download the ledger, save it as requested, and then open
- * it in a new tab.
+ * This will download the ledger, save it as requested, and then return
+ * the homepage with a result message.
  *
  * @param {eventObject} e The event object.
- * @returns {ActionResponse} The response, either a link that opens in
- * a new tab or an error notification.
+ * @returns {Card} The homepage card
  */
 function processDriveSidebarForm(e) {
 
@@ -116,7 +109,8 @@ function processDriveSidebarForm(e) {
     pdfBlob = result[1];
   } else {
     // If there was an error then stop here
-    return buildNotification(result[1]);
+    PropertiesService.getUserProperties().setProperty("resultMessage", result[1]);
+    return buildDriveHomePage(e);
   }
 
   // Upload it to Drive
@@ -129,20 +123,9 @@ function processDriveSidebarForm(e) {
   }
   result = saveToDrive(pdfBlob, currentFile.id, folder, rename);
 
-  // Open the newly-uploaded ledger
-  if (result[0] === true) {
-    const openLink = CardService.newOpenLink()
-      .setUrl(result[1])
-      .setOpenAs(CardService.OpenAs.FULL_SIZE)
-      .setOnClose(CardService.OnClose.NOTHING);
-    return CardService.newActionResponseBuilder()
-      .setOpenLink(openLink)
-      .build();
-
-  } else {
-    // Otherwise just notify of the error
-    return buildNotification(result[1]);
-  }
+  // Return the result
+  PropertiesService.getUserProperties().setProperty("resultMessage", result[1]);
+  return buildDriveHomePage(e);
 
 }
 

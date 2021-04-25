@@ -15,18 +15,29 @@
  * Blob.
  *
  * @param {eventObject.formInput} formData The details from the form.
- * @returns {(Boolean|Blob)[]|(Boolean|String)[]} [success, result]
+ * @returns {(boolean|Blob)[]|(boolean|String)[]} [success, result]
  * where success is true if successful, and result is either the Blob
- * or a string with an error message.
+ * or a String with an error message.
  */
 function downloadLedger(formData) {
 
   const SUBGROUP_ID = 0;
   const REPORT_ID = 30;
 
+  // Get the email and password
+  let email;
+  let password;
+  if (formData.email === undefined || formData.password === undefined) {
+    email = getUserProperties().email;
+    password = getUserProperties().password;
+  } else {
+    email = formData.email;
+    password = formData.password;
+  }
+
   // Prepare the URL, headers, and body
   const url = "https://service.expense365.com/ws/rest/eXpense365/RequestDocument";
-  const auth = "Basic " + Utilities.base64Encode(formData.email + ":" + formData.password);
+  const auth = "Basic " + Utilities.base64Encode(email + ":" + password);
   const headers = {
     "User-Agent": "eXpense365|1.6.1|Google Pixel XL|Android|10|en_GB",
     "Authorization": auth,
@@ -61,13 +72,14 @@ function downloadLedger(formData) {
     // 401 means that they failed to authenticate
   } else if (status === 401) {
     Logger.log("401: User entered incorrect email and/or password");
-    return [false, "Oops! Looks like you entered the wrong email address and/or password."];
+    PropertiesService.getUserProperties().deleteProperty("email").deleteProperty("password");
+    return [false, `<font color="#ff0000"><b>Uh oh!</b><br>Looks like you entered the wrong email address and/or password.</font>`];
 
     // Some other error occurred
   } else {
     Logger.log(`There was a ${status} error fetching ${url}.`);
     Logger.log(responseText);
-    return [false, `There was a ${status} error fetching the ledger. The server returned: ${responseText}`];
+    return [false, `<font color="#ff0000"><b>Uh oh!</b><br>There was a ${status} error fetching the ledger. The server returned: ${responseText}</font>`];
   }
 
 }
@@ -81,8 +93,8 @@ function downloadLedger(formData) {
  * @param {String} id The ID of either the target folder or PDF.
  * @param {Boolean} folder true if the ID is a folder.
  * @param {Boolean} rename true if the PDF should be renamed.
- * @returns {(Boolean|String)[]|(Boolean|Exception)[]} [success, result]
- * where success is true if successful, and result is either the string
+ * @returns {(boolean|String)[]|(boolean|Error)[]} [success, result]
+ * where success is true if successful, and result is either the String
  * URL to the file or the Exception.
  */
 function saveToDrive(pdfBlob, id, folder = false, rename = false) {
@@ -101,9 +113,9 @@ function saveToDrive(pdfBlob, id, folder = false, rename = false) {
       file = Drive.Files.insert(file, pdfBlob);
 
       // Set the parent folder
-      Drive.Files.patch(file, fileId, {"addParents": id});
+      let newFile = Drive.Files.patch(file, fileId, {"addParents": id});
 
-      return [true, file.alternateLink];
+      return [true, `<font color="#008000"><b>Success!</b><br></font><a href="${newFile.alternateLink}">Open ${newFile.title}.</a>`];
 
       // Save it to the existing PDF file
     } else {
@@ -120,7 +132,7 @@ function saveToDrive(pdfBlob, id, folder = false, rename = false) {
         Drive.Files.patch(newFile, newFile.id);
       }
 
-      return [true, newFile.alternateLink];
+      return [true, `<font color="#008000"><b>Success!</b><br></font><a href="${newFile.alternateLink}">Open ${newFile.title}.</a>`];
 
     }
 
