@@ -271,10 +271,11 @@ function compareLedgers(newSheet, oldSheet, colourCountdown, newRowColour, newLe
  * @param {Sheet} thisSheet the sheet to copy.
  * @param {Spreadsheet} destSpreadsheet the destination spreadsheet to copy to.
  * @param {Sheet} destSpreadsheet the destination sheet to overwrite, or null.
- * @param {String|Sheet} newSheet the name of the new sheet or the sheet to
+ * @param {String|Sheet} newSheet the name of the new sheet or the sheet to.
+ * @param {boolean} protect whether to add the warning protection.
  * overwrite. If the former then with {{datetime}} as the date and time.
  */
-function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
+function copyToLedger(thisSheet, destSpreadsheet, newSheet, protect = true) {
 
   // Test if newSheet is a sheet or a string
   let isNewSheetASheet;
@@ -288,13 +289,12 @@ function copyToLedger(thisSheet, destSpreadsheet, newSheet) {
   // If they gave a sheet then overwrite it
   if (isNewSheetASheet) {
 
-    // Get the name and protections
-    const newSheetProtections = newSheet.getProtections(SpreadsheetApp.ProtectionType.SHEET)[0];
+    // Get the name
     const newSheetName = newSheet.getName();
 
-    // Copy it, and set the same protections
+    // Copy it and set the protections if asked
     const copiedSheet = thisSheet.copyTo(destSpreadsheet);
-    newSheetProtections.setRange(copiedSheet.getRange(`1:${copiedSheet.getMaxRows()}`));
+    copiedSheet.protect().setWarningOnly(protect);
 
     // Unprotect and delete the old sheet
     newSheet.protect().remove();

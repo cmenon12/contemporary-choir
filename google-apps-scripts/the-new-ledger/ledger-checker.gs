@@ -52,7 +52,7 @@ function checkForNewTotals(sheetName, compareSheetId, compareSheetName) {
 
   // If there is a difference then find the new entries and return the Ledger
   Logger.log("There is a difference in the total income and/or expenditure!");
-  ledger = compareLedgers(newSheet, oldSheet, "orange", false, ledger);
+  ledger = compareLedgers(newSheet, oldSheet, false, "orange", ledger);
   return JSON.stringify(ledger);
 
 }

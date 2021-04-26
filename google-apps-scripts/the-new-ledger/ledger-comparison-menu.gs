@@ -54,7 +54,7 @@ function copyToLedgerMenu() {
 
     const compareSpreadsheet = SpreadsheetApp.openByUrl(getUserProperties().sheetURL);
 
-    if (getUserProperties().copyNewSheetName === "") {
+    if (getUserProperties().copyNewSheetName === "" || getUserProperties().copyNewSheetName === undefined) {
       copyToLedger(SpreadsheetApp.getActiveSheet(),
         compareSpreadsheet,
         compareSpreadsheet.getSheetByName(getUserProperties().sheetName));
@@ -65,7 +65,7 @@ function copyToLedgerMenu() {
         getUserProperties().copyNewSheetName);
     }
 
-    SpreadsheetApp.getActiveSpreadsheet().toast("Formatting complete!");
+    SpreadsheetApp.getActiveSpreadsheet().toast("Copying complete!");
 
   } else {
     SpreadsheetApp.getActiveSpreadsheet().toast("You need to set your preferences in the add-on first.");
