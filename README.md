@@ -9,7 +9,7 @@ This repository currently contains scripts that I've written to automatially dow
 *Icon made by [photo3idea_studio](https://www.flaticon.com/authors/photo3idea-studio)
 from [www.flaticon.com](https://www.flaticon.com/).*
 
-[![GitHub issues](https://img.shields.io/github/issues/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/issues)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4725442.svg)](https://doi.org/10.5281/zenodo.4725442)
 [![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
 
 ## You can find instructions for getting started in [`INSTRUCTIONS.md`](INSTRUCTIONS.md).
