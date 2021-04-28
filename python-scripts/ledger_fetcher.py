@@ -827,12 +827,12 @@ def push_url(title: str, url: str, config: dict):
             if str(config["device"]).lower() == "false":
                 pb.get_device(str(config["device"])).push_link(title, url)
                 LOGGER.info("Pushed URL %s with title %s to all devices.",
-                            (url, title))
+                            url, title)
                 print("The URL has been successfully pushed to all devices.")
             else:
                 pb.push_link(title, url)
                 LOGGER.info("Pushed URL %s with title %s to device %s.",
-                            (url, title, config["device"]))
+                            url, title, config["device"])
                 print("The URL has been successfully pushed to %s." %
                       config["device"])
         except InvalidKeyError:
