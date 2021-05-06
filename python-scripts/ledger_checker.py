@@ -298,7 +298,9 @@ def send_success_email(config: configparser.SectionProxy,
     # Prepare the email
     if old_ledger is not None:
         old_timestamp = old_ledger.get_timestamp()
-        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp.replace(tzinfo=None)),
+        new_timestamp = new_ledger.get_timestamp()
+        last_check = " since the last check %s on %s" % (timeago.format(old_timestamp.replace(tzinfo=None),
+                                                                        new_timestamp.replace(tzinfo=None)),
                                                          old_timestamp.strftime("%A %d %B %Y at %H:%M:%S"))
         ledger_plurality = "s"
     else:
