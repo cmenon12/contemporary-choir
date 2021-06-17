@@ -2,7 +2,7 @@
 
 As the Treasurer of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've started writing scripts to help automate some tasks and ultimately make my life easier. In addition, I've also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I've been able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. 
 
-This repository currently contains scripts that I've written to automatially download and process our society ledger, and notify me of any new changes via email. It's also got some custom HTML that's used on the website, as well as a plugin that I've tweaked myself for our website.
+This repository currently contains scripts that I've written to automatically download and process our society ledger, and notify me of any new changes via email. It's also got some custom HTML that's used on the website, as well as a plugin that I've tweaked myself for our website.
 
 *Please note that this repository is managed by me personally as an individual, and not by Contemporary Choir.*
 
@@ -59,7 +59,7 @@ This contains code that is no longer actively used, but may be of use in the fut
 [`requirements.txt`](python-scripts/requirements.txt).
 
 #### Classes
-* **`PDFToXLSXConverter`** represents an online PDF-to-XLSX converter. It currently supports [pdftoexcel.com](pdftoexcel.com) and [pdftoexcelconverter.net](pdftoexcelconverter.net), both of which are very similar. A converter is chosen upon instantiation, either randomly or by the user. It includes methods to upload the PDF, check the conversion status, and download the resulting XLSX file.
+* **`PDFToXLSXConverter`** represents an online PDF-to-XLSX converter. It currently supports [pdftoexcel.com](https://www.pdftoexcel.com/) and [pdftoexcelconverter.net](https://www.pdftoexcelconverter.net/), both of which are very similar. A converter is chosen upon instantiation, either randomly or by the user. It includes methods to upload the PDF, check the conversion status, and download the resulting XLSX file.
 * **`ConversionTimeoutError`** and **`ConversionRejectedError`** are both exceptions used by `PDFToXLSXConverter`.
 
 

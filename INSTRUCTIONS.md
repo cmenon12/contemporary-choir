@@ -43,7 +43,7 @@ Additionally, for [`ledger_checker.py`](python-scripts/ledger_checker.py):
 	      2. The ID of this Google Sheet file should be added to the config under `compare_spreadsheet_id`, and the name of the sheet (the specific sheet within the spreadsheet, not the spreadsheet file itself) added under `compare_sheet_name`.
     2. You can use the same values as in `[ledger_fetcher]` where duplicates exist. 
 
-You can run either of them from a terminal window within the [`python-scripts`](python-scripts) folder using `python ledger_fetcher.py` or `python_checker.py`. The first time you do, you'll be asked to authorise access to your Google Account. You can safely skip past the `Google hasn’t verified this app` warning screen, because you created the app in step 4, so this isn't a problem.
+You can run either of them from a terminal window within the [`python-scripts`](python-scripts) folder using `python ledger_fetcher.py` or `python_checker.py`. The first time you do, you'll be asked to authorise access to your Google Account. You can safely skip past the `Google hasn’t verified this app` warning screen, because you created the app in step 6, so this isn't a problem.
 
 
 ## Google Apps Scripts
@@ -59,7 +59,7 @@ To use the scripts in [`google-apps-scripts/the-new-ledger`](google-apps-scripts
 
 To use the add-on and associated scripts:
 1. Open it, click `AUTHORISE ACCESS`, and grant the requested permissions.
-   1. You can safely skip past the `Google hasn’t verified this app` warning screen, because you created the app in step 4 above, so this isn't a problem.
+   1. You can safely skip past the `Google hasn’t verified this app` warning screen, because you created the app in step 1 above, so this isn't a problem.
 2. Enter the URL of the spreadsheet that you want to compare with, and click `VALIDATE URL`.
    1. If it's valid, you'll be asked to select a specific sheet from that spreadsheet.
 3. Fill in the other preferences, and click `SAVE`.
@@ -80,7 +80,7 @@ To use the scripts in [`google-apps-scripts/society-ledger-downloader`](google-a
 
 To use the add-on and associated scripts:
 1. Open it, click `AUTHORISE ACCESS`, and grant the requested permissions.
-   1. You can safely skip past the `Google hasn’t verified this app` warning screen, because you created the app in step 4 above (for the Python scripts), so this isn't a problem.
+   1. You can safely skip past the `Google hasn’t verified this app` warning screen, because you created the app in step 1 above (for the Python scripts), so this isn't a problem.
 
 You can now either:
 * Select a folder to save the ledger to it. 
@@ -90,4 +90,4 @@ You can now either:
    * The new PDF ledger will be saved as a new version of the file - previous versions can be accessed by right-clicking the file and selecting `Manage versions`.
    * You can choose whether to rename the file or not.
    * You'll need to enter the society group ID and your eXpense365 credentials.
-   * You'll also need to authorise access to that specific folder to allow the ledger to be saved to it.
+   * You'll also need to authorise access to that specific file to allow it to be updated.
