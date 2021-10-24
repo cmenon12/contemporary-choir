@@ -48,7 +48,7 @@ from typing import Optional
 import html2text
 import timeago
 from babel.numbers import format_currency
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, Template
 
 from custom_exceptions import AppsScriptApiError
 from ledger_fetcher import Ledger, CustomEncoder, authorize
@@ -251,20 +251,19 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
             format_currency(changes["grandTotal"][item], "GBP", locale="en_GB")
 
     # Render the template
-    root = os.path.dirname(os.path.abspath(__file__))
-    env = Environment(loader=FileSystemLoader(root))
-    template = env.get_template("email-template.html")
-    html = template.render(changes=changes,
-                           sheet_url=sheet_url,
-                           pdf_url=pdf_url,
-                           last_check=last_check,
-                           ledger_plurality=ledger_plurality)
+    with open("email-template.html") as file:
+        template = Template(file.read())
+        html = template.render(changes=changes,
+                               sheet_url=sheet_url,
+                               pdf_url=pdf_url,
+                               last_check=last_check,
+                               ledger_plurality=ledger_plurality)
 
-    # Create the plain-text version of the message
-    text_maker = html2text.HTML2Text()
-    text_maker.ignore_links = True
-    text_maker.bypass_tables = False
-    text = text_maker.handle(html)
+        # Create the plain-text version of the message
+        text_maker = html2text.HTML2Text()
+        text_maker.ignore_links = True
+        text_maker.bypass_tables = False
+        text = text_maker.handle(html)
     LOGGER.info("Email HTML and plain-text created successfully.")
 
     return text, html

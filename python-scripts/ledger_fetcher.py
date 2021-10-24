@@ -55,6 +55,9 @@ import webbrowser
 from datetime import datetime
 from typing import Optional, Union
 
+# noinspection PyUnresolvedReferences
+import pyexcel_xlsx
+
 import camelot
 import pyperclip
 import requests
@@ -144,7 +147,7 @@ class Ledger:
                                 "UserGroupID": int(expense365["group_id"]),
                                 "SubGroupID": int(expense365["subgroup_id"])}
         self.filename_prefix = config["filename_prefix"]
-        self.dir_name = config["dir_name"]
+        self.dir_name = os.path.expanduser(config["dir_name"])
         self.pushbullet = {"access_token": config["pushbullet_access_token"],
                            "device": config["pushbullet_device"]}
         self.pdf_filepath = None
