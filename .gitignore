@@ -140,4 +140,6 @@ credentials.json
 python-scripts/credentials.json
 python-scripts/token.pickle
 python-scripts/ledger_checker.pickle
+python-scripts/ledger_checker_development.pickle
 python-scripts/*.log
+python-scripts/society-badges-*

@@ -31,14 +31,18 @@ def main():
         csv_data.append(get_badges_data(session, name, url))
 
     # Save to a CSV
-    with open(f"society-badges-{datetime.now().isoformat().replace(':', '_')}.csv", "w", encoding="UTF8",
-              newline="") as file:
+    filename = f"society-badges-{datetime.now().isoformat().replace(':', '_')}.csv"
+    with open(filename, "w", encoding="UTF8", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(["Name", "URL"] + ALL_BADGES + ["Total"])
         writer.writerows(csv_data)
 
+    print(f"Saved the results to {filename}.")
+
 
 def get_badges_data(session: requests.Session, society_name: str, society_url: str) -> list:
+    """Get the badge data for the society."""
+
     # Download it
     badges_got = []
     page_response = session.get(society_url)
