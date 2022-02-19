@@ -1,11 +1,13 @@
 appJar
 Babel
+bs4
 camelot-py
 func-timeout
 google_api_python_client
 google_auth_oauthlib
 html2text
 Jinja2
+lxml
 opencv-python
 protobuf
 pushbullet.py
