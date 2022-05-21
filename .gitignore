@@ -137,9 +137,9 @@ config-development.ini
 cURL Requests.txt
 runit.py
 credentials.json
-python-scripts/credentials.json
-python-scripts/token.pickle
-python-scripts/ledger_checker.pickle
-python-scripts/ledger_checker_development.pickle
+society-ledger-manager/python-scripts/credentials.json
+society-ledger-manager/python-scripts/token.pickle
+society-ledger-manager/python-scripts/ledger_checker.pickle
+society-ledger-manager/python-scripts/ledger_checker_development.pickle
 python-scripts/*.log
-python-scripts/society-badges-*
+society-ledger-manager/python-scripts/society-badges-*
