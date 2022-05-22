@@ -1,3 +1,13 @@
+/*
+  =============================================================================
+  Project Page: https://github.com/cmenon12/contemporary-choir
+  Copyright:    (c) 2022 by Christopher Menon
+  License:      GNU General Public License, version 3 (GPL-3.0)
+                http://www.opensource.org/licenses/gpl-3.0.html
+  =============================================================================
+ */
+
+
 /**
  * Get the event categories and colours in an object.
  * The keys are the category names; the values are the colour numbers.
@@ -142,14 +152,14 @@ function compareEvents(calEvent, sheetEventRow, sheetEventCol, category) {
 /**
  * Main function, updates Google Calendar with any changes.
  */
-function checkSheet() {
+function checkSheet(startRow = 3) {
 
   const categories = getCategories()
   const categories_names = Object.keys(getCategories())
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
 
   // Iterate over each date (row)
-  for (let i = 3; i <= sheet.getLastRow(); i++) {
+  for (let i = startRow; i <= sheet.getLastRow(); i++) {
     let dateRange = sheet.getRange(i, 2, 1, sheet.getLastColumn() - 1);
     let sheetEvents = dateRange.getValues()[0]
     let calEvents = getEventsOnDate(dateRange.getValue());
@@ -162,7 +172,7 @@ function checkSheet() {
       if (calEvents[currentCategory] === undefined && sheetEvents[j + 1] !== "") {
         // Create a new event from the cell
         let event = createEventFromCell(i, j + 3, currentCategory, categories[currentCategory])
-        console.log(`Created ${currentCategory} event on ${event.getAllDayStartDate()}.`)
+        console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
 
         // If there is a calendar event and a sheets event
       } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] !== "") {
@@ -170,15 +180,15 @@ function checkSheet() {
         if (compareEvents(calEvents[currentCategory], i, j + 3, currentCategory) === false) {
           calEvents[currentCategory].deleteEvent()
           let event = createEventFromCell(i, j + 3, currentCategory, categories[currentCategory])
-          console.log(`Replaced ${currentCategory} event on ${event.getAllDayStartDate()}.`)
+          console.log(`Replaced "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         } else {
-          console.log(`Unchanged ${currentCategory} event on ${calEvents[currentCategory].getAllDayStartDate()}.`)
+          console.log(`Unchanged "${calEvents[currentCategory].getTitle()}" event on ${calEvents[currentCategory].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         }
 
         // If there is a calendar event but no sheets event
       } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] === "") {
         // Delete the event
-        console.log(`Deleted ${currentCategory} event on ${calEvents[currentCategory].getAllDayStartDate()}.`)
+        console.log(`Deleted "${calEvents[currentCategory].getTitle()}" event on ${calEvents[currentCategory].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         calEvents[currentCategory].deleteEvent()
       }
     }
@@ -209,11 +219,42 @@ function hidePastRows() {
 
 
 /**
+ * Run checkSheet() with all rows.
+ */
+function checkSheetAll() {
+  checkSheet()
+}
+
+
+/**
+ * Run checkSheet() with the rows from today onwards only.
+ * We include the 6 before as these might not be hidden.
+ */
+function checkSheetNoPast() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
+
+  const now = new Date();
+  for (let i = 3; i < sheet.getLastRow() - 1; i++) {
+    if (sheet.getRange(i, 2).getValue().getTime() >= now.getTime()) {
+      if (i-7 <= 3) {
+        checkSheet(3)
+      } else {
+        checkSheet(i-7)
+      }
+      break;
+    }
+  }
+}
+
+
+/**
  * Adds the Scripts menu to the menu bar at the top.
  */
 function onOpen() {
   const menu = SpreadsheetApp.getUi().createMenu("Scripts");
-  menu.addItem("Update Google Calendar", "checkSheet");
+  menu.addItem("Update Google Calendar (all)", "checkSheetAll");
+  menu.addItem("Update Google Calendar (today onwards only)", "checkSheetNoPast");
+  menu.addSeparator()
   menu.addItem("Hide past rows", "hidePastRows")
   menu.addToUi();
 }

@@ -12,6 +12,13 @@ from [www.flaticon.com](https://www.flaticon.com/).*
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4725442.svg)](https://doi.org/10.5281/zenodo.4725442)
 [![GitHub license](https://img.shields.io/github/license/cmenon12/contemporary-choir?style=flat)](https://github.com/cmenon12/contemporary-choir/blob/master/LICENSE)
 
+
+## Calendar
+This is for Google Sheets, and should therefore be created in a [bound Apps Script project](https://developers.google.com/apps-script/guides/bound). Please get in touch if you want the Google Sheets template.
+
+**[`calendar/calendar.gs`](calendar/calendar.gs)** keeps a Google Calendar up to date with any events added to a spreadsheet calendar. The spreadsheet has ascending dates in column B from row 3, and categories in row 1. Events are added in the grid and these are then added to Google Calendar as all day events, complete with a link to the cell and any links or notes added to the cell. Changes in Sheets are applied to Calendar (but not the other way round).
+
+
 ## Fundraising
 Both of these are for Google Sheets, and should therefore be created in a [bound Apps Script project](https://developers.google.com/apps-script/guides/bound).
 
