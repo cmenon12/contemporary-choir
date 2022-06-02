@@ -199,7 +199,7 @@ function checkSheet(startRow = 3) {
 
 
 /**
- * Hides rows in the past.
+ * Hides rows in the past up to (and excluding) the most recent Monday.
  */
 function hidePastRows() {
 
@@ -207,9 +207,11 @@ function hidePastRows() {
 
   // Hide rows in the past
   sheet.showRows(1, sheet.getLastRow());
-  const now = new Date();
+  const today = new Date();
+  const first = today.getDate() - today.getDay() + 1;
+  const monday = new Date(today.setDate(first));
   for (let i = 3; i < sheet.getLastRow() - 1; i++) {
-    if (sheet.getRange(i, 2).getValue().getTime() >= now.getTime()) {
+    if (sheet.getRange(i, 2).getValue().getTime() >= monday.getTime()) {
       sheet.hideRows(2, i - 3)
       break;
     }
