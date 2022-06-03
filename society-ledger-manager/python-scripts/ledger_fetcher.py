@@ -914,7 +914,7 @@ if __name__ == "__main__":
     # Prepare the log
     logging.basicConfig(filename="ledger_fetcher.log",
                         filemode="a",
-                        format="%(asctime)s | %(levelname)s : %(message)s",
+                        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
                         level=logging.INFO)
     LOGGER = logging.getLogger(__name__)
 
