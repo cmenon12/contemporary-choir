@@ -140,11 +140,10 @@
                                             {{ changes["societyName"] }}{{ last_check }}. These are
                                             listed
                                             below.</p>
-
                                         {# For each cost code #}
                                         {# Create the table header #}
                                         {% for name, value in changes["costCodes"].items() %}
-                                        <h3 style="margin-bottom: 5px">{{ name }}</h3>
+                                        <br><h3 style="margin-bottom: 5px">{{ name }}</h3>
                                         <table align="left"
                                                bgcolor="#FFFFFF"
                                                class="blueTable"

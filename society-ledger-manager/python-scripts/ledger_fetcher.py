@@ -729,12 +729,15 @@ def authorize(pushbullet: dict,
             # Tell the user to go and authorize it themselves
             flow = InstalledAppFlow.from_client_secrets_file(
                 CLIENT_SECRETS_FILE, SCOPES,
-                redirect_uri="urn:ietf:wg:oauth:2.0:oob")
+                redirect_uri="http://localhost:1/")
             auth_url, _ = flow.authorization_url(prompt="consent")
             print("Please visit this URL to authorize this application: %s" % auth_url)
             push_url("Google Authorization URL", auth_url, pushbullet)
-            pyperclip.copy(auth_url)
-            print("The URL has been copied to the clipboard.")
+            try:
+                pyperclip.copy(auth_url)
+                print("The URL has been copied to the clipboard.")
+            except pyperclip.PyperclipException:
+                pass
 
             # Get the authorization code
             code = input("Enter the authorization code: ")
