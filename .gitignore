@@ -128,18 +128,29 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Other excluded files
+# Sensitive files
 config.ini
 config-development.ini
+credentials.json
+*.pickle
+.clasp.json
+python-scripts/*.log
+
+# Build & exe files
+society-ledger-manager/build_*
+society-ledger-manager/installer*
+society-ledger-manager/source*
+index.rst
+conf.py
+make.bat
+Makefile
+pyinstaller.md
+*_build/
+
+# Other excluded files
+society-ledger-manager/python-scripts/society-badges-*
 *.ps1
 *.lnk
 /.idea
 cURL Requests.txt
 runit.py
-credentials.json
-society-ledger-manager/python-scripts/credentials.json
-society-ledger-manager/python-scripts/token.pickle
-society-ledger-manager/python-scripts/ledger_checker.pickle
-society-ledger-manager/python-scripts/ledger_checker_development.pickle
-python-scripts/*.log
-society-ledger-manager/python-scripts/society-badges-*
