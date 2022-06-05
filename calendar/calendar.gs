@@ -34,25 +34,33 @@ function getCategories() {
  * the first will be kept (and the rest deleted).
  * Events with invalid categories are deleted.
  *
+ * @param {Array.<CalendarApp.CalendarEvent>} allEvents all the fetched events
  * @param {Date} dateObj the date to get events on
  * @returns {Object} an object of the events by category
  */
-function getEventsOnDate(dateObj) {
+function getEventsOnDate(allEvents, dateObj) {
 
   const categories_names = Object.keys(getCategories())
-  let calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID)
-  let events = calendar.getEventsForDay(dateObj)
   let eventsObj = {}
 
-  // For each event on this date
-  for (let i = 0; i < events.length; i++) {
-    let category = events[i].getTag("category")
+  // For each event
+  for (let i = 0; i < allEvents.length; i++) {
 
-    // If the category is valid and we don't have one for that category
-    if (categories_names.includes(category) && eventsObj[category] === undefined) {
-      eventsObj[category] = events[i];
-    } else {
-      events[i].deleteEvent();
+    // If it's an all day event on the right day
+    if (allEvents[i].isAllDayEvent() && allEvents[i].getAllDayStartDate().getTime() === dateObj.getTime()) {
+
+      let category = allEvents[i].getTag("category")
+
+      // If the category is valid and we don't have one for that category
+      if (categories_names.includes(category) && eventsObj[category] === undefined) {
+        eventsObj[category] = allEvents[i];
+      } else {
+        allEvents[i].deleteEvent();
+      }
+
+    // Delete it if it's not an all day event
+    } else if (!allEvents[i].isAllDayEvent()) {
+      allEvents[i].deleteEvent();
     }
   }
 
@@ -158,11 +166,19 @@ function checkSheet(startRow = 3) {
   const categories_names = Object.keys(getCategories())
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
 
-  // Iterate over each date (row)
-  for (let i = startRow; i <= sheet.getLastRow(); i++) {
-    let dateRange = sheet.getRange(i, 2, 1, sheet.getLastColumn() - 1);
-    let sheetEvents = dateRange.getValues()[0]
-    let calEvents = getEventsOnDate(dateRange.getValue());
+  // Prefetch data
+  const allDatesRange = sheet.getRange(startRow, 2, sheet.getLastRow()-startRow+1, sheet.getLastColumn() - 1).getValues()
+  const startDate = allDatesRange[0][0]
+  let endDate = allDatesRange[allDatesRange.length - 1][0]
+  endDate.setDate(endDate.getDate()+1)
+  console.log(`Fetching events from ${startDate} to ${endDate}.`)
+  const calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID)
+  const allCalEvents = calendar.getEvents(startDate, endDate)
+
+  // Iterate over each row
+  for (let i = 0; i < allDatesRange.length; i++) {
+    let sheetEvents = allDatesRange[i]
+    let calEvents = getEventsOnDate(allCalEvents, allDatesRange[i][0]);
 
     // Iterate over each category
     for (let j = 0; j < categories_names.length; j++) {
@@ -171,15 +187,15 @@ function checkSheet(startRow = 3) {
       // If there is no calendar event but there is a sheets event
       if (calEvents[currentCategory] === undefined && sheetEvents[j + 1] !== "") {
         // Create a new event from the cell
-        let event = createEventFromCell(i, j + 3, currentCategory, categories[currentCategory])
+        let event = createEventFromCell(i+startRow, j + 3, currentCategory, categories[currentCategory])
         console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
 
         // If there is a calendar event and a sheets event
       } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] !== "") {
         // Compare them; delete and replace if different
-        if (compareEvents(calEvents[currentCategory], i, j + 3, currentCategory) === false) {
+        if (compareEvents(calEvents[currentCategory], i+startRow, j + 3, currentCategory) === false) {
           calEvents[currentCategory].deleteEvent()
-          let event = createEventFromCell(i, j + 3, currentCategory, categories[currentCategory])
+          let event = createEventFromCell(i+startRow, j + 3, currentCategory, categories[currentCategory])
           console.log(`Replaced "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         } else {
           console.log(`Unchanged "${calEvents[currentCategory].getTitle()}" event on ${calEvents[currentCategory].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
