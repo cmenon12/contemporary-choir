@@ -18,7 +18,7 @@
 function getCategories() {
   let categories = {}
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
-  let range = sheet.getRange(1, 3, 1, sheet.getLastColumn() - 2);
+  const range = sheet.getRange(1, 3, 1, sheet.getLastColumn() - 2);
   for (let i = 0; i < range.getValues()[0].length; i++) {
     categories[range.getValues()[0][i]] = String(sheet.getRange(2, i + 3).getValue());
   }
@@ -34,25 +34,33 @@ function getCategories() {
  * the first will be kept (and the rest deleted).
  * Events with invalid categories are deleted.
  *
+ * @param {Array.<CalendarApp.CalendarEvent>} allEvents all the fetched events
  * @param {Date} dateObj the date to get events on
+ * @param {Array.<string>} categoriesNames the categories
  * @returns {Object} an object of the events by category
  */
-function getEventsOnDate(dateObj) {
+function getEventsOnDate(allEvents, dateObj, categoriesNames) {
 
-  const categories_names = Object.keys(getCategories())
-  let calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID)
-  let events = calendar.getEventsForDay(dateObj)
   let eventsObj = {}
 
-  // For each event on this date
-  for (let i = 0; i < events.length; i++) {
-    let category = events[i].getTag("category")
+  // For each event
+  for (let i = 0; i < allEvents.length; i++) {
 
-    // If the category is valid and we don't have one for that category
-    if (categories_names.includes(category) && eventsObj[category] === undefined) {
-      eventsObj[category] = events[i];
-    } else {
-      events[i].deleteEvent();
+    // If it's an all day event on the right day
+    if (allEvents[i].isAllDayEvent() && allEvents[i].getAllDayStartDate().getTime() === dateObj.getTime()) {
+
+      const category = allEvents[i].getTag("category")
+
+      // If the category is valid and we don't have one for that category
+      if (categoriesNames.includes(category) && eventsObj[category] === undefined) {
+        eventsObj[category] = allEvents[i];
+      } else {
+        allEvents[i].deleteEvent();
+      }
+
+    // Delete it if it's not an all day event
+    } else if (!allEvents[i].isAllDayEvent()) {
+      allEvents[i].deleteEvent();
     }
   }
 
@@ -63,21 +71,23 @@ function getEventsOnDate(dateObj) {
 /**
  * Generate the event description for the given cell.
  *
- * @param {SpreadsheetApp.Range} eventRange the cell to use
+ * @param {string} cellNotation the A1 notation of the cell
+ * @param {SpreadsheetApp.RichTextValue} cellRtf the RTF of the cell
+ * @param {string} cellNote the cell note
  * @returns {string} the generated description
  */
-function generateDescription(eventRange) {
-  let description = `View the event in the ${SpreadsheetApp.getActiveSpreadsheet().getName()} spreadsheet at the link above (in cell ${eventRange.getA1Notation()}).`
+function generateDescription(cellNotation, cellRtf, cellNote) {
+  let description = `View the event in the ${SpreadsheetApp.getActiveSpreadsheet().getName()} spreadsheet at the link above (in cell ${cellNotation}).`
 
   // Add any URLs
   let urls = []
-  const rtfRuns = eventRange.getRichTextValue().getRuns()
+  const rtfRuns = cellRtf.getRuns()
   for (let i = 0; i < rtfRuns.length; i++) {
     if (rtfRuns[i].getLinkUrl() !== null) {
       urls.push(rtfRuns[i].getLinkUrl())
     }
   }
-  if (urls.length == 1) {
+  if (urls.length === 1) {
     description = description + `\n\nLINK: ${urls[0]}`
   } else if (urls.length > 1) {
     description = description + `\n\nLINKS:`
@@ -87,8 +97,8 @@ function generateDescription(eventRange) {
   }
 
   // Add the note if it's present
-  if (eventRange.getNote() != "") {
-    description = description + `\n\nNOTE: ${eventRange.getNote()}`
+  if (cellNote !== "") {
+    description = description + `\n\nNOTE: ${cellNote}`
   }
 
   return description
@@ -100,24 +110,23 @@ function generateDescription(eventRange) {
  *
  * Create an event from the cell in Google Calendar.
  *
- * @param {number} rowNum the row number of the cell
- * @param {number} colNum the column number of the cell
+ * @param {Date} eventDate the row number of the cell
+ * @param {string} cellValue the value of the cell
+ * @param {string} cellNotation the A1 notation of the cell
+ * @param {SpreadsheetApp.RichTextValue} cellRtf the RTF of the cell
+ * @param {string} cellNote the cell note
  * @param {string} category the category of the event
  * @param {string} colourStr the colour number of the event (disabled)
  * @returns {CalendarApp.CalendarEvent} the created event
  */
-function createEventFromCell(rowNum, colNum, category, colourStr) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
-  let calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID);
-
-  let date = sheet.getRange(rowNum, 2).getValue();
-  let eventRange = sheet.getRange(rowNum, colNum);
+function createEventFromCell(eventDate, cellValue, cellNotation, cellRtf, cellNote, category, colourStr) {
+  const calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID);
 
   // Create the event
-  let event = calendar.createAllDayEvent(`${eventRange.getValue()} [${category.toLowerCase()}]`, date)
+  const event = calendar.createAllDayEvent(`${cellValue} [${category.toLowerCase()}]`, eventDate)
   event.setTag("category", category)
-  event.setLocation(getSecrets().CELL_LINK_PREFIX + eventRange.getA1Notation().replace(/:/g, ''))
-  event.setDescription(generateDescription(eventRange))
+  event.setLocation(getSecrets().CELL_LINK_PREFIX + cellNotation.replace(/:/g, ''))
+  event.setDescription(generateDescription(cellNotation, cellRtf, cellNote))
   // event.setColor(colourStr)
 
   return event
@@ -131,21 +140,33 @@ function createEventFromCell(rowNum, colNum, category, colourStr) {
  * This compares by title and description.
  *
  * @param {CalendarApp.CalendarEvent} calEvent the calendar event
- * @param {number} sheetEventRow the row number of the cell
- * @param {number} sheetEventCol the column number of the cell
+ * @param {string} cellValue the value of the cell
+ * @param {string} cellNotation the A1 notation of the cell
+ * @param {SpreadsheetApp.RichTextValue} cellRtf the RTF of the cell
+ * @param {string} cellNote the cell note
+ * @param {string} category the category of the event
  * @returns {boolean} true if equal otherwise false
  */
-function compareEvents(calEvent, sheetEventRow, sheetEventCol, category) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
-  let sheetEventRange = sheet.getRange(sheetEventRow, sheetEventCol);
-
+function compareEvents(calEvent, cellValue, cellNotation, cellRtf, cellNote, category) {
   // False if the titles are different
-  if (calEvent.getTitle() !== `${sheetEventRange.getValue()} [${category.toLowerCase()}]`) return false;
+  if (calEvent.getTitle() !== `${cellValue} [${category.toLowerCase()}]`) return false;
 
-  // False if the descriptions are different
-  if (calEvent.getDescription() !== generateDescription(sheetEventRange)) return false;
+  // False if the descriptions are different, otherwise true
+  return calEvent.getDescription() === generateDescription(cellNotation, cellRtf, cellNote);
 
-  return true;
+
+}
+
+
+/**
+ * Get the A1 notation (e.g. B24) of the cell.
+ *
+ * @param rowNum {number} the row number, from 1
+ * @param colNum {number} the column number, from 1
+ * @returns {string} the A1 notation of the cell
+ */
+function getA1Notation(rowNum, colNum){
+  return `${String.fromCharCode("A".charCodeAt(0)+colNum-1)}${rowNum}`
 }
 
 
@@ -155,31 +176,42 @@ function compareEvents(calEvent, sheetEventRow, sheetEventCol, category) {
 function checkSheet(startRow = 3) {
 
   const categories = getCategories()
-  const categories_names = Object.keys(getCategories())
+  const categoriesNames = Object.keys(categories)
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
 
-  // Iterate over each date (row)
-  for (let i = startRow; i <= sheet.getLastRow(); i++) {
-    let dateRange = sheet.getRange(i, 2, 1, sheet.getLastColumn() - 1);
-    let sheetEvents = dateRange.getValues()[0]
-    let calEvents = getEventsOnDate(dateRange.getValue());
+  // Prefetch data
+  const allDatesRange = sheet.getRange(startRow, 2, sheet.getLastRow()-startRow+1, sheet.getLastColumn() - 1)
+  const allDatesValues = allDatesRange.getValues()
+  const allDatesRtfs = allDatesRange.getRichTextValues()
+  const allDatesNotes = allDatesRange.getNotes()
+  const startDate = allDatesValues[0][0]
+  let endDate = allDatesValues[allDatesValues.length - 1][0]
+  endDate.setDate(endDate.getDate()+1)
+  console.log(`Fetching events from ${startDate} to ${endDate}.`)
+  const calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID)
+  const allCalEvents = calendar.getEvents(startDate, endDate)
+
+  // Iterate over each row
+  for (let i = 0; i < allDatesValues.length; i++) {
+    const sheetEvents = allDatesValues[i]
+    const calEvents = getEventsOnDate(allCalEvents, allDatesValues[i][0], categoriesNames);
 
     // Iterate over each category
-    for (let j = 0; j < categories_names.length; j++) {
-      let currentCategory = categories_names[j]
+    for (let j = 0; j < categoriesNames.length; j++) {
+      const currentCategory = categoriesNames[j]
 
       // If there is no calendar event but there is a sheets event
       if (calEvents[currentCategory] === undefined && sheetEvents[j + 1] !== "") {
         // Create a new event from the cell
-        let event = createEventFromCell(i, j + 3, currentCategory, categories[currentCategory])
+        const event = createEventFromCell(allDatesValues[i][0], allDatesValues[i][j+1],getA1Notation(i+startRow, j+3), allDatesRtfs[i][j+1], allDatesNotes[i][j+1], currentCategory, categories[currentCategory])
         console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
 
         // If there is a calendar event and a sheets event
       } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] !== "") {
         // Compare them; delete and replace if different
-        if (compareEvents(calEvents[currentCategory], i, j + 3, currentCategory) === false) {
+        if (compareEvents(calEvents[currentCategory], allDatesValues[i][j+1],getA1Notation(i+startRow, j+3), allDatesRtfs[i][j+1], allDatesNotes[i][j+1], currentCategory) === false) {
           calEvents[currentCategory].deleteEvent()
-          let event = createEventFromCell(i, j + 3, currentCategory, categories[currentCategory])
+          const event = createEventFromCell(allDatesValues[i][0], allDatesValues[i][j+1],getA1Notation(i+startRow, j+3), allDatesRtfs[i][j+1], allDatesNotes[i][j+1], currentCategory, categories[currentCategory])
           console.log(`Replaced "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         } else {
           console.log(`Unchanged "${calEvents[currentCategory].getTitle()}" event on ${calEvents[currentCategory].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
