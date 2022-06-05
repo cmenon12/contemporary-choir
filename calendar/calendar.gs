@@ -36,11 +36,11 @@ function getCategories() {
  *
  * @param {Array.<CalendarApp.CalendarEvent>} allEvents all the fetched events
  * @param {Date} dateObj the date to get events on
+ * @param {Array.<string>} categoriesNames the categories
  * @returns {Object} an object of the events by category
  */
-function getEventsOnDate(allEvents, dateObj) {
+function getEventsOnDate(allEvents, dateObj, categoriesNames) {
 
-  const categories_names = Object.keys(getCategories())
   let eventsObj = {}
 
   // For each event
@@ -52,7 +52,7 @@ function getEventsOnDate(allEvents, dateObj) {
       let category = allEvents[i].getTag("category")
 
       // If the category is valid and we don't have one for that category
-      if (categories_names.includes(category) && eventsObj[category] === undefined) {
+      if (categoriesNames.includes(category) && eventsObj[category] === undefined) {
         eventsObj[category] = allEvents[i];
       } else {
         allEvents[i].deleteEvent();
@@ -163,7 +163,7 @@ function compareEvents(calEvent, sheetEventRow, sheetEventCol, category) {
 function checkSheet(startRow = 3) {
 
   const categories = getCategories()
-  const categories_names = Object.keys(getCategories())
+  const categoriesNames = Object.keys(categories)
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
 
   // Prefetch data
@@ -178,11 +178,11 @@ function checkSheet(startRow = 3) {
   // Iterate over each row
   for (let i = 0; i < allDatesRange.length; i++) {
     let sheetEvents = allDatesRange[i]
-    let calEvents = getEventsOnDate(allCalEvents, allDatesRange[i][0]);
+    let calEvents = getEventsOnDate(allCalEvents, allDatesRange[i][0], categoriesNames);
 
     // Iterate over each category
-    for (let j = 0; j < categories_names.length; j++) {
-      let currentCategory = categories_names[j]
+    for (let j = 0; j < categoriesNames.length; j++) {
+      let currentCategory = categoriesNames[j]
 
       // If there is no calendar event but there is a sheets event
       if (calEvents[currentCategory] === undefined && sheetEvents[j + 1] !== "") {
