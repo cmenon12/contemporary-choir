@@ -271,7 +271,8 @@ def prepare_email_body(changes: dict, sheet_url: str, pdf_url: str,
 
 def send_success_email(config: configparser.SectionProxy,
                        save_data: LedgerCheckerSaveFile, changes: dict,
-                       new_ledger: Ledger, old_ledger: Ledger) -> None:
+                       new_ledger: Ledger, old_ledger: Ledger,
+                       in_reply_to: bool) -> None:
     """Sends an email detailing the changes.
 
     :param config: the configuration for the email
@@ -284,6 +285,8 @@ def send_success_email(config: configparser.SectionProxy,
     :type new_ledger: Ledger
     :param old_ledger: the ledger just before these new changes
     :type old_ledger: Ledger
+    :param in_reply_to: whether to add this as a reply to the last one
+    :type in_reply_to: bool
     """
 
     message = MIMEMultipart("alternative")
@@ -291,7 +294,8 @@ def send_success_email(config: configparser.SectionProxy,
     message["To"] = config["to"]
     message["From"] = config["from"]
     if save_data.get_changes() is not None and \
-            changes["oldLedgerTimestamp"] == save_data.get_changes()["oldLedgerTimestamp"]:
+            changes["oldLedgerTimestamp"] == save_data.get_changes()["oldLedgerTimestamp"] and \
+            in_reply_to is True:
         message["In-Reply-To"] = save_data.get_success_email_id()
 
     # Prepare the email
@@ -484,6 +488,19 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     sheets_data = ledger.get_sheets_data()
     print("Ledger downloaded, converted, and uploaded successfully.")
 
+    # Get the old values of changes
+    old_changes = save_data.get_changes()
+
+    # Compare against the last changes ledger if asked to skip past changes
+    if old_changes is not None and config["include_past_changes"].lower() == "false":
+        params = [sheets_data["name"],
+                  save_data.get_changes_ledger().get_sheets_data()["spreadsheet_id"],
+                  f"{save_data.get_changes_ledger().get_sheets_data()['name']} auto"]
+    else:
+        params = [sheets_data["name"],
+                  config["compare_spreadsheet_id"],
+                  config["compare_sheet_name"]]
+
     # Connect to the Apps Script service and attempt to execute it
     socket.setdefaulttimeout(600)
     _, _, apps_script = authorize(pushbullet=ledger.pushbullet,
@@ -491,7 +508,7 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     print("Executing the Apps Script function (this may take some time)...")
     LOGGER.info("Starting the Apps Script function...")
     body = {"function": "checkForNewTotals",
-            "parameters": [sheets_data["name"], config["compare_spreadsheet_id"], config["compare_sheet_name"]]}
+            "parameters": params}
     response = apps_script.scripts().run(body=body,
                                          scriptId=config["deployment_id"]).execute()
 
@@ -515,9 +532,6 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
     LOGGER.info(changes)
     print("The Apps Script function executed successfully!")
     LOGGER.info("The Apps Script function executed successfully.")
-
-    # Get the old values of changes
-    old_changes = save_data.get_changes()
 
     # If there were no changes then do nothing
     if changes is False or changes.lower() == "false":
@@ -560,7 +574,8 @@ def check_ledger(save_data: LedgerCheckerSaveFile,
                                save_data=save_data,
                                changes=changes,
                                new_ledger=ledger,
-                               old_ledger=save_data.get_most_recent_ledger())
+                               old_ledger=save_data.get_most_recent_ledger(),
+                               in_reply_to=config["include_past_changes"].lower() == "true")
             print("Email sent successfully!")
             LOGGER.info("Hiding the old sheet...")
             if save_data.get_changes_ledger() is not None:
@@ -616,7 +631,7 @@ if __name__ == "__main__":
     # Prepare the log
     logging.basicConfig(filename="ledger_checker.log",
                         filemode="a",
-                        format="%(asctime)s | %(levelname)s : %(message)s",
+                        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
                         level=logging.INFO)
     LOGGER = logging.getLogger(__name__)
 
