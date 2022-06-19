@@ -40,7 +40,7 @@ function getEventsOnDate(allEvents, dateObj, categories) {
         allEvents[i].deleteEvent();
       }
 
-    // Delete it if it's not an all day event
+      // Delete it if it's not an all day event
     } else if (!allEvents[i].isAllDayEvent()) {
       allEvents[i].deleteEvent();
     }
@@ -145,8 +145,8 @@ function compareEvents(calEvent, cellValue, cellNotation, cellRtf, cellNote, cat
  * @param colNum {number} the column number, from 1
  * @returns {String} the A1 notation of the cell
  */
-function getA1Notation(rowNum, colNum){
-  return `${String.fromCharCode("A".charCodeAt(0)+colNum-1)}${rowNum}`
+function getA1Notation(rowNum, colNum) {
+  return `${String.fromCharCode("A".charCodeAt(0) + colNum - 1)}${rowNum}`
 }
 
 
@@ -159,13 +159,13 @@ function checkSheet(startRow = 2) {
   const categories = sheet.getRange(1, 3, 1, sheet.getLastColumn() - 2).getValues()[0]
 
   // Prefetch data
-  const allDatesRange = sheet.getRange(startRow, 2, sheet.getLastRow()-startRow+1, sheet.getLastColumn() - 1)
+  const allDatesRange = sheet.getRange(startRow, 2, sheet.getLastRow() - startRow + 1, sheet.getLastColumn() - 1)
   const allDatesValues = allDatesRange.getValues()
   const allDatesRtfs = allDatesRange.getRichTextValues()
   const allDatesNotes = allDatesRange.getNotes()
   const startDate = allDatesValues[0][0]
   let endDate = allDatesValues[allDatesValues.length - 1][0]
-  endDate.setDate(endDate.getDate()+1)
+  endDate.setDate(endDate.getDate() + 1)
   console.log(`Fetching events from ${startDate} to ${endDate}.`)
   const calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID)
   const allCalEvents = calendar.getEvents(startDate, endDate)
@@ -173,7 +173,7 @@ function checkSheet(startRow = 2) {
   // Iterate over each row
   for (let i = 0; i < allDatesValues.length; i++) {
     const sheetEvents = allDatesValues[i]
-    const calEvents = getEventsOnDate(allCalEvents, allDatesValues[i][0], categories);
+    const calEvents = getEventsOnDate(allCalEvents, sheetEvents[0], categories);
 
     // Iterate over each category
     for (let j = 0; j < categories.length; j++) {
@@ -284,10 +284,10 @@ function checkSheetNoPast() {
   const now = new Date();
   for (let i = 3; i < sheet.getLastRow() - 1; i++) {
     if (sheet.getRange(i, 2).getValue().getTime() >= now.getTime()) {
-      if (i-7 <= 3) {
+      if (i - 7 <= 3) {
         checkSheet(3)
       } else {
-        checkSheet(i-7)
+        checkSheet(i - 7)
       }
       break;
     }
