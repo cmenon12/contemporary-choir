@@ -143,7 +143,8 @@ function generateDescription(cellNotation, cellRtf, cellNote) {
  *
  * Create an event from the cell in Google Calendar.
  *
- * @param {Date} eventDate the row number of the cell
+ * @param {Date} eventDate the start date
+ * @param {Date} endDate the end date
  * @param {String} cellValue the value of the cell
  * @param {String} cellNotation the A1 notation of the cell
  * @param {SpreadsheetApp.RichTextValue} cellRtf the RTF of the cell
@@ -151,11 +152,11 @@ function generateDescription(cellNotation, cellRtf, cellNote) {
  * @param {String} category the category of the event
  * @returns {CalendarApp.CalendarEvent} the created event
  */
-function createEventFromCell(eventDate, cellValue, cellNotation, cellRtf, cellNote, category) {
+function createEventFromCell(eventDate, endDate, cellValue, cellNotation, cellRtf, cellNote, category) {
   const calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID);
 
   // Create the event
-  const event = calendar.createAllDayEvent(`${cellValue} [${category.toLowerCase()}]`, eventDate)
+  const event = calendar.createAllDayEvent(`${cellValue} [${category.toLowerCase()}]`, eventDate, endDate)
   event.setTag("category", category)
   event.setLocation(getSecrets().CELL_LINK_PREFIX + cellNotation.replace(/:/g, ''))
   event.setDescription(generateDescription(cellNotation, cellRtf, cellNote))
@@ -168,19 +169,23 @@ function createEventFromCell(eventDate, cellValue, cellNotation, cellRtf, cellNo
 /**
  * Compare the sheet and calendar event.
  *
- * This compares by title and description.
+ * This compares by title, end date, and description.
  *
  * @param {CalendarApp.CalendarEvent} calEvent the calendar event
  * @param {String} cellValue the value of the cell
  * @param {String} cellNotation the A1 notation of the cell
  * @param {SpreadsheetApp.RichTextValue} cellRtf the RTF of the cell
  * @param {String} cellNote the cell note
+ * @param {Date} cellEndDate the end date based on cell merges
  * @param {String} category the category of the event
  * @returns {boolean} true if equal otherwise false
  */
-function compareEvents(calEvent, cellValue, cellNotation, cellRtf, cellNote, category) {
+function compareEvents(calEvent, cellValue, cellNotation, cellRtf, cellNote, cellEndDate,  category, ) {
   // False if the titles are different
   if (calEvent.getTitle() !== `${cellValue} [${category.toLowerCase()}]`) return false;
+
+  // False if the end dates are different (ignore times)
+  if (calEvent.getEndTime().toLocaleDateString("en-GB") !== cellEndDate.toLocaleDateString("en-GB")) return false;
 
   // False if the descriptions are different, otherwise true
   return calEvent.getDescription() === generateDescription(cellNotation, cellRtf, cellNote);
