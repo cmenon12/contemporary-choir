@@ -254,7 +254,9 @@ function hidePastRows() {
   // Hide rows in the past
   sheet.showRows(1, sheet.getLastRow());
   const today = new Date();
-  const first = today.getDate() - today.getDay() + 1;
+  let daysToRemove;
+  today.getDay() === 0 ? (daysToRemove = 7) : (daysToRemove = today.getDay())   // Sunday fix
+  const first = today.getDate() - daysToRemove + 1;
   const monday = new Date(today.setDate(first));
   for (let i = 3; i < sheet.getLastRow() - 1; i++) {
     if (sheet.getRange(i, 2).getValue().getTime() >= monday.getTime()) {
