@@ -49,12 +49,12 @@ function getMergedEvents(allDatesRange, allDatesValues, categories, startRow) {
     const firstRowNum = mergedRanges[i].getRow()
     const lastRowNum = mergedRanges[i].getLastRow()
     const startDate = allDatesValues[firstRowNum-startRow][0]
-    const endDate = allDatesValues[lastRowNum-startRow][0]
+    const endDate = allDatesValues[lastRowNum-startRow][0].addDays(1)
 
     result[currentCategory][startDate] = endDate;
   }
 
-  console.log(result)
+  return result
 
 }
 
@@ -227,6 +227,7 @@ function checkSheet(startRow = 2) {
   console.log(`Fetching events from ${startDate} to ${endDate}.`)
   const calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID)
   const allCalEvents = calendar.getEvents(startDate, endDate)
+  const mergedEvents = getMergedEvents(allDatesRange, allDatesValues, categories, startRow)
 
   // Iterate over each row
   for (let i = 0; i < allDatesValues.length; i++) {
@@ -237,6 +238,14 @@ function checkSheet(startRow = 2) {
     for (let j = 0; j < categories.length; j++) {
       const currentCategory = categories[j]
 
+      // Set the end date based on if it's merged
+      let endDate;
+      if (mergedEvents[currentCategory][sheetEvents[0]] !== undefined) {
+        endDate = mergedEvents[currentCategory][sheetEvents[0]]
+      } else {
+        endDate = sheetEvents[0].addDays(1)
+      }
+
       // If there is no calendar event but there is one or more sheets events
       if (calEvents[currentCategory] === undefined && sheetEvents[j + 1] !== "") {
 
@@ -245,7 +254,7 @@ function checkSheet(startRow = 2) {
 
         // Create new events from the cell
         for (let s = 0; s < sheetEventsSplit.length; s++) {
-          const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
+          const event = createEventFromCell(sheetEvents[0], endDate, sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
           console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         }
 
@@ -262,7 +271,7 @@ function checkSheet(startRow = 2) {
           // Search through the calendar events to try & find one that's the same
           let foundIt = false
           for (let c = 0; c < calEvents[currentCategory].length; c++) {
-            if (compareEvents(calEvents[currentCategory][c], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory) === true) {
+            if (compareEvents(calEvents[currentCategory][c], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], endDate, currentCategory) === true) {
               console.log(`Unchanged "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
               foundIt = true
               calToDelete[c] = false
@@ -272,7 +281,7 @@ function checkSheet(startRow = 2) {
 
           // If we didn't find it after iterating then create it
           if (foundIt === false) {
-            const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
+            const event = createEventFromCell(sheetEvents[0], endDate, sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
             console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
           }
 
