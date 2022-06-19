@@ -187,7 +187,7 @@ function checkSheet(startRow = 2) {
 
         // Create new events from the cell
         for (let s = 0; s < sheetEventsSplit.length; s++) {
-          const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s], getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
+          const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
           console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         }
 
@@ -204,7 +204,7 @@ function checkSheet(startRow = 2) {
           // Search through the calendar events to try & find one that's the same
           let foundIt = false
           for (let c = 0; c < calEvents[currentCategory].length; c++) {
-            if (compareEvents(calEvents[currentCategory][c], sheetEventsSplit[s], getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory) === true) {
+            if (compareEvents(calEvents[currentCategory][c], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory) === true) {
               console.log(`Unchanged "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
               foundIt = true
               calToDelete[c] = false
@@ -214,7 +214,7 @@ function checkSheet(startRow = 2) {
 
           // If we didn't find it after iterating then create it
           if (foundIt === false) {
-            const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s], getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
+            const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
             console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
           }
 
