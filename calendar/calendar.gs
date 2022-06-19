@@ -9,6 +9,21 @@
 
 
 /**
+ * Add days to a date.
+ *
+ * Credit to https://stackoverflow.com/a/563442/
+ *
+ * @param {Number} days the number of days to add
+ * @returns {Date} the modified date
+ */
+Date.prototype.addDays = function(days) {
+    var date = new Date(this.valueOf());
+    date.setDate(date.getDate() + days);
+    return date;
+}
+
+
+/**
  * Get an object of the multi-day events.
  *
  * @param {SpreadsheetApp.Range} allDatesRange the calendar range
