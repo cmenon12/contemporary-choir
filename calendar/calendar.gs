@@ -10,10 +10,8 @@
 
 /**
  * Get the events on a date, returning them in an object.
- * The keys are the category names; the values are the events
+ * The keys are the category names; the values are the arrays of events
  *
- * If there are any duplicates for each category, then only
- * the first will be kept (and the rest deleted).
  * Events with invalid categories are deleted.
  *
  * @param {Array.<CalendarApp.CalendarEvent>} allEvents all the fetched events
@@ -35,12 +33,14 @@ function getEventsOnDate(allEvents, dateObj, categories) {
 
       // If the category is valid and we don't have one for that category
       if (categories.includes(category) && eventsObj[category] === undefined) {
-        eventsObj[category] = allEvents[i];
+        eventsObj[category] = [allEvents[i]];
+      } else if (categories.includes(category)) {
+        eventsObj[category].push(allEvents[i])
       } else {
         allEvents[i].deleteEvent();
       }
 
-    // Delete it if it's not an all day event
+      // Delete it if it's not an all day event
     } else if (!allEvents[i].isAllDayEvent()) {
       allEvents[i].deleteEvent();
     }
@@ -145,8 +145,8 @@ function compareEvents(calEvent, cellValue, cellNotation, cellRtf, cellNote, cat
  * @param colNum {number} the column number, from 1
  * @returns {String} the A1 notation of the cell
  */
-function getA1Notation(rowNum, colNum){
-  return `${String.fromCharCode("A".charCodeAt(0)+colNum-1)}${rowNum}`
+function getA1Notation(rowNum, colNum) {
+  return `${String.fromCharCode("A".charCodeAt(0) + colNum - 1)}${rowNum}`
 }
 
 
@@ -159,13 +159,13 @@ function checkSheet(startRow = 2) {
   const categories = sheet.getRange(1, 3, 1, sheet.getLastColumn() - 2).getValues()[0]
 
   // Prefetch data
-  const allDatesRange = sheet.getRange(startRow, 2, sheet.getLastRow()-startRow+1, sheet.getLastColumn() - 1)
+  const allDatesRange = sheet.getRange(startRow, 2, sheet.getLastRow() - startRow + 1, sheet.getLastColumn() - 1)
   const allDatesValues = allDatesRange.getValues()
   const allDatesRtfs = allDatesRange.getRichTextValues()
   const allDatesNotes = allDatesRange.getNotes()
   const startDate = allDatesValues[0][0]
   let endDate = allDatesValues[allDatesValues.length - 1][0]
-  endDate.setDate(endDate.getDate()+1)
+  endDate.setDate(endDate.getDate() + 1)
   console.log(`Fetching events from ${startDate} to ${endDate}.`)
   const calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID)
   const allCalEvents = calendar.getEvents(startDate, endDate)
@@ -173,34 +173,69 @@ function checkSheet(startRow = 2) {
   // Iterate over each row
   for (let i = 0; i < allDatesValues.length; i++) {
     const sheetEvents = allDatesValues[i]
-    const calEvents = getEventsOnDate(allCalEvents, allDatesValues[i][0], categories);
+    const calEvents = getEventsOnDate(allCalEvents, sheetEvents[0], categories);
 
     // Iterate over each category
     for (let j = 0; j < categories.length; j++) {
       const currentCategory = categories[j]
 
-      // If there is no calendar event but there is a sheets event
+      // If there is no calendar event but there is one or more sheets events
       if (calEvents[currentCategory] === undefined && sheetEvents[j + 1] !== "") {
-        // Create a new event from the cell
-        const event = createEventFromCell(allDatesValues[i][0], allDatesValues[i][j+1],getA1Notation(i+startRow, j+3), allDatesRtfs[i][j+1], allDatesNotes[i][j+1], currentCategory)
-        console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
 
-        // If there is a calendar event and a sheets event
-      } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] !== "") {
-        // Compare them; delete and replace if different
-        if (compareEvents(calEvents[currentCategory], allDatesValues[i][j+1],getA1Notation(i+startRow, j+3), allDatesRtfs[i][j+1], allDatesNotes[i][j+1], currentCategory) === false) {
-          calEvents[currentCategory].deleteEvent()
-          const event = createEventFromCell(allDatesValues[i][0], allDatesValues[i][j+1],getA1Notation(i+startRow, j+3), allDatesRtfs[i][j+1], allDatesNotes[i][j+1], currentCategory)
-          console.log(`Replaced "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
-        } else {
-          console.log(`Unchanged "${calEvents[currentCategory].getTitle()}" event on ${calEvents[currentCategory].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+        // Split up the cell value
+        const sheetEventsSplit = sheetEvents[j + 1].split(getSecrets().MULTI_EVENT_SPLITTER)
+
+        // Create new events from the cell
+        for (let s = 0; s < sheetEventsSplit.length; s++) {
+          const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
+          console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         }
 
-        // If there is a calendar event but no sheets event
+        // If there is at least one calendar and sheets event
+      } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] !== "") {
+
+        // Keep track of which calendar events to delete
+        let calToDelete = new Array(calEvents[currentCategory].length).fill(true)
+
+        // Iterate over the sheets events
+        const sheetEventsSplit = sheetEvents[j + 1].split(getSecrets().MULTI_EVENT_SPLITTER)
+        for (let s = 0; s < sheetEventsSplit.length; s++) {
+
+          // Search through the calendar events to try & find one that's the same
+          let foundIt = false
+          for (let c = 0; c < calEvents[currentCategory].length; c++) {
+            if (compareEvents(calEvents[currentCategory][c], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory) === true) {
+              console.log(`Unchanged "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+              foundIt = true
+              calToDelete[c] = false
+              break
+            }
+          }
+
+          // If we didn't find it after iterating then create it
+          if (foundIt === false) {
+            const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
+            console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+          }
+
+        }
+
+        // Delete the calendar events we didn't find
+        for (let c = 0; c < calEvents[currentCategory].length; c++) {
+          if (calToDelete[c] === true) {
+            console.log(`Deleted "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+            calEvents[currentCategory][c].deleteEvent()
+          }
+        }
+
+        // If there is one or more calendar events but no sheets events
       } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] === "") {
-        // Delete the event
-        console.log(`Deleted "${calEvents[currentCategory].getTitle()}" event on ${calEvents[currentCategory].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
-        calEvents[currentCategory].deleteEvent()
+
+        // Delete all the events
+        for (let c = 0; c < calEvents[currentCategory].length; c++) {
+          console.log(`Deleted "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+          calEvents[currentCategory][c].deleteEvent()
+        }
       }
     }
 
@@ -219,7 +254,9 @@ function hidePastRows() {
   // Hide rows in the past
   sheet.showRows(1, sheet.getLastRow());
   const today = new Date();
-  const first = today.getDate() - today.getDay() + 1;
+  let daysToRemove;
+  today.getDay() === 0 ? (daysToRemove = 7) : (daysToRemove = today.getDay())   // Sunday fix
+  const first = today.getDate() - daysToRemove + 1;
   const monday = new Date(today.setDate(first));
   for (let i = 3; i < sheet.getLastRow() - 1; i++) {
     if (sheet.getRange(i, 2).getValue().getTime() >= monday.getTime()) {
@@ -249,10 +286,10 @@ function checkSheetNoPast() {
   const now = new Date();
   for (let i = 3; i < sheet.getLastRow() - 1; i++) {
     if (sheet.getRange(i, 2).getValue().getTime() >= now.getTime()) {
-      if (i-7 <= 3) {
+      if (i - 7 <= 3) {
         checkSheet(3)
       } else {
-        checkSheet(i-7)
+        checkSheet(i - 7)
       }
       break;
     }
