@@ -9,6 +9,42 @@
 
 
 /**
+ * Get an object of the multi-day events.
+ *
+ * @param {SpreadsheetApp.Range} allDatesRange the calendar range
+ * @param {Array.<Array<any>>} allDatesValues the values of the calendar range
+ * @param {Array.<String>} categories the categories
+ * @param {number} startRow the row number to start on
+ * @returns {Object} an object of the milti-day events
+ */
+function getMergedEvents(allDatesRange, allDatesValues, categories, startRow) {
+
+  // Prep the result variable
+  let result = {}
+  for (c of categories) {
+    result[c] = {}
+  }
+
+  // Get the merged ranges
+  const mergedRanges = allDatesRange.getMergedRanges()
+
+  // Iterate over each one
+  for (let i = 0; i<mergedRanges.length; i++) {
+    const currentCategory = categories[mergedRanges[i].getColumn()-3]
+    const firstRowNum = mergedRanges[i].getRow()
+    const lastRowNum = mergedRanges[i].getLastRow()
+    const startDate = allDatesValues[firstRowNum-startRow][0]
+    const endDate = allDatesValues[lastRowNum-startRow][0]
+
+    result[currentCategory][startDate] = endDate;
+  }
+
+  console.log(result)
+
+}
+
+
+/**
  * Get the events on a date, returning them in an object.
  * The keys are the category names; the values are the arrays of events
  *
@@ -152,6 +188,8 @@ function getA1Notation(rowNum, colNum) {
 
 /**
  * Main function, updates Google Calendar with any changes.
+ *
+ * @param {number} startRow the row number to start on
  */
 function checkSheet(startRow = 2) {
 
