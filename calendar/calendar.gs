@@ -16,10 +16,10 @@
  * @param {Number} days the number of days to add
  * @returns {Date} the modified date
  */
-Date.prototype.addDays = function(days) {
-    var date = new Date(this.valueOf());
-    date.setDate(date.getDate() + days);
-    return date;
+Date.prototype.addDays = function (days) {
+  let date = new Date(this.valueOf());
+  date.setDate(date.getDate() + days);
+  return date;
 }
 
 
@@ -30,7 +30,7 @@ Date.prototype.addDays = function(days) {
  * @param {Array.<Array<any>>} allDatesValues the values of the calendar range
  * @param {Array.<String>} categories the categories
  * @param {number} startRow the row number to start on
- * @returns {Object} an object of the milti-day events
+ * @returns {Object} an object of the multi-day events
  */
 function getMergedEvents(allDatesRange, allDatesValues, categories, startRow) {
 
@@ -44,16 +44,16 @@ function getMergedEvents(allDatesRange, allDatesValues, categories, startRow) {
   const mergedRanges = allDatesRange.getMergedRanges()
 
   // Iterate over each one
-  for (let i = 0; i<mergedRanges.length; i++) {
-    const currentCategory = categories[mergedRanges[i].getColumn()-3]
+  for (let i = 0; i < mergedRanges.length; i++) {
+    const currentCategory = categories[mergedRanges[i].getColumn() - 3]
     const firstRowNum = mergedRanges[i].getRow()
     const lastRowNum = mergedRanges[i].getLastRow()
-    const startDate = allDatesValues[firstRowNum-startRow][0]
-    const endDate = allDatesValues[lastRowNum-startRow][0].addDays(1)
-
+    const startDate = allDatesValues[firstRowNum - startRow][0]
+    const endDate = allDatesValues[lastRowNum - startRow][0].addDays(1)
     result[currentCategory][startDate] = endDate;
   }
 
+  console.log(`Multi-day events are ${JSON.stringify(result)}.`)
   return result
 
 }
@@ -82,7 +82,7 @@ function getEventsOnDate(allEvents, dateObj, categories) {
 
       const category = allEvents[i].getTag("category")
 
-      // If the category is valid and we don't have one for that category
+      // If the category is valid, and we don't have one for that category
       if (categories.includes(category) && eventsObj[category] === undefined) {
         eventsObj[category] = [allEvents[i]];
       } else if (categories.includes(category)) {
@@ -180,7 +180,7 @@ function createEventFromCell(eventDate, endDate, cellValue, cellNotation, cellRt
  * @param {String} category the category of the event
  * @returns {boolean} true if equal otherwise false
  */
-function compareEvents(calEvent, cellValue, cellNotation, cellRtf, cellNote, cellEndDate,  category, ) {
+function compareEvents(calEvent, cellValue, cellNotation, cellRtf, cellNote, cellEndDate, category) {
   // False if the titles are different
   if (calEvent.getTitle() !== `${cellValue} [${category.toLowerCase()}]`) return false;
 
