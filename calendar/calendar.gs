@@ -10,10 +10,8 @@
 
 /**
  * Get the events on a date, returning them in an object.
- * The keys are the category names; the values are the events
+ * The keys are the category names; the values are the arrays of events
  *
- * If there are any duplicates for each category, then only
- * the first will be kept (and the rest deleted).
  * Events with invalid categories are deleted.
  *
  * @param {Array.<CalendarApp.CalendarEvent>} allEvents all the fetched events
@@ -35,7 +33,9 @@ function getEventsOnDate(allEvents, dateObj, categories) {
 
       // If the category is valid and we don't have one for that category
       if (categories.includes(category) && eventsObj[category] === undefined) {
-        eventsObj[category] = allEvents[i];
+        eventsObj[category] = [allEvents[i]];
+      } else if (categories.includes(category)) {
+        eventsObj[category].push(allEvents[i])
       } else {
         allEvents[i].deleteEvent();
       }
@@ -179,11 +179,17 @@ function checkSheet(startRow = 2) {
     for (let j = 0; j < categories.length; j++) {
       const currentCategory = categories[j]
 
-      // If there is no calendar event but there is a sheets event
+      // If there is no calendar event but there is one or more sheets events
       if (calEvents[currentCategory] === undefined && sheetEvents[j + 1] !== "") {
-        // Create a new event from the cell
-        const event = createEventFromCell(allDatesValues[i][0], allDatesValues[i][j+1],getA1Notation(i+startRow, j+3), allDatesRtfs[i][j+1], allDatesNotes[i][j+1], currentCategory)
-        console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+
+        // Split up the cell value
+        const sheetEventsSplit = sheetEvents[j + 1].split(getSecrets().MULTI_EVENT_SPLITTER)
+
+        // Create new events from the cell
+        for (let s = 0; s < sheetEventsSplit.length; s++) {
+          const event = createEventFromCell(sheetEvents[0], sheetEventsSplit[s], getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
+          console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+        }
 
         // If there is a calendar event and a sheets event
       } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] !== "") {
@@ -196,11 +202,14 @@ function checkSheet(startRow = 2) {
           console.log(`Unchanged "${calEvents[currentCategory].getTitle()}" event on ${calEvents[currentCategory].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
         }
 
-        // If there is a calendar event but no sheets event
+        // If there is one or more calendar events but no sheets events
       } else if (calEvents[currentCategory] !== undefined && sheetEvents[j + 1] === "") {
-        // Delete the event
-        console.log(`Deleted "${calEvents[currentCategory].getTitle()}" event on ${calEvents[currentCategory].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
-        calEvents[currentCategory].deleteEvent()
+
+        // Delete all the events
+        for (let c = 0; c < calEvents[currentCategory].length; c++) {
+          console.log(`Deleted "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+          calEvents[currentCategory][c].deleteEvent()
+        }
       }
     }
 
