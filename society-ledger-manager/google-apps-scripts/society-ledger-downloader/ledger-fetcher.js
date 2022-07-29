@@ -22,7 +22,7 @@
 function downloadLedger(formData) {
 
   const SUBGROUP_ID = 0;
-  const REPORT_ID = 30;
+  const REPORT_ID = 44;
 
   // Get the email and password
   let email;
