@@ -1,0 +1,244 @@
+/**
+ * Please check this explainer of all this CSS at the link below.
+ * Any changes to the CSS below should be updated there too.
+ * https://docs.google.com/document/d/1Npxyyp_JCJHkIWHwapLKiKlWZxhoCVhVHCXMzB9Voac/edit
+ * Note that this file only has CSS from the main site, see the doc above for the members' site.
+ */
+
+
+/* MAIN SITE ONLY */
+/* testimonial padding */
+.widget.TestimonialRotatorWidget {
+    padding-bottom: 0px;
+}
+
+
+/* latest news widget */
+.rpwwt-widget ul li:not(:last-child) {
+    padding-bottom: 20px
+}
+
+.rpwwt-post-title {
+    font-size: 30px;
+    font-size: 1.875rem;
+    padding-top: 30px;
+    font-family: "Amatic SC";
+    font-weight: bold;
+    color: rgb(51, 51, 51);
+}
+
+.rpwwt-post-title:hover, .rpwwt-post-title:focus {
+    color: #E62073
+}
+
+.rpwwt-post-author, .rpwwt-post-date {
+    color: rgb(118, 118, 118);
+    font-family: NowRegular, sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+/* news page sidebar */
+#subscribe-text, .success, .widget_authors ul li, .widget_archive ul li {
+    font-size: 16px;
+}
+
+/* post list and individual posts */
+#subscribe-submit button, #commentform .form-submit #submit {
+    background-color: #E62073;
+}
+
+
+/* cookie warning on top */
+#cookie-notice {
+    z-index: 2258594003 !important;
+}
+
+#onesignal-slidedown-container {
+    z-index: 10000 !important;
+}
+
+
+/* AddThis Footer Share & Follow Buttons */
+/*
+.at-label, .at-follow-btn {
+  font-family: "NowSemiBold" !important;
+  font-size: 14px !important;
+}
+.at-follow-btn {
+  border-radius: 16px;
+  height: 32px;
+}
+.addthis_toolbox {
+  margin-top: -15px;
+}
+#follow_buttons:target {
+  animation: target-fade 1s 1;
+}
+@keyframes target-fade {
+  0% { background-color: #f0f0f0; }
+  100% { background-color: #ffff00; }
+}
+
+/* Stay In Touch AddThis Follow Buttons */
+.entry-content .addthis_inline_follow_toolbox {
+    margin: auto !important;
+}
+
+.entry-content .addthis_toolbox {
+    width: 288px;
+    text-align: center !important;
+    margin: auto;
+}
+
+@media screen and (min-width: 48em) {
+    .entry-content .addthis_inline_follow_toolbox {
+        height: 53px; /* +5px */
+    }
+
+    .entry-content span.at-icon-wrapper {
+        height: 48px !important;
+        width: 48px !important;
+    }
+
+    .entry-content .addthis_toolbox {
+        width: 480px !important;
+        text-align: center !important;
+        margin: auto;
+    }
+
+    .entry-content .addthis_toolbox a {
+        margin-left: 10px !important;
+        height: 48px;
+        border-radius: 24px;
+    }
+
+    .entry-content .at-icon-wrapper svg {
+        height: 48px !important;
+        width: 48px !important;
+    }
+}
+
+
+/* CALENDAR AND EVENTS */
+/* widget title and date */
+h4.tribe-event-title {
+    font-size: 20px;
+    padding-top: 5px;
+    margin-bottom: 5px;
+}
+
+div.tribe-event-duration {
+    margin-bottom: 20px;
+}
+
+/* widget no images */
+.tribe-event-image a img {
+    display: none !important;
+}
+
+/* header, particularly mobile */
+.tribe-events-header {
+    padding-top: 16px !important;
+}
+
+.tribe-events-calendar-list, .tribe-events-calendar-month, .tribe-events-calendar-day {
+    margin-top: 25px !important;
+}
+
+/* header past */
+.tribe-events-calendar-latest-past__heading {
+    font-family: "Amatic SC" !important;
+    font-size: 40px !important;
+}
+
+li.tribe-events-c-messages__message-list-item {
+    font-family: "NowRegular";
+    font-size: 18px;
+}
+
+/* list datetime */
+.tribe-events-calendar-list__event-datetime-wrapper, .tribe-events-calendar-latest-past__event-datetime-wrapper, .tribe-events-calendar-day__event-datetime-wrapper {
+    font-family: "NowSemiBold" !important;
+    font-size: 20px !important;
+}
+
+/* list venue */
+.tribe-events-calendar-list__event-venue-title, .tribe-events-calendar-latest-past__event-venue-title, .tribe-events-calendar-day__event-venue-title {
+    font-family: "NowExtraBold" !important;
+    font-size: 18px !important;
+}
+
+/* list title */
+.tribe-events-calendar-list__event-title, .tribe-events-calendar-latest-past__event-title, .tribe-events-calendar-day__event-title {
+    font-family: "Amatic SC" !important;
+    font-size: 32px !important;
+}
+
+/* list description */
+.tribe-events-calendar-list__event-description, .tribe-events-calendar-latest-past__event-description, .tribe-events-calendar-day__event-description {
+    font-size: 14px !important;
+}
+
+/* list cost */
+.tribe-events-calendar-list__event-cost,
+.tribe-events-calendar-latest-past__event-cost, .tribe-events-calendar-day__event-cost {
+    font-size: 16px !important;
+    font-family: "NowRegular" !important;
+    font-style: italic;
+}
+
+/* single title & date */
+.tribe-events-single-event-title {
+    font-size: 42px !important;
+}
+
+.tribe-events-schedule h2 {
+    font-family: "NowRegular" !important;
+    font-size: 22px !important;
+}
+
+/* single cost */
+.tribe-events-cost {
+    display: block;
+    font-size: 20px !important;
+    font-style: italic;
+}
+
+/* single image */
+@media screen and (min-width: 48em) {
+    .tribe-events-event-image img {
+        max-width: 70% !important;
+        display: block !important;
+        margin: auto !important;
+    }
+}
+
+/* single details & venue */
+.tribe-events-single-section-title {
+    font-size: 30px !important;
+}
+
+dl {
+    font-size: 16px;
+}
+
+/* single hide organiser */
+.tribe-events-meta-group.tribe-events-meta-group-organizer {
+    height: 0px;
+    width: 0px;
+    display: none;
+}
+
+@media screen and (min-width: 768px) {
+    .tribe-events-event-meta .column, .tribe-events-event-meta .tribe-events-meta-group, .tribe-events-event-meta .column, .tribe-events-event-meta .tribe-events-meta-group {
+        width: 50%
+    }
+}
+
+/* single increase nav */
+.tribe-events-nav-previous a, .tribe-events-nav-next a, .tribe-events-back a {
+    font-size: 16px !important;
+}
