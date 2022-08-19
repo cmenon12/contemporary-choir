@@ -126,34 +126,60 @@
 /* FIXR WIDGET */
 /* See https://docs.fixr.co/integrations/ticketshop/#styling */
 div.fixr-events-widget {
-    --base-font-size: 16px;
-    --heading-font-family: Montserrat, sans-serif;
-    --body-font-family: Raleway, sans-serif;
-    --body-font-color: #000;
-    --link-color: #cc003e;
-    --button-color: #fff;
-    --button-background: #d0021b;
-    --button-font-family: Montserrat, sans-serif;
-    --card-background: #fff;
+    --base-font-size: 20px;
+    --heading-font-family: "NowRegular", sans-serif;
+    --body-font-family: "NowRegular", sans-serif;
+    --body-font-color: #fff;
+    --link-color: #fff;
+    --button-color: #E62073;
+    --button-background: #fff;
+    --button-font-family: "NowRegular", sans-serif;
+    --card-background: #1B73CA;
     --card-font-color: var(--body-font-color);
     --card-loading-background: #f9f9f9;
-    --loader-color: #cc003e;
-    --modal-background: var(--card-background);
-    --modal-font-color: var(--body-font-color);
+    --loader-color: #1B73CA;
+    --modal-background: #fff;
+    --modal-font-color: rgb(51,51,51);
     --grid-min-size: 300px;
     --grid-template: repeat(
             auto-fill,
             minmax(min(var(--grid-min-size), 100%), 1fr)
     );
-    --grid-gap: 16px;
+    --grid-gap: 12px;
     --event-image-ratio: 41.667%;
-    color: var(--body-font-color);
+    color: rgb(51,51,51);
     font-size: var(--base-font-size);
     font-family: var(--body-font-family);
 }
 
-div.fixr-events-widget__header, div.fixr-event-heading--main {
+.entry-content a.fixr-event-item__link img, .comment-content a.fixr-event-item__link img, .widget a.fixr-event-item__link img {
+	box-shadow: none;
+	-webkit-box-shadow: none;
+}
+
+div.fixr-events-widget__header, div.fixr-event-heading--main, div.fixr-event-heading {
     display: none;
+}
+
+div.fixr-event-item__info a:hover {
+    color: white !important;
+}
+
+div.fixr-modal__dialogue {
+    font-size: 18px;
+}
+
+div.fixr-event-details__when div a {
+    color: rgb(51, 51, 51);
+    text-decoration: underline;
+}
+
+button.fixr-share-button__clickable.svelte-17819e3 {
+    color: rgb(51, 51, 51);
+}
+
+button.fixr-share-button__clickable.svelte-17819e3:hover {
+    color: #fff;
 }
 
 
