@@ -3,6 +3,7 @@
  * Any changes to the CSS below should be updated there too.
  * https://docs.google.com/document/d/1Npxyyp_JCJHkIWHwapLKiKlWZxhoCVhVHCXMzB9Voac/edit
  * Note that this file only has CSS from the main site, see the doc above for the members' site.
+ * You can also find this at https://github.com/cmenon12/contemporary-choir/blob/main/website-custom-html/additional-css.css
  */
 
 
@@ -119,6 +120,40 @@
         height: 48px !important;
         width: 48px !important;
     }
+}
+
+
+/* FIXR WIDGET */
+/* See https://docs.fixr.co/integrations/ticketshop/#styling */
+div.fixr-events-widget {
+    --base-font-size: 16px;
+    --heading-font-family: Montserrat, sans-serif;
+    --body-font-family: Raleway, sans-serif;
+    --body-font-color: #000;
+    --link-color: #cc003e;
+    --button-color: #fff;
+    --button-background: #d0021b;
+    --button-font-family: Montserrat, sans-serif;
+    --card-background: #fff;
+    --card-font-color: var(--body-font-color);
+    --card-loading-background: #f9f9f9;
+    --loader-color: #cc003e;
+    --modal-background: var(--card-background);
+    --modal-font-color: var(--body-font-color);
+    --grid-min-size: 300px;
+    --grid-template: repeat(
+            auto-fill,
+            minmax(min(var(--grid-min-size), 100%), 1fr)
+    );
+    --grid-gap: 16px;
+    --event-image-ratio: 41.667%;
+    color: var(--body-font-color);
+    font-size: var(--base-font-size);
+    font-family: var(--body-font-family);
+}
+
+div.fixr-events-widget__header, div.fixr-event-heading--main {
+    display: none;
 }
 
 
