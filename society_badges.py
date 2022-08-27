@@ -5,9 +5,11 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
-# The badges, as per the text in the a.msl-groupingattributelist-link tags
-ALL_BADGES = ["Accessibility", "Democracy", "Development", "Diversity", "Fundraising", "Inclusivity", "Social",
-              "Sustainability", "welfare"]
+# The badges
+ALL_BADGES = ["Accessibility Badge", "Democracy Badge", "Development Badge",
+              "Diversity Badge", "Fundraising and Volunteering Badge",
+              "Inclusivity Badge", "Social Badge", "Sustainability Badge",
+              "Welfare Badge"]
 
 
 def main():
@@ -15,15 +17,17 @@ def main():
 
     # Download all societies
     societies = {}
-    all_response = session.get("https://www.exeterguild.org/societies/")
-    all_response.raise_for_status()
-    all_soup = BeautifulSoup(all_response.text, "lxml")
-    all_societies = all_soup.find_all("a", {"class": "msl-listingitem-link"})
-    print(f"We found {len(all_societies)} societies.")
-    if all_societies is None:
-        raise Exception("all_societies is None, the structure has changed!")
-    for item in all_societies:
-        societies[item.text] = f"https://www.exeterguild.org{item['href']}"
+    page_num = 1
+
+    response = session.get(f"https://my.exeterguild.com/i/get?page={page_num}")
+    response.raise_for_status()
+    while response.json() != []:
+        for item in response.json():
+            societies[item["name"]] = item["link"]
+        page_num += 1
+        response = session.get(f"https://my.exeterguild.com/i/get?page={page_num}")
+        response.raise_for_status()
+    print(f"We found {len(societies)} societies across {page_num - 1} pages.")
 
     # Get the number of badges each society has
     csv_data = []
@@ -34,7 +38,7 @@ def main():
     filename = f"society-badges-{datetime.now().isoformat().replace(':', '_')}.csv"
     with open(filename, "w", encoding="UTF8", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow(["Name", "URL"] + ALL_BADGES + ["Total"])
+        writer.writerow(["Name", "URL"] + [b.replace(" Badge", "") for b in ALL_BADGES] + ["Total"])
         writer.writerows(csv_data)
 
     print(f"Saved the results to {filename}.")
@@ -48,9 +52,9 @@ def get_badges_data(session: requests.Session, society_name: str, society_url: s
     page_response = session.get(society_url)
     page_response.raise_for_status()
     page_soup = BeautifulSoup(page_response.text, "lxml")
-    page_badges = page_soup.find_all("a", {"class": "msl-groupingattributelist-link"})
+    page_badges = page_soup.find_all("a", {"title": [ALL_BADGES]})
     for item in page_badges:
-        badges_got.append(item.text)
+        badges_got.append(item["title"])
 
     # Save the result
     result = [society_name, society_url]
