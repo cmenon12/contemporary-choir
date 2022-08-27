@@ -1,0 +1,573 @@
+<table class="body raw-html-embed">
+<style type="text/css">/* -------------------------------------
+                GLOBAL RESETS
+            ------------------------------------- */
+
+/*All the styling goes here*/
+img {
+    border: none;
+    -ms-interpolation-mode: bicubic;
+    max-width: 100%;
+}
+
+body {
+    background-color: #f6f6f6;
+    font-family: Tahoma, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 16px;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0;
+    -ms-text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
+table {
+    border-collapse: separate;
+    mso-table-lspace: 0;
+    mso-table-rspace: 0;
+    width: 100%;
+}
+
+table td {
+    font-family: Tahoma, sans-serif;
+    font-size: 16px;
+    vertical-align: top;
+}
+
+/* -------------------------------------
+    BODY & CONTAINER
+------------------------------------- */
+.body {
+    background-color: #f6f6f6;
+    max-width: 100%;
+    width: 506px;
+}
+
+/* Set a max-width, and make it display as block so it will automatically stretch to that width, but will also shrink down on a phone or something */
+.container {
+    display: block;
+    margin: 0 auto !important;
+    /* makes it centered */
+    max-width: 506px;
+}
+
+/* This should also be a block element, so that it will fill 100% of the .container */
+.content {
+    box-sizing: border-box;
+    display: block;
+    margin: 0 auto;
+    max-width: 506px;
+    padding: 10px;
+}
+
+/* -------------------------------------
+    HEADER, FOOTER, MAIN
+------------------------------------- */
+.main {
+    background: #ffffff;
+    border-radius: 3px;
+    width: 100%;
+    border: 10px solid #1b73ca;
+}
+
+.wrapper {
+    box-sizing: border-box;
+    padding: 20px;
+}
+
+.content-block {
+    padding-bottom: 10px;
+    padding-top: 10px;
+}
+
+.footer {
+    clear: both;
+    margin-top: 10px;
+    text-align: center;
+    width: 100%;
+}
+
+.footer td,
+.footer p,
+.footer span,
+.footer table tbody tr td:not(.funny-tagline) {
+    color: #999999;
+    font-size: 14px;
+    text-align: center;
+}
+
+.footer table tbody tr td.funny-tagline {
+    color: #E62073;
+    font-size: 14px;
+    text-align: center;
+}
+
+.footer a {
+    text-decoration: underline !important;
+}
+
+/* -------------------------------------
+    TYPOGRAPHY
+------------------------------------- */
+h1,
+h2,
+h3,
+h4 {
+    color: #000000;
+    font-family: Tahoma, sans-serif;
+    font-weight: 600;
+    line-height: 1.4;
+    margin: 30px 0 10px;
+}
+
+h1 {
+    display: inline;
+    padding: 0 10px;
+    background-color: white;
+}
+
+.top-heading {
+    border-bottom: 7px solid #1b73ca;
+    height: 19px;
+    text-align: center;
+    margin-top: 30px;
+    margin-bottom: 29px;
+}
+
+p,
+ul,
+ol {
+    font-family: Tahoma, sans-serif;
+    font-size: 16px;
+    font-weight: normal;
+    margin: 0 0 15px;
+    line-height: 1.4;
+    color: #263238;
+}
+
+p li,
+ul li,
+ol li {
+    list-style-position: inside;
+    margin-left: 5px;
+}
+
+a {
+    color: #1B73CA;
+    text-decoration: underline;
+}
+
+/* -------------------------------------
+    BUTTONS
+------------------------------------- */
+.btn {
+    box-sizing: border-box;
+    width: 100%;
+    table-layout: fixed;
+    text-align: center
+}
+
+.btn > tbody > tr > td {
+    padding-bottom: 15px;
+}
+
+.btn table {
+    width: 100%;
+}
+
+.btn table td {
+    background-color: #ffffff;
+    border-radius: 5px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.btn a {
+    background-color: #ffffff;
+    border: solid 1px #1B73CA;
+    border-radius: 5px;
+    box-sizing: border-box;
+    color: #1B73CA;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 17px;
+    font-weight: bold;
+    font-family: "Tahoma", sans-serif;
+    margin: 0;
+    padding: 10px 22px;
+    text-decoration: none;
+    text-transform: capitalize;
+}
+
+.btn-primary table td {
+    background-color: #1B73CA;
+}
+
+.btn-primary a {
+    background-color: #1B73CA;
+    border-color: #1B73CA;
+    color: #ffffff;
+    line-height: normal;
+}
+
+.btn-primary a span {
+    background-color: #1B73CA;
+    border-color: #1B73CA;
+    color: #ffffff;
+    vertical-align: middle;
+    line-height: normal;
+}
+
+.btn-double {
+    border-spacing: 20px 0;
+}
+
+/* -------------------------------------
+    OTHER STYLES THAT MIGHT BE USEFUL
+------------------------------------- */
+.last {
+    margin-bottom: 0;
+}
+
+.first {
+    margin-top: 0;
+}
+
+.align-center {
+    text-align: center;
+}
+
+.align-right {
+    text-align: right;
+}
+
+.align-left {
+    text-align: left;
+}
+
+.clear {
+    clear: both;
+}
+
+.mt0 {
+    margin-top: 0;
+}
+
+.mb0 {
+    margin-bottom: 0;
+}
+
+.preheader {
+    color: transparent;
+    display: none;
+    height: 0;
+    max-height: 0;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    mso-hide: all;
+    visibility: hidden;
+    width: 0;
+}
+
+hr {
+    border: 0;
+    border-bottom: 1px solid #f6f6f6;
+    margin: 20px 0;
+}
+
+/* -------------------------------------
+    RESPONSIVE AND MOBILE FRIENDLY STYLES
+------------------------------------- */
+@media only screen and (max-width: 650px) {
+    table[class=body] h1 {
+        font-size: 28px !important;
+        margin-bottom: 10px !important;
+    }
+
+    table[class=body] p,
+    table[class=body] ul,
+    table[class=body] ol,
+    table[class=body] td,
+    table[class=body] span,
+    table[class=body] a {
+        font-size: 16px !important;
+    }
+
+    table[class=body] .wrapper,
+    table[class=body] .article {
+        padding: 10px !important;
+    }
+
+    table[class=body] .content {
+        padding: 0 !important;
+    }
+
+    table[class=body] .container {
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    table[class=body] .main {
+        border-left-width: 0 !important;
+        border-radius: 0 !important;
+        border-right-width: 0 !important;
+    }
+
+    table[class=body] .btn table {
+        width: 100% !important;
+    }
+
+    table[class=body] .btn a {
+        width: 100% !important;
+    }
+
+    table[class=body] .img-responsive {
+        height: auto !important;
+        max-width: 100% !important;
+        width: auto !important;
+    }
+}
+
+/* -------------------------------------
+    PRESERVE THESE STYLES IN THE HEAD
+------------------------------------- */
+@media all {
+    .ExternalClass {
+        width: 100%;
+    }
+
+    .ExternalClass,
+    .ExternalClass p,
+    .ExternalClass span,
+    .ExternalClass font,
+    .ExternalClass td,
+    .ExternalClass div {
+        line-height: 100%;
+    }
+
+    .apple-link a {
+        color: inherit !important;
+        font-family: inherit !important;
+        font-size: inherit !important;
+        font-weight: inherit !important;
+        line-height: inherit !important;
+        text-decoration: none !important;
+    }
+
+    #MessageViewBody a {
+        color: inherit;
+        text-decoration: none;
+        font-size: inherit;
+        font-family: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+    }
+
+    .btn-primary table td:hover, .btn-primary table td:active, .btn-primary table td:hover a, .btn-primary table td:active a, .btn-primary table td:hover a span, .btn-primary table td:active a span {
+        background-color: #E62073 !important;
+        border-color: #E62073 !important;
+    }
+
+    .btn-primary a:hover, .btn-primary a:active {
+        background-color: #E62073 !important;
+        border-color: #E62073 !important;
+    }
+}
+
+.funny-tagline b {
+    color: #E62073 !important;
+}
+
+.funny-tagline b a {
+    color: #E62073 !important;
+}
+</style>
+    <tbody>
+    <tr>
+        <td class="container">
+            <div class="content">
+                <table class="main">
+                    <tbody>
+                    <tr>
+                        <td>
+                            <img src="https://exetercontemporarychoir.com/wp-content/uploads/2022/06/img_3.png"></td>
+                    </tr>
+                    <tr>
+                        <td class="wrapper">
+                            <table>
+                                <tbody>
+                                <tr>
+                                    <td><!-- START MESSAGE -->
+                                        <p>Hello!</p>
+                                        <p>Introductory sentence to the week, rehearsal reminder and usually a thank you
+                                            for previous event participation</p>
+                                        <h3>Key Points:</h3>
+                                        <ul>
+                                            <li>We are doing this</li>
+                                            <li>We also do this</li>
+                                            <li>Soon we are doing this</li>
+                                        </ul>
+
+
+                                        <div class="top-heading"><h1>This Week</h1></div>
+
+                                        <h3>🎗️ Our Charity of the Year: Final Vote</h3>
+
+                                        <p>Big thank you to everyone who voted for our charity of the year! As no
+                                            charity got an absolute majority, we&#39;ve decided to re-open the voting
+                                            between the top two: A and B. <strong>Voting closes at the end of the day on
+                                                Wednesday</strong> (the 13th), after which we&#39;ll announce our
+                                            charity of the year!</p>
+
+                                        <table class="btn btn-primary">
+                                            <tbody>
+                                            <tr>
+                                                <td align="center">
+                                                    <table>
+                                                        <tbody>
+                                                        <tr>
+                                                            <td><a href="https://forms.office.com"
+                                                                   target="_blank"><span>Cast your vote for our charity of the year!</span></a>
+                                                            </td>
+                                                        </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <h3>🎶 Our Music: Song Suggestions & YouTube Playlist!</h3>
+
+                                        <p>We really hope you&#39;ve been enjoying rehearsals so far this term, but we&#39;re
+                                            keen to find out what you&#39;d like to sing! We&#39;ve created (another but
+                                            short) form for you to send in your suggestions; please feel free to fill it
+                                            out as and when you think of what you&#39;d like us to sing!</p>
+
+                                        <p>We've also put together a playlist of songs that we're currently singing, to
+                                            practice with at home between rehearsals (only if you want; there's no
+                                            expectation that you do)!</p>
+
+                                        <table class="btn btn-primary btn-double">
+                                            <tbody>
+                                            <tr>
+                                                <td align="center">
+                                                    <table>
+                                                        <tbody>
+                                                        <tr>
+                                                            <td><a href="https://forms.gle" target="_blank"><span>Send in a song suggestion</span></a>
+                                                            </td>
+                                                        </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                                <td align="center">
+                                                    <table>
+                                                        <tbody>
+                                                        <tr>
+                                                            <td><a href="https://www.youtube.com/"
+                                                                   target="_blank"><span>Check out our playlist of music</span></a>
+                                                            </td>
+                                                        </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <div class="top-heading"><h1>Next Week</h1></div>
+
+                                        <h3>🎶 Our Music: Song Suggestions & YouTube Playlist!</h3>
+
+                                        <p>We really hope you&#39;ve been enjoying rehearsals so far this term, but we&#39;re
+                                            keen to find out what you&#39;d like to sing! We&#39;ve created (another but
+                                            short) form for you to send in your suggestions; please feel free to fill it
+                                            out as and when you think of what you&#39;d like us to sing!</p>
+
+                                        <p>We've also put together a playlist of songs that we're currently singing, to
+                                            practice with at home between rehearsals (only if you want; there's no
+                                            expectation that you do)!</p>
+
+                                        <table class="btn btn-primary btn-double">
+                                            <tbody>
+                                            <tr>
+                                                <td align="center">
+                                                    <table>
+                                                        <tbody>
+                                                        <tr>
+                                                            <td><a href="https://forms.gle" target="_blank"><span>Send in a song suggestion</span></a>
+                                                            </td>
+                                                        </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                                <td align="center">
+                                                    <table>
+                                                        <tbody>
+                                                        <tr>
+                                                            <td><a href="https://www.youtube.com/"
+                                                                   target="_blank"><span>Check out our playlist of music</span></a>
+                                                            </td>
+                                                        </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <div class="top-heading"><h1>Save the Date</h1></div>
+                                        <ul>
+                                            <li>Spring Ball on 27th March at Mercure Hotel</li>
+                                            <li>Summer Concert on 27th May at St David's Church</li>
+                                            <li>Beach Trip at Exmouth on 1st July</li>
+                                        </ul>
+
+                                        <p> Closing message, remind about most important event or rehearsal, sound
+                                            relatively positive</p>
+                                        <p>Jess<br/>
+                                            <em>Communications Secretary</em></p>
+                                        <!-- FINISH MESSAGE --></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div class="footer">
+                    <table>
+                        <tbody>
+                        <tr><!-- KEY LINKS: don't change this each email, keep it consistent -->
+                            <td class="content-block">University of Exeter Contemporary Choir<br/>
+                                Find us on <a href="https://www.facebook.com/execontempchoir"
+                                              target="_blank">Facebook</a>
+                                | <a href="https://www.instagram.com/execontempchoir/" target="_blank">Instagram</a>
+                                | <a href="https://www.linkedin.com/company/contemporary-choir/" target="_blank">LinkedIn</a>
+                                | <a href="https://exetercontemporarychoir.com/" target="_blank">the Internet</a>
+                                |
+                                <a href="https://my.exeterguild.com/groups/CB8RJ/contemporary-choir?utm_source=weekly_email&utm_medium=email&utm_campaign=weekly_email"
+                                   target="_blank">the Guild</a><br/>
+                                <a href="https://forms.office.com/" target="_blank">Send in a Suggestion</a>
+                                | <a href="https://www.facebook.com/" target="_blank">Join our
+                                    Members&#39; Facebook Group</a> | <a href="https://forms.office.com/"
+                                                                         target="_blank">Wait - I don&#39;t have
+                                    Facebook!</a>
+                            </td>
+                        </tr>
+                        <tr><!-- FUNNY TAGLINE -->
+                            <td class="content-block funny-tagline"><b>Treat of the week: <a
+                                    href="https://www.youtube.com/watch?v=93hq0YU3Gqk  ">A sneezing baby panda scares
+                                its mother </a></b></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </td>
+    </tr>
+    </tbody>
+</table>
