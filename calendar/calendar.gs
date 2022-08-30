@@ -121,17 +121,18 @@ function generateDescription(cellNotation, cellRtf, cellNote) {
     }
   }
   if (urls.length === 1) {
-    description = description + `\n\nLINK: ${urls[0]}`
+    description = description + `\n\n<b>Link: </b>${urls[0]}`
   } else if (urls.length > 1) {
-    description = description + `\n\nLINKS:`
+    description = description + `\n\n<b>Links</b><ul>`
     for (let i = 0; i < urls.length; i++) {
-      description = description + `\n${urls[i]}`
+      description = description + `<li>${urls[i]}</li>`
     }
+    description = description + `</li>`
   }
 
   // Add the note if it's present
   if (cellNote !== "") {
-    description = description + `\n\nNOTE: ${cellNote}`
+    description = description + `\n\n<b>Note: </b>${cellNote}`
   }
 
   return description
