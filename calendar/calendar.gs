@@ -207,7 +207,7 @@ function compareEvents(calEvent, cellValue, cellNotation, cellRtf, cellNote, cel
   if (calEvent.getTitle() !== `${cellValue} [${category.toLowerCase()}]`) return false;
 
   // False if the end dates are different (ignore times)
-  if (calEvent.getEndTime().toLocaleDateString("en-GB") !== cellEndDate.toLocaleDateString("en-GB")) return false;
+  if (calEvent.getEndTime().toLocaleDateString("en-CA") !== cellEndDate.toLocaleDateString("en-CA")) return false;
 
   // False if the descriptions are different, otherwise true
   return calEvent.getDescription() === generateDescription(cellNotation, cellRtf, cellNote);
@@ -294,7 +294,7 @@ function checkSheet(startRow = 2) {
           let foundIt = false
           for (let c = 0; c < calEvents[currentCategory].length; c++) {
             if (compareEvents(calEvents[currentCategory][c], sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], endDate, currentCategory) === true) {
-              console.log(`Unchanged "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+              console.log(`Unchanged "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-CA")}.`)
               foundIt = true
               calToDelete[c] = false
               break
@@ -312,7 +312,7 @@ function checkSheet(startRow = 2) {
         // Delete the calendar events we didn't find
         for (let c = 0; c < calEvents[currentCategory].length; c++) {
           if (calToDelete[c] === true) {
-            console.log(`Deleted "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+            console.log(`Deleted "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-CA")}.`)
             calEvents[currentCategory][c].deleteEvent()
           }
         }
@@ -322,7 +322,7 @@ function checkSheet(startRow = 2) {
 
         // Delete all the events
         for (let c = 0; c < calEvents[currentCategory].length; c++) {
-          console.log(`Deleted "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+          console.log(`Deleted "${calEvents[currentCategory][c].getTitle()}" event on ${calEvents[currentCategory][c].getAllDayStartDate().toLocaleDateString("en-CA")}.`)
           calEvents[currentCategory][c].deleteEvent()
         }
       }
