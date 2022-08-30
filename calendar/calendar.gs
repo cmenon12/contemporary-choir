@@ -143,6 +143,9 @@ function generateDescription(cellNotation, cellRtf, cellNote) {
  *
  * Create an event from the cell in Google Calendar.
  *
+ * This uses the Calendar Advanced Service, so that it can
+ * appear as 'free' (using the transparency).
+ *
  * @param {Date} eventDate the start date
  * @param {Date} endDate the end date
  * @param {String} cellValue the value of the cell
@@ -150,18 +153,37 @@ function generateDescription(cellNotation, cellRtf, cellNote) {
  * @param {SpreadsheetApp.RichTextValue} cellRtf the RTF of the cell
  * @param {String} cellNote the cell note
  * @param {String} category the category of the event
- * @returns {CalendarApp.CalendarEvent} the created event
+ * @returns {Calendar.Events} the created event
  */
 function createEventFromCell(eventDate, endDate, cellValue, cellNotation, cellRtf, cellNote, category) {
-  const calendar = CalendarApp.getCalendarById(getSecrets().CALENDAR_ID);
+
+  // Define the new event
+  const eventData = {
+    start: {
+      date: eventDate.toLocaleDateString('en-CA')
+    },
+    end: {
+      date: endDate.toLocaleDateString('en-CA')
+    },
+    description: generateDescription(cellNotation, cellRtf, cellNote),
+    extendedProperties: {
+      shared: {
+        "category": category
+      }
+    },
+    location: getSecrets().CELL_LINK_PREFIX + cellNotation.replace(/:/g, ''),
+    source: {
+      title: getSecrets().SOURCE_TITLE,
+      url: getSecrets().CELL_LINK_PREFIX + cellNotation.replace(/:/g, '')
+    },
+    summary: `${cellValue} [${category.toLowerCase()}]`,
+    transparency: "transparent",
+  }
 
   // Create the event
-  const event = calendar.createAllDayEvent(`${cellValue} [${category.toLowerCase()}]`, eventDate, endDate)
-  event.setTag("category", category)
-  event.setLocation(getSecrets().CELL_LINK_PREFIX + cellNotation.replace(/:/g, ''))
-  event.setDescription(generateDescription(cellNotation, cellRtf, cellNote))
+  const calEvent = Calendar.Events.insert(eventData, getSecrets().CALENDAR_ID);
 
-  return event
+  return calEvent
 
 }
 
@@ -255,7 +277,7 @@ function checkSheet(startRow = 2) {
         // Create new events from the cell
         for (let s = 0; s < sheetEventsSplit.length; s++) {
           const event = createEventFromCell(sheetEvents[0], endDate, sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
-          console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+          console.log(`Created "${event.summary}" event on ${event.start.date}.`)
         }
 
         // If there is at least one calendar and sheets event
@@ -282,7 +304,7 @@ function checkSheet(startRow = 2) {
           // If we didn't find it after iterating then create it
           if (foundIt === false) {
             const event = createEventFromCell(sheetEvents[0], endDate, sheetEventsSplit[s].trim(), getA1Notation(i + startRow, j + 3), allDatesRtfs[i][j + 1], allDatesNotes[i][j + 1], currentCategory)
-            console.log(`Created "${event.getTitle()}" event on ${event.getAllDayStartDate().toLocaleDateString("en-GB")}.`)
+            console.log(`Created "${event.summary}" event on ${event.start.date}.`)
           }
 
         }

@@ -1,6 +1,13 @@
 {
   "timeZone": "Europe/London",
   "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Calendar",
+        "version": "v3",
+        "serviceId": "calendar"
+      }
+    ]
   },
   "oauthScopes": [
     "https://www.googleapis.com/auth/spreadsheets.currentonly",
