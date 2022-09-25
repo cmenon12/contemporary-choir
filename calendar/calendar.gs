@@ -339,19 +339,28 @@ function checkSheet(startRow = 2) {
  */
 function hidePastRows() {
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Calendar");
+  // Get all sheets and a list of which we should process
+  const sheets = SpreadsheetApp.getActiveSpreadsheet().getSheets();
+  const validSheets = getSecrets().VALID_SHEETS;
 
-  // Hide rows in the past
-  sheet.showRows(1, sheet.getLastRow());
-  const today = new Date();
-  let daysToRemove;
-  today.getDay() === 0 ? (daysToRemove = 7) : (daysToRemove = today.getDay())   // Sunday fix
-  const first = today.getDate() - daysToRemove + 1;
-  const monday = new Date(today.setDate(first));
-  for (let i = 3; i < sheet.getLastRow() - 1; i++) {
-    if (sheet.getRange(i, 2).getValue().getTime() >= monday.getTime()) {
-      sheet.hideRows(2, i - 3)
-      break;
+  for (let i = 0; i < sheets.length; i++) {
+
+    // Only process some sheets
+    if (!validSheets.includes(sheets[i].getName())) continue;
+
+    // Hide rows in the past
+    const sheet = sheets[i];
+    sheet.showRows(1, sheet.getLastRow());
+    const today = new Date();
+    let daysToRemove;
+    today.getDay() === 0 ? (daysToRemove = 7) : (daysToRemove = today.getDay())   // Sunday fix
+    const first = today.getDate() - daysToRemove + 1;
+    const monday = new Date(today.setDate(first));
+    for (let i = 3; i < sheet.getLastRow() - 1; i++) {
+      if (sheet.getRange(i, 2).getValue().getTime() >= monday.getTime() && i > 3) {
+        sheet.hideRows(2, i - 3)
+        break;
+      }
     }
   }
 
