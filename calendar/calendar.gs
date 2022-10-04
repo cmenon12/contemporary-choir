@@ -48,9 +48,13 @@ function getMergedEvents(allDatesRange, allDatesValues, categories, startRow) {
     const currentCategory = categories[mergedRanges[i].getColumn() - 3]
     const firstRowNum = mergedRanges[i].getRow()
     const lastRowNum = mergedRanges[i].getLastRow()
-    const startDate = allDatesValues[firstRowNum - startRow][0]
-    const endDate = allDatesValues[lastRowNum - startRow][0].addDays(1)
-    result[currentCategory][startDate] = endDate;
+    if (firstRowNum >= startRow) {
+      const startDate = allDatesValues[firstRowNum - startRow][0]
+      const endDate = allDatesValues[lastRowNum - startRow][0].addDays(1)
+      result[currentCategory][startDate] = endDate;
+    } else {
+      console.log(`Skipped the multi-day event starting on row ${firstRowNum}`)
+    }
   }
 
   console.log(`Multi-day events are ${JSON.stringify(result)}.`)
