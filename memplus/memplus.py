@@ -38,7 +38,7 @@ def get_authorised_session(config: configparser.SectionProxy, use_file: bool = T
     if os.path.exists(config["cookie_file"]) and use_file:
         with open(config["cookie_file"], "rb") as f:
             session.cookies.update(pickle.load(f))
-            LOGGER.info("Loaded cookies from %s.", config["cookie_file"])
+        LOGGER.info("Loaded cookies from %s.", config["cookie_file"])
 
     else:
         # Get the magic link to login
@@ -49,6 +49,11 @@ def get_authorised_session(config: configparser.SectionProxy, use_file: bool = T
         response = session.get(auth_link)
         response.raise_for_status()
         LOGGER.info("Logged in using the magic link.")
+
+        # Save the cookies
+        with open(config["cookie_file"], "wb") as f:
+            pickle.dump(session.cookies, f)
+        LOGGER.info("Saved cookies to %s.", config["cookie_file"])
 
     return session
 
@@ -72,7 +77,8 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
             # Extract the title and dates from it
             page_soup = BeautifulSoup(response.text, "lxml")
             title = page_soup.find_all("h3", {"class": "text-2xl font-bold tracking-tight text-gray-900"})[0].text
-            date_element = page_soup.find_all("p", {"class": "flex justify-start items-center text-gray-500 text-sm truncate"})
+            date_element = page_soup.find_all("p", {
+                "class": "flex justify-start items-center text-gray-500 text-sm truncate"})
             dates = ". ".join([x.strip() for x in date_element[0].text.split(".")])
 
             # Add the article to the list
@@ -80,7 +86,7 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
 
         except HTTPError as error:
             # Add the error to the list
-            result.append([i, f"{error.response.status_code} {error.response.reason}", "", url])
+            result.append([i, f"{error.response.status_code}", "", url])
 
         bar.next()
 
@@ -133,14 +139,20 @@ def main(app_gui: gui) -> None:
     parser.read(CONFIG_FILENAME)
     config = parser["memplus"]
 
+    # Run
+    session = get_authorised_session(config)
+    download_knowledgebase(session, config, app_gui)
+
 
 if __name__ == "__main__":
 
     # Prepare the log
-    logging.basicConfig(filename="memplus_base.log",
-                        filemode="a",
-                        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
-                        level=logging.INFO)
+    logging.basicConfig(handlers=[
+        logging.FileHandler("memplus_base.log"),
+        logging.StreamHandler(sys.stdout)
+    ],
+        format="%(asctime)s | %(levelname)5s in %(module)s.%(funcName)s() on line %(lineno)-3d | %(message)s",
+        level=logging.INFO)
     LOGGER = logging.getLogger(__name__)
 
     # Create the GUI
