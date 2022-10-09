@@ -8,6 +8,7 @@ import pickle
 import sys
 import time
 from datetime import datetime
+from progress.bar import Bar
 
 # noinspection PyUnresolvedReferences
 import pyexcel_xlsx
@@ -58,6 +59,7 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
 
     LOGGER.info("Downloading knowledgebase from %d to %d...", min, max)
 
+    bar = Bar("Downloading", max=max)
     result = []
     for i in range(min, max + 1):
         url = f"{config['knowledgebase_url']}{i}"
@@ -70,7 +72,8 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
             # Extract the title and dates from it
             page_soup = BeautifulSoup(response.text, "lxml")
             title = page_soup.find_all("h3", {"class": "text-2xl font-bold tracking-tight text-gray-900"})[0].text
-            dates = page_soup.find_all("p", {"class": "flex justify-start items-center text-gray-500 text-sm truncate"})[0].text
+            date_element = page_soup.find_all("p", {"class": "flex justify-start items-center text-gray-500 text-sm truncate"})
+            dates = ". ".join([x.strip() for x in date_element[0].text.split(".")])
 
             # Add the article to the list
             result.append([i, title, dates, url])
@@ -79,6 +82,9 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
             # Add the error to the list
             result.append([i, f"{error.response.status_code} {error.response.reason}", "", url])
 
+        bar.next()
+
+    bar.finish()
     LOGGER.debug("Downloaded %d articles, %d of which were valid.", len(result), len([x for x in result if x[2] != ""]))
 
     # Ask the user where to save it
