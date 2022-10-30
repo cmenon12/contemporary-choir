@@ -42,7 +42,7 @@ def get_authorised_session(config: configparser.SectionProxy, use_file: bool = T
 
     else:
         # Get the magic link to login
-        print(f"Visit {config['magic_link_url']} and request a magic link.")
+        print(f"Visit {config['domain']}student/auth/magic-link/ and request a magic link.")
         auth_link = input("Enter the magic link: ")
 
         # Login
@@ -67,7 +67,7 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
     bar = Bar("Downloading", max=max)
     result = []
     for i in range(min, max + 1):
-        url = f"{config['knowledgebase_url']}{i}"
+        url = f"{config['domain']}auth/committee/knowledge-base/{i}"
         try:
             # Download the article
             LOGGER.debug("Downloading article %d..." % i)
