@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import cgi
 import configparser
 import csv
 import logging
@@ -8,12 +9,15 @@ import pickle
 import sys
 import time
 from datetime import datetime
-from progress.bar import Bar
+from io import StringIO
 
+import numpy as np
+import pandas as pd
 # noinspection PyUnresolvedReferences
 import pyexcel_xlsx
 import requests
 from appJar import gui
+from progress.bar import Bar
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
@@ -115,6 +119,99 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
         writer.writerows(result)
 
     LOGGER.info("Saved knowledgebase to %s.", filepath)
+
+
+def download_members(session: requests.Session, config: configparser.SectionProxy,
+                     app_gui: gui, society_id: int) -> None:
+    """Download a list of articles in the Knowledgebase."""
+
+    LOGGER.info("Downloading members for society %d...", society_id)
+
+    # Download the CSV of members
+    url = f"{config['domain']}auth/committee/group/{society_id}/members/export"
+    response = session.get(url)
+    response.raise_for_status()
+    society_name = cgi.parse_header(response.headers["content-disposition"])[1]["filename"].split(".")[0]
+    df: pd.DataFrame = pd.read_csv(StringIO(response.text), sep=",")
+
+    # Add empty columns and set data types
+    df["MemPlus ID"] = np.nan
+    df["MemPlus ID"] = df["MemPlus ID"].astype("Int32")
+    df["Student Type"] = ""
+    df["Student Type"] = df["Student Type"].astype("string")
+    df["Active"] = np.nan
+    df["Active"] = df["Active"].astype("boolean")
+    df["Started"] = np.nan
+    df["Started"] = df["Started"].astype("string")
+    df["Expires"] = np.nan
+    df["Expires"] = df["Expires"].astype("string")
+    df["Paid"] = np.nan
+    df["Paid"] = df["Paid"].astype("boolean")
+    df["Current Position"] = ""
+    df["Current Position"] = df["Current Position"].astype("string")
+
+    # Download the page of members
+    url = f"{config['domain']}auth/committee/group/{society_id}/members"
+    response = session.get(url)
+    response.raise_for_status()
+
+    # Extract all the members
+    page_soup = BeautifulSoup(response.text, "lxml")
+    members = page_soup.find_all("table")[0].find_all("tr")[1:]
+    bar = Bar("Downloading", max=len(members))
+    for member in members:
+
+        # Download that member's page
+        member_url = member.find_all("a")[0]["href"]
+        member_response = session.get(member_url)
+        member_response.raise_for_status()
+        member_soup = BeautifulSoup(member_response.text, "lxml")
+
+        # Find their MemPlus ID and student ID
+        student_id = member_soup.find(lambda tag: tag.name == "dt" and "Student ID" in tag.text).find_next_sibling("dd").text.strip()
+        df.loc[df["Student ID"] == student_id, "MemPlus ID"] = int(member_url.split("/")[-1])
+
+        # Find and save all other attributes
+        for div in member_soup.find_all("section", {"class": "grid lg:grid-cols-2 gap-8"})[0].find_all("div"):
+            if not div.find_all("dt", recursive=False):
+                continue
+            if div.find_all("dt")[0].text.strip() == "Student Type":
+                df.loc[df["Student ID"] == student_id, "Student Type"] = div.find_all("code")[0].text.strip()
+            elif div.find_all("dt")[0].text.strip() == "Started":
+                df.loc[df["Student ID"] == student_id, "Started"] = div.find_all("dd")[0].text.strip()[:19]
+            elif div.find_all("dt")[0].text.strip() == "Expires":
+                df.loc[df["Student ID"] == student_id, "Expires"] = div.find_all("dd")[0].text.strip()[:19]
+            elif div.find_all("dt")[0].text.strip() == "Current Position":
+                df.loc[df["Student ID"] == student_id, "Current Position"] = div.find_all("dd")[0].text.strip()
+            elif div.find_all("dt")[0].text.strip() == "Paid":
+                df.loc[df["Student ID"] == student_id, "Paid"] = bool(div.find_all("span", {"class": "text-green-400 flex items-center"}))
+            elif div.find_all("dt")[0].text.strip() == "Active":
+                df.loc[df["Student ID"] == student_id, "Active"] = bool(div.find_all("span", {"class": "text-green-400 flex items-center"}))
+
+        bar.next()
+
+    bar.finish()
+    LOGGER.debug("Downloaded %d members.", len(members))
+
+    # Ask the user where to save it
+    filename = f"{society_name}-members-{datetime.now().isoformat().replace(':', '_')}.csv"
+    csv_file_box = app_gui.saveBox("Save Members",
+                                   fileName=filename,
+                                   fileExt=".csv",
+                                   fileTypes=[("Comma-Separated Values", "*.csv")],
+                                   asFile=True)
+    if csv_file_box is None:
+        LOGGER.warning("The user cancelled saving the CSV.")
+        raise SystemExit("User cancelled saving the CSV.")
+    filepath = csv_file_box.name
+    app_gui.removeAllWidgets()
+
+    LOGGER.debug("Saving members to %s...", filepath)
+
+    # Save to a CSV
+    df.to_csv(filepath, index=False)
+
+    LOGGER.info("Saved members to %s.", filepath)
 
 
 def main(app_gui: gui) -> None:
