@@ -10,6 +10,7 @@ import sys
 import time
 from datetime import datetime
 from io import StringIO
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -40,8 +41,8 @@ def get_authorised_session(config: configparser.SectionProxy, use_file: bool = T
 
     # Load the cookies from the file
     if os.path.exists(config["cookie_file"]) and use_file:
-        with open(config["cookie_file"], "rb") as f:
-            session.cookies.update(pickle.load(f))
+        with open(config["cookie_file"], "rb") as file:
+            session.cookies.update(pickle.load(file))
         LOGGER.info("Loaded cookies from %s.", config["cookie_file"])
 
     else:
@@ -55,26 +56,26 @@ def get_authorised_session(config: configparser.SectionProxy, use_file: bool = T
         LOGGER.info("Logged in using the magic link.")
 
         # Save the cookies
-        with open(config["cookie_file"], "wb") as f:
-            pickle.dump(session.cookies, f)
+        with open(config["cookie_file"], "wb") as file:
+            pickle.dump(session.cookies, file)
         LOGGER.info("Saved cookies to %s.", config["cookie_file"])
 
     return session
 
 
 def download_knowledgebase(session: requests.Session, config: configparser.SectionProxy,
-                           app_gui: gui, min: int = 1, max: int = 200) -> None:
+                           app_gui: gui, start: int = 1, end: int = 200) -> None:
     """Download a list of articles in the Knowledgebase."""
 
-    LOGGER.info("Downloading knowledgebase from %d to %d...", min, max)
+    LOGGER.info("Downloading knowledgebase from %d to %d...", start, end)
 
-    bar = Bar("Downloading", max=max)
+    pbar = Bar("Downloading", max=end)
     result = []
-    for i in range(min, max + 1):
+    for i in range(start, end + 1):
         url = f"{config['domain']}auth/committee/knowledge-base/{i}"
         try:
             # Download the article
-            LOGGER.debug("Downloading article %d..." % i)
+            LOGGER.debug("Downloading article %d...", i)
             response = session.get(url)
             response.raise_for_status()
 
@@ -92,9 +93,9 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
             # Add the error to the list
             result.append([i, f"{error.response.status_code}", "", url])
 
-        bar.next()
+        pbar.next()
 
-    bar.finish()
+    pbar.finish()
     LOGGER.debug("Downloaded %d articles, %d of which were valid.", len(result), len([x for x in result if x[2] != ""]))
 
     # Ask the user where to save it
@@ -122,43 +123,32 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
 
 
 def download_members(session: requests.Session, config: configparser.SectionProxy,
-                     app_gui: gui, society_id: int) -> None:
-    """Download a list of articles in the Knowledgebase."""
+                     app_gui: gui, society_id: Optional[str] = None) -> None:
+    """Download a comprehensive CSV of members."""
 
-    LOGGER.info("Downloading members for society %d...", society_id)
+    LOGGER.info("Downloading members for society %s...", str(society_id if society_id else config['society_id']))
 
     # Download the CSV of members
-    url = f"{config['domain']}auth/committee/group/{society_id}/members/export"
+    url = f"{config['domain']}auth/committee/group/{society_id if society_id else config['society_id']}/members/export"
     response = session.get(url)
     response.raise_for_status()
     society_name = cgi.parse_header(response.headers["content-disposition"])[1]["filename"].split(".")[0]
     df: pd.DataFrame = pd.read_csv(StringIO(response.text), sep=",")
 
-    # Add empty columns and set data types
-    df["MemPlus ID"] = np.nan
-    df["MemPlus ID"] = df["MemPlus ID"].astype("Int32")
-    df["Student Type"] = ""
-    df["Student Type"] = df["Student Type"].astype("string")
-    df["Active"] = np.nan
-    df["Active"] = df["Active"].astype("boolean")
-    df["Started"] = np.nan
-    df["Started"] = df["Started"].astype("string")
-    df["Expires"] = np.nan
-    df["Expires"] = df["Expires"].astype("string")
-    df["Paid"] = np.nan
-    df["Paid"] = df["Paid"].astype("boolean")
-    df["Current Position"] = ""
-    df["Current Position"] = df["Current Position"].astype("string")
+    # Add empty columns
+    new_columns = ["MemPlus ID", "Student Type", "Active", "Started", "Expires", "Paid", "Current Position"]
+    for column in new_columns:
+        df[column] = ""
 
     # Download the page of members
-    url = f"{config['domain']}auth/committee/group/{society_id}/members"
+    url = f"{config['domain']}auth/committee/group/{society_id if society_id else config['society_id']}/members"
     response = session.get(url)
     response.raise_for_status()
 
     # Extract all the members
     page_soup = BeautifulSoup(response.text, "lxml")
     members = page_soup.find_all("table")[0].find_all("tr")[1:]
-    bar = Bar("Downloading", max=len(members))
+    pbar = Bar("Downloading", max=len(members))
     for member in members:
 
         # Download that member's page
@@ -168,29 +158,28 @@ def download_members(session: requests.Session, config: configparser.SectionProx
         member_soup = BeautifulSoup(member_response.text, "lxml")
 
         # Find their MemPlus ID and student ID
-        student_id = member_soup.find(lambda tag: tag.name == "dt" and "Student ID" in tag.text).find_next_sibling("dd").text.strip()
+        student_id = member_soup.find(lambda tag: tag.name == "dt" and "Student ID" in tag.text).find_next_sibling(
+            "dd").text.strip()
         df.loc[df["Student ID"] == student_id, "MemPlus ID"] = int(member_url.split("/")[-1])
 
         # Find and save all other attributes
         for div in member_soup.find_all("section", {"class": "grid lg:grid-cols-2 gap-8"})[0].find_all("div"):
             if not div.find_all("dt", recursive=False):
                 continue
-            if div.find_all("dt")[0].text.strip() == "Student Type":
+            key = div.find_all("dt", recursive=False)[0].text.strip()
+            if key == "Student Type":
                 df.loc[df["Student ID"] == student_id, "Student Type"] = div.find_all("code")[0].text.strip()
-            elif div.find_all("dt")[0].text.strip() == "Started":
-                df.loc[df["Student ID"] == student_id, "Started"] = div.find_all("dd")[0].text.strip()[:19]
-            elif div.find_all("dt")[0].text.strip() == "Expires":
-                df.loc[df["Student ID"] == student_id, "Expires"] = div.find_all("dd")[0].text.strip()[:19]
-            elif div.find_all("dt")[0].text.strip() == "Current Position":
+            elif key in ["Started", "Expires"]:
+                df.loc[df["Student ID"] == student_id, key] = div.find_all("dd")[0].text.strip()[:19]
+            elif key == "Current Position":
                 df.loc[df["Student ID"] == student_id, "Current Position"] = div.find_all("dd")[0].text.strip()
-            elif div.find_all("dt")[0].text.strip() == "Paid":
-                df.loc[df["Student ID"] == student_id, "Paid"] = bool(div.find_all("span", {"class": "text-green-400 flex items-center"}))
-            elif div.find_all("dt")[0].text.strip() == "Active":
-                df.loc[df["Student ID"] == student_id, "Active"] = bool(div.find_all("span", {"class": "text-green-400 flex items-center"}))
+            elif key in ["Active", "Paid"]:
+                df.loc[df["Student ID"] == student_id, key] = bool(div.find_all("span", {
+                    "class": "text-green-400 flex items-center"}))
 
-        bar.next()
+        pbar.next()
 
-    bar.finish()
+    pbar.finish()
     LOGGER.debug("Downloaded %d members.", len(members))
 
     # Ask the user where to save it
@@ -239,6 +228,7 @@ def main(app_gui: gui) -> None:
     # Run
     session = get_authorised_session(config)
     download_knowledgebase(session, config, app_gui)
+    download_members(session, config, app_gui)
 
 
 if __name__ == "__main__":
