@@ -203,6 +203,72 @@ def download_members(session: requests.Session, config: configparser.SectionProx
     LOGGER.info("Saved members to %s.", filepath)
 
 
+def download_committees(session: requests.Session, config: configparser.SectionProxy,
+                        app_gui: gui) -> None:
+    LOGGER.info("Downloading society committees...")
+
+    # Download all societies
+    societies = {}
+    page_num = 1
+
+    response = session.get(f"{config['domain']}i/get?page={page_num}")
+    response.raise_for_status()
+    while response.json() != []:
+        for item in response.json():
+            societies[item["name"]] = item["link"]
+        page_num += 1
+        response = session.get(f"https://my.exeterguild.com/i/get?page={page_num}")
+        response.raise_for_status()
+    LOGGER.debug(f"We found {len(societies)} societies across {page_num - 1} pages.")
+
+    # Get the committee of each society
+    committee_data = {}
+    roles_output = []
+    pbar = Bar("Downloading", max=len(societies))
+    for name, url in societies.items():
+        committee = get_committee_data(session, url)
+        committee_data[name] = committee
+        roles_output.append([name, url, len(committee)] + list(sum(committee, ()))[::2])
+        pbar.next()
+    pbar.finish()
+
+    # Ask the user where to save it
+    filename = f"committee-roles-{datetime.now().isoformat().replace(':', '_')}.csv"
+    csv_file_box = app_gui.saveBox("Save Committee Roles",
+                                   fileName=filename,
+                                   fileExt=".csv",
+                                   fileTypes=[("Comma-Separated Values", "*.csv")],
+                                   asFile=True)
+    if csv_file_box is None:
+        LOGGER.warning("The user cancelled saving the CSV.")
+        raise SystemExit("User cancelled saving the CSV.")
+    filepath = csv_file_box.name
+    app_gui.removeAllWidgets()
+
+    # Save to a CSV
+    with open(filepath, "w", encoding="UTF8", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Name", "URL", "Count"])
+        writer.writerows(roles_output)
+
+    LOGGER.info("Saved committee roles to %s.", filepath)
+
+
+def get_committee_data(session: requests.Session, society_url: str) -> list:
+
+    committee = []
+    page_response = session.get(f"{society_url}/committee")
+    page_response.raise_for_status()
+    page_soup = BeautifulSoup(page_response.text, "lxml")
+    page_committee = page_soup.find_all("div", {"class": "relative block bg-gray-100 text-gray-800 px-6 py-4 cursor-pointer flex justify-start focus:outline-none space-x-6"})
+    for item in page_committee:
+        role = item.find_all("p", {"class": "text-sm mt-1"})[0].text.strip()
+        name = item.find_all("p", {"class": "font-bold text-xl tracking-tight"})[0].text.strip()
+        committee.append((role, name))
+
+    return committee
+
+
 def main(app_gui: gui) -> None:
     """Runs the program.
 
