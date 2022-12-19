@@ -1,6 +1,6 @@
 # Contemporary Choir
 
-As the President (and formerly the Treasurer) of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I've found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I've written scripts to help automate some tasks and ultimately make my life easier. In addition, I also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I was able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. 
+As the former Treasurer and President of [Contemporary Choir](https://exetercontemporarychoir.com/) (a University of Exeter Students' Guild society), I found myself spending quite a bit of time working with various spreadsheets and data from various different sources. As a result, I wrote scripts to help automate some tasks and ultimately make my life easier. In addition, I also led the team to produce a [website for the society](https://exetercontemporarychoir.com), during which I was able to draw on and apply skills learnt during my degree as well as learn some new skills (such as domain management and SEO) too. 
 
 This repository contains scripts that I wrote to automatically download and process our society ledger, and notify me of any new changes via email. It's also got some custom HTML that's used on the website, as well as a plugin that I've tweaked myself for the website.
 
