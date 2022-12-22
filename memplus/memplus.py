@@ -231,25 +231,44 @@ def download_committees(session: requests.Session, config: configparser.SectionP
         roles_output.append([name, url, len(committee)] + list(sum(committee, ()))[::2])
         pbar.next()
     pbar.finish()
+    df_roles = pd.DataFrame(roles_output,
+                            columns=["Society", "URL", "Count"] + [""] * max([r[2] for r in roles_output]))
+
+    # Create a dataframe of the committees
+    roles = set([c[0] for s in committee_data.values() for c in s])
+    df = pd.DataFrame([[name, url] + [np.NaN] * (1 + len(roles)) for name, url in societies.items()],
+                      columns=["Society", "URL", "Count"] + list(roles))
+    for name, committee in committee_data.items():
+        df.loc[df["Society"] == name, "Count"] = len(committee)
+        for role in committee:
+            if pd.isnull(df.at[df.index[df["Society"] == name].tolist()[0], role[0]]):
+                df.loc[df["Society"] == name, role[0]] = role[1]
+            else:
+                df.loc[df["Society"] == name, role[
+                    0]] = f"{df.at[df.index[df['Society'] == name].tolist()[0], role[0]]}, {role[1]}"
+    df_headers = [r for r in list(df.count().sort_values(ascending=False).index) if
+                  r not in ["Society", "URL", "Count"]]
+    df = df[["Society", "URL", "Count"] + df_headers]
+    df.fillna("", inplace=True)
 
     # Ask the user where to save it
-    filename = f"committee-roles-{datetime.now().isoformat().replace(':', '_')}.csv"
-    csv_file_box = app_gui.saveBox("Save Committee Roles",
-                                   fileName=filename,
-                                   fileExt=".csv",
-                                   fileTypes=[("Comma-Separated Values", "*.csv")],
-                                   asFile=True)
-    if csv_file_box is None:
-        LOGGER.warning("The user cancelled saving the CSV.")
-        raise SystemExit("User cancelled saving the CSV.")
-    filepath = csv_file_box.name
+    filename = f"guild-society-committees-{datetime.now().isoformat().replace(':', '_')}.xlsx"
+    xlsx_file_box = app_gui.saveBox("Save Society Committees",
+                                    fileName=filename,
+                                    fileExt=".xlsx",
+                                    fileTypes=[("Office Open XML Workbook", "*.xlsx")],
+                                    asFile=True)
+    if xlsx_file_box is None:
+        LOGGER.warning("The user cancelled saving the XLSX.")
+        raise SystemExit("User cancelled saving the XLSX.")
+    filepath = xlsx_file_box.name
     app_gui.removeAllWidgets()
 
-    # Save to a CSV
-    with open(filepath, "w", encoding="UTF8", newline="") as file:
-        writer = csv.writer(file)
-        writer.writerow(["Name", "URL", "Count"])
-        writer.writerows(roles_output)
+    # Save to an XLSX
+    writer = pd.ExcelWriter(filepath, engine="xlsxwriter")
+    df.to_excel(writer, sheet_name="Full Committees", index=False)
+    df_roles.to_excel(writer, sheet_name="Roles Only", index=False)
+    writer.close()
 
     LOGGER.info("Saved committee roles to %s.", filepath)
 
@@ -260,7 +279,8 @@ def get_committee_data(session: requests.Session, society_url: str) -> list:
     page_response = session.get(f"{society_url}/committee")
     page_response.raise_for_status()
     page_soup = BeautifulSoup(page_response.text, "lxml")
-    page_committee = page_soup.find_all("div", {"class": "relative block bg-gray-100 text-gray-800 px-6 py-4 cursor-pointer flex justify-start focus:outline-none space-x-6"})
+    page_committee = page_soup.find_all("div", {
+        "class": "relative block bg-gray-100 text-gray-800 px-6 py-4 cursor-pointer flex justify-start focus:outline-none space-x-6"})
     for item in page_committee:
         role = item.find_all("p", {"class": "text-sm mt-1"})[0].text.strip()
         name = item.find_all("p", {"class": "font-bold text-xl tracking-tight"})[0].text.strip()
@@ -293,6 +313,7 @@ def main(app_gui: gui) -> None:
 
     # Run
     session = get_authorised_session(config)
+    download_committees(session, config, app_gui)
     download_knowledgebase(session, config, app_gui)
     download_members(session, config, app_gui)
 
