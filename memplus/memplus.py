@@ -18,15 +18,13 @@ import pandas as pd
 import pyexcel_xlsx
 import requests
 from appJar import gui
+from bs4 import BeautifulSoup
 from progress.bar import Bar
 
 __author__ = "Christopher Menon"
 __credits__ = "Christopher Menon"
 __license__ = "gpl-3.0"
 
-from bs4 import BeautifulSoup
-
-from requests import HTTPError
 
 # The name of the config file
 CONFIG_FILENAME = "config.ini"
@@ -89,7 +87,7 @@ def download_knowledgebase(session: requests.Session, config: configparser.Secti
             # Add the article to the list
             result.append([i, title, dates, url])
 
-        except HTTPError as error:
+        except requests.HTTPError as error:
             # Add the error to the list
             result.append([i, f"{error.response.status_code}", "", url])
 
